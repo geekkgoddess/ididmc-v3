@@ -148,10 +148,16 @@ import { doc, getDoc } from 'https://www.gstatic.com/firebasejs/10.11.0/firebase
 // Check if already logged in
 onAuthStateChanged(auth, async (user) => {
   if (user) {
-    const snap = await getDoc(doc(db, 'households', user.uid));
-    if (snap.exists() && snap.data().onboardingComplete) {
-      window.location.href = '/app/pages/parent-dashboard.html';
-    } else {
+    try {
+      const snap = await getDoc(doc(db, 'households', user.uid));
+      if (snap.exists() && snap.data().onboardingComplete) {
+        window.location.href = '/app/pages/parent-dashboard.html';
+      } else {
+        window.location.href = '/app/pages/onboarding.html';
+      }
+    } catch(e) {
+      console.error('Firestore error:', e);
+      // If there's an error fetching household, go to onboarding to set up
       window.location.href = '/app/pages/onboarding.html';
     }
   }
