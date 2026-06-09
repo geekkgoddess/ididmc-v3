@@ -493,9 +493,8 @@
 <script type="module">
 import { auth, db } from '../../app/js/firebase.js';
 import { onAuthStateChanged, signOut, deleteUser } from 'https://www.gstatic.com/firebasejs/10.11.0/firebase-auth.js';
-import { doc, deleteDoc } from 'https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore.js';
 import {
-  doc, getDoc, updateDoc, collection,
+  doc, getDoc, updateDoc, collection, deleteDoc,
   query, where, getDocs, onSnapshot, addDoc
 } from 'https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore.js';
 
