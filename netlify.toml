@@ -1,0 +1,44 @@
+[build]
+  publish = "."
+
+# App routes
+[[redirects]]
+  from = "/app"
+  to   = "/login.html"
+  status = 302
+
+[[redirects]]
+  from = "/dashboard"
+  to   = "/app/pages/parent-dashboard.html"
+  status = 302
+
+# Keep everything else working
+[[redirects]]
+  from = "/*"
+  to   = "/index.html"
+  status = 200
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    Cache-Control = "no-cache"
+
+# Never cache HTML
+[[headers]]
+  for = "/*.html"
+  [headers.values]
+    Cache-Control = "no-cache, no-store, must-revalidate"
+
+# Cache CSS/JS longer
+[[headers]]
+  for = "/css/*"
+  [headers.values]
+    Cache-Control = "public, max-age=3600"
+
+[[headers]]
+  for = "/js/*"
+  [headers.values]
+    Cache-Control = "public, max-age=3600"

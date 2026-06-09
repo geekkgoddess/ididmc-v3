@@ -1,0 +1,11 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Only allow image uploads under the photos path
+    match /photos/{householdId}/{rest=**} {
+      allow read:  if true;          // Parents and kids can view photos
+      allow write: if request.resource.contentType.matches('image/.*')
+                   && request.resource.size < 10 * 1024 * 1024; // 10MB max
+    }
+  }
+}

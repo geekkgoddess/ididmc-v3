@@ -1,0 +1,1001 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>I Did My Chores</title>
+  <link rel="stylesheet" href="../../css/app.css">
+  <style>
+    /* ── Points dashboard widget ── */
+    .points-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 18px;
+      margin-bottom: 16px;
+    }
+
+    .points-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 12px;
+    }
+
+    .points-big {
+      font-family: 'DM Mono', monospace;
+      font-size: 38px; font-weight: 500;
+      color: var(--gold); line-height: 1;
+    }
+
+    .points-label {
+      font-size: 11px; color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.08em; margin-top: 4px;
+    }
+
+    .quota-ring {
+      width: 64px; height: 64px;
+      position: relative; flex-shrink: 0;
+    }
+
+    .quota-ring svg {
+      transform: rotate(-90deg);
+    }
+
+    .quota-ring-center {
+      position: absolute; inset: 0;
+      display: flex; align-items: center;
+      justify-content: center;
+      font-size: 13px; font-weight: 700;
+      color: var(--text);
+    }
+
+    /* ── Progress bar ── */
+    .progress-bar {
+      background: var(--border);
+      border-radius: 99px; height: 8px;
+      overflow: hidden; margin-bottom: 6px;
+    }
+
+    .progress-fill {
+      height: 100%; border-radius: 99px;
+      background: linear-gradient(90deg, var(--gold), #fb923c);
+      transition: width 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    .progress-fill.full { background: var(--green); }
+
+    /* ── Chore items ── */
+    .chore-item {
+      display: flex; align-items: center; gap: 12px;
+      padding: 14px 0; border-bottom: 1px solid var(--border);
+      cursor: pointer; transition: opacity 0.15s;
+    }
+    .chore-item:last-child { border-bottom: none; }
+    .chore-item.locked    { opacity: 0.3; cursor: not-allowed; pointer-events: none; }
+    .chore-item.mine      { opacity: 0.6; cursor: default; pointer-events: none; }
+    .chore-item.pending-lock { opacity: 0.5; cursor: not-allowed; pointer-events: none; }
+
+    .chore-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+
+    .chore-pts {
+      font-family: 'DM Mono', monospace;
+      font-size: 13px; color: var(--gold);
+      flex-shrink: 0; white-space: nowrap;
+    }
+
+    .subtask-count {
+      font-size: 10px; color: var(--muted);
+      background: var(--card2); border-radius: 99px;
+      padding: 2px 7px; margin-left: 4px;
+    }
+
+    /* ── Sub-task checklist in modal ── */
+    .subtask-item {
+      display: flex; align-items: center; gap: 12px;
+      padding: 13px 0; border-bottom: 1px solid var(--border);
+      cursor: pointer; -webkit-user-select: none;
+    }
+    .subtask-item:last-child { border-bottom: none; }
+
+    .subtask-check {
+      width: 22px; height: 22px;
+      border: 2px solid var(--border);
+      border-radius: 6px; flex-shrink: 0;
+      display: flex; align-items: center;
+      justify-content: center; transition: all 0.15s;
+    }
+    .subtask-item.checked .subtask-check {
+      background: var(--green);
+      border-color: var(--green);
+      color: #fff;
+    }
+
+    .subtask-label {
+      font-size: 14px; font-weight: 500;
+      flex: 1; line-height: 1.4;
+    }
+    .subtask-item.checked .subtask-label {
+      text-decoration: line-through;
+      color: var(--muted);
+    }
+
+    /* ── Checklist progress ── */
+    .checklist-progress {
+      background: var(--card2); border-radius: 8px;
+      padding: 10px 14px; margin-bottom: 16px;
+      display: flex; align-items: center;
+      justify-content: space-between;
+    }
+
+    .checklist-pct {
+      font-size: 13px; font-weight: 700;
+      color: var(--green);
+    }
+
+    /* ── Upload zone ── */
+    .photo-zone {
+      border: 2px dashed var(--border);
+      border-radius: 12px; padding: 28px 20px;
+      text-align: center; cursor: pointer;
+      transition: border-color 0.15s; margin: 14px 0;
+    }
+    .photo-zone:hover   { border-color: var(--gold); }
+    .photo-zone.ready   { border-style: solid; border-color: var(--green); }
+    .photo-zone.uploading { border-color: var(--gold); }
+
+    /* ── Upload progress ── */
+    .upload-progress {
+      display: none;
+      background: var(--card2); border-radius: 8px;
+      padding: 12px 14px; margin-bottom: 12px;
+    }
+    .upload-progress.show { display: block; }
+    .upload-bar {
+      background: var(--border); border-radius: 99px;
+      height: 6px; margin-top: 8px; overflow: hidden;
+    }
+    .upload-bar-fill {
+      height: 100%; border-radius: 99px;
+      background: var(--gold);
+      transition: width 0.2s;
+    }
+
+    /* ── Success ── */
+    #screen-success {
+      align-items: center; justify-content: center; text-align: center;
+    }
+    .success-pts {
+      font-family: 'DM Mono', monospace;
+      font-size: 52px; font-weight: 500; color: var(--gold);
+    }
+  </style>
+</head>
+<body>
+<div id="app">
+  <div id="toast"></div>
+
+  <!-- Loading -->
+  <div id="screen-loading" class="screen active"
+       style="align-items:center;justify-content:center">
+    <div class="spinner" style="width:32px;height:32px"></div>
+  </div>
+
+  <!-- Weekend -->
+  <div id="screen-weekend" class="screen"
+       style="align-items:center;justify-content:center;text-align:center">
+    <span style="font-size:72px;display:block;margin-bottom:20px">🛋️</span>
+    <h1>Weekend</h1>
+    <p style="margin-top:10px;max-width:240px">No chores today. Rest up.</p>
+  </div>
+
+  <!-- Kid select -->
+  <div id="screen-select" class="screen">
+    <div style="flex:1;display:flex;flex-direction:column;justify-content:center">
+      <span style="font-size:48px;display:block;margin-bottom:16px;text-align:center">🧹</span>
+      <h1 style="text-align:center;margin-bottom:4px">I Did My Chores</h1>
+      <p style="text-align:center;margin-bottom:32px" class="text-muted">Who are you?</p>
+      <div id="kid-buttons"></div>
+    </div>
+  </div>
+
+  <!-- PIN entry -->
+  <div id="screen-pin" class="screen">
+    <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center">
+      <div id="pin-avatar" class="list-avatar"
+           style="width:60px;height:60px;font-size:24px;margin-bottom:14px"></div>
+      <h2 id="pin-name" style="margin-bottom:6px"></h2>
+      <p class="text-muted">Enter your PIN</p>
+      <div class="pin-row" id="pin-row">
+        <input class="pin-digit" maxlength="1" type="tel" inputmode="numeric">
+        <input class="pin-digit" maxlength="1" type="tel" inputmode="numeric">
+        <input class="pin-digit" maxlength="1" type="tel" inputmode="numeric">
+        <input class="pin-digit" maxlength="1" type="tel" inputmode="numeric">
+      </div>
+      <div id="pin-error" style="color:var(--red);font-size:13px;height:18px;margin-top:4px"></div>
+      <button class="btn btn-ghost mt-24" onclick="showScreen('screen-select')">← Switch</button>
+    </div>
+  </div>
+
+  <!-- Dashboard -->
+  <div id="screen-dashboard" class="screen" style="padding-top:20px">
+    <div id="kid-strip"></div>
+
+    <!-- Points widget -->
+    <div class="points-card">
+      <div class="points-header">
+        <div>
+          <div class="page-label">Today's Points</div>
+          <div class="points-big" id="pts-today">0</div>
+          <div class="points-label" id="pts-period-label">— this period</div>
+        </div>
+        <!-- Quota ring SVG -->
+        <div class="quota-ring">
+          <svg width="64" height="64" viewBox="0 0 64 64">
+            <circle cx="32" cy="32" r="26"
+                    fill="none" stroke="var(--border)" stroke-width="6"/>
+            <circle cx="32" cy="32" r="26" id="quota-arc"
+                    fill="none" stroke="var(--gold)" stroke-width="6"
+                    stroke-linecap="round"
+                    stroke-dasharray="163.4"
+                    stroke-dashoffset="163.4"/>
+          </svg>
+          <div class="quota-ring-center" id="quota-pct">0%</div>
+        </div>
+      </div>
+
+      <!-- Daily goal progress bar -->
+      <div class="progress-bar">
+        <div class="progress-fill" id="quota-bar" style="width:0%"></div>
+      </div>
+      <div style="display:flex;justify-content:space-between">
+        <span style="font-size:12px;color:var(--muted)" id="quota-label">
+          0 of 0 chores · daily goal
+        </span>
+        <span style="font-size:12px;color:var(--muted)" id="period-pts">
+          0 pts this period
+        </span>
+      </div>
+    </div>
+
+    <!-- Daily chores -->
+    <div class="section-header">
+      <div>
+        <div class="page-label">Daily Chores</div>
+        <div id="daily-date" style="font-size:11px;color:var(--muted);margin-top:2px"></div>
+      </div>
+      <span style="font-family:'DM Mono',monospace;font-size:12px;color:var(--gold)"
+            id="daily-pts-label"></span>
+    </div>
+    <div class="card" style="padding:4px 16px">
+      <div id="daily-list">
+        <div class="loading-row"><div class="spinner"></div></div>
+      </div>
+    </div>
+
+    <!-- Weekly bonus -->
+    <div class="section-header">
+      <div>
+        <div class="page-label">Weekly Bonus</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px">First to claim wins</div>
+      </div>
+      <span style="font-family:'DM Mono',monospace;font-size:12px;color:var(--gold)"
+            id="weekly-pts-label"></span>
+    </div>
+    <div class="card" style="padding:4px 16px;margin-bottom:32px">
+      <div id="weekly-list">
+        <div class="loading-row"><div class="spinner"></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Success -->
+  <div id="screen-success" class="screen">
+    <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center">
+      <span style="font-size:72px;display:block;margin-bottom:20px;
+                   animation:popIn 0.4s cubic-bezier(0.34,1.56,0.64,1)">🎉</span>
+      <h1>Submitted!</h1>
+      <div class="success-pts" id="success-pts"></div>
+      <p id="success-msg" style="max-width:280px;margin:10px 0 36px;color:var(--muted)"></p>
+      <button class="btn btn-primary" onclick="returnToDashboard()">← Back to Chores</button>
+    </div>
+  </div>
+
+  <!-- Chore info modal (standards) -->
+  <div class="modal-overlay" id="modal-info">
+    <div class="modal-sheet">
+      <div class="modal-handle"></div>
+      <div style="font-size:28px;text-align:center;margin-bottom:10px">📋</div>
+      <h2 id="info-name" style="text-align:center;margin-bottom:16px"></h2>
+      <div class="card" style="margin-bottom:16px">
+        <div class="page-label" style="margin-bottom:6px">Standard</div>
+        <p id="info-desc" style="color:var(--text);font-size:14px;line-height:1.7;margin:0"></p>
+      </div>
+      <button class="btn btn-primary" onclick="closeModal('modal-info')">Got It ✓</button>
+    </div>
+  </div>
+
+  <!-- Claim modal (sub-tasks + photo) -->
+  <div class="modal-overlay" id="modal-claim">
+    <div class="modal-sheet">
+      <div class="modal-handle"></div>
+      <div class="page-label">Complete Chore</div>
+      <h2 id="claim-name" style="margin:6px 0 4px"></h2>
+      <div id="claim-pts" style="font-family:'DM Mono',monospace;color:var(--gold);
+                                  font-size:20px;margin-bottom:20px"></div>
+
+      <!-- Sub-task checklist -->
+      <div id="subtasks-section" style="display:none">
+        <div class="page-label" style="margin-bottom:8px">Checklist</div>
+        <div class="checklist-progress">
+          <span style="font-size:13px;color:var(--muted)">
+            Complete all tasks to unlock submit
+          </span>
+          <span class="checklist-pct" id="subtask-pct">0 / 0</span>
+        </div>
+        <div class="card" style="padding:4px 16px;margin-bottom:16px">
+          <div id="subtask-list"></div>
+        </div>
+      </div>
+
+      <!-- Photo upload -->
+      <div class="page-label" style="margin-bottom:8px">Proof Photo — Required</div>
+      <div class="photo-zone" id="photo-zone"
+           onclick="document.getElementById('photo-input').click()">
+        <input type="file" id="photo-input" accept="image/*"
+               style="display:none" onchange="onPhotoSelected(this)">
+        <div id="photo-content">
+          <div style="font-size:36px;margin-bottom:8px">📷</div>
+          <div style="font-size:14px;font-weight:700">Tap to take photo</div>
+          <div style="font-size:12px;color:var(--muted);margin-top:4px">Or choose from gallery</div>
+        </div>
+      </div>
+
+      <!-- Upload progress (shown during upload) -->
+      <div class="upload-progress" id="upload-progress">
+        <div style="font-size:13px;font-weight:600">Uploading photo…</div>
+        <div class="upload-bar">
+          <div class="upload-bar-fill" id="upload-bar-fill" style="width:0%"></div>
+        </div>
+      </div>
+
+      <button class="btn btn-primary" id="claim-submit-btn"
+              onclick="submitClaim()" disabled style="opacity:0.35">
+        Submit & Claim
+      </button>
+      <button class="btn btn-ghost mt-8" onclick="cancelClaim()">Cancel</button>
+    </div>
+  </div>
+
+</div><!-- /app -->
+
+<script type="module">
+import { db } from '../../app/js/firebase.js';
+import {
+  doc, getDoc, collection, query,
+  where, getDocs, setDoc, addDoc, onSnapshot
+} from 'https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore.js';
+import {
+  getFunctions, httpsCallable
+} from 'https://www.gstatic.com/firebasejs/10.11.0/firebase-functions.js';
+import {
+  getStorage, ref, uploadBytesResumable, getDownloadURL
+} from 'https://www.gstatic.com/firebasejs/10.11.0/firebase-storage.js';
+import { getApp } from 'https://www.gstatic.com/firebasejs/10.11.0/firebase-app.js';
+
+// Cloud Functions and Storage instances
+const functions = getFunctions(getApp());
+const storage   = getStorage(getApp());
+
+// Cloud Function callables
+const claimChore = httpsCallable(functions, 'claimChore');
+
+// ── App state ─────────────────────────────────────────────────
+let household        = null;
+let householdId      = null;
+let currentKid       = null;
+let currentChore     = null;
+let currentPhoto     = null;
+let dailyClaimed     = {};
+let weeklyClaimed    = {};
+let pointsToday      = 0;
+let pointsPeriod     = 0;
+let dailyDoneCount   = 0;
+let checkedSubTasks  = new Set(); // tracks which sub-tasks are checked
+
+// ── Boot ──────────────────────────────────────────────────────
+async function boot() {
+  const params    = new URLSearchParams(window.location.search);
+  householdId     = params.get('h') || localStorage.getItem('householdId');
+
+  if (!householdId) {
+    showScreen('screen-select');
+    document.getElementById('kid-buttons').innerHTML =
+      `<div class="empty-state"><p>No household linked. Ask your parent for the link.</p></div>`;
+    return;
+  }
+
+  localStorage.setItem('householdId', householdId);
+
+  try {
+    const snap = await getDoc(doc(db, 'households', householdId));
+    if (!snap.exists()) throw new Error('Not found');
+    household = snap.data();
+  } catch(e) {
+    showScreen('screen-select');
+    document.getElementById('kid-buttons').innerHTML =
+      `<div class="empty-state"><p>Household not found.</p></div>`;
+    return;
+  }
+
+  if (isWeekend()) { showScreen('screen-weekend'); return; }
+
+  const savedKid = sessionStorage.getItem('kidName');
+  if (savedKid) {
+    const kid = household.kids.find(k => k.name === savedKid);
+    if (kid) { currentKid = kid; await loadDashboard(); return; }
+  }
+
+  renderKidSelect();
+  showScreen('screen-select');
+}
+
+// ── Kid select ────────────────────────────────────────────────
+function renderKidSelect() {
+  document.getElementById('kid-buttons').innerHTML =
+    household.kids.map(kid => `
+      <button onclick="selectKid('${kid.name}')"
+        style="width:100%;padding:20px;background:var(--card);
+               border:2px solid ${kid.color}33;border-radius:20px;
+               cursor:pointer;font-family:inherit;transition:all 0.15s;
+               display:flex;align-items:center;gap:14px;margin-bottom:10px;text-align:left">
+        <div style="width:48px;height:48px;border-radius:50%;background:${kid.color}22;
+                    color:${kid.color};display:flex;align-items:center;justify-content:center;
+                    font-size:20px;font-weight:800;flex-shrink:0">
+          ${kid.name.charAt(0)}
+        </div>
+        <div>
+          <div style="font-size:18px;font-weight:800;color:${kid.color}">${kid.name}</div>
+          <div style="font-size:12px;color:var(--muted)">Tap to enter your PIN</div>
+        </div>
+      </button>`).join('');
+}
+
+window.selectKid = (name) => {
+  currentKid = household.kids.find(k => k.name === name);
+  document.getElementById('pin-name').textContent = currentKid.name;
+  const av = document.getElementById('pin-avatar');
+  av.textContent   = currentKid.name.charAt(0);
+  av.style.background = `${currentKid.color}22`;
+  av.style.color      = currentKid.color;
+  document.querySelectorAll('#pin-row .pin-digit').forEach(d => d.value = '');
+  document.getElementById('pin-error').textContent = '';
+  showScreen('screen-pin');
+  setTimeout(() => document.querySelector('#pin-row .pin-digit').focus(), 150);
+};
+
+function checkPin() {
+  const entered = [...document.querySelectorAll('#pin-row .pin-digit')]
+    .map(d => d.value).join('');
+  if (entered.length < 4) return;
+  if (entered === currentKid.pin) {
+    sessionStorage.setItem('kidName', currentKid.name);
+    loadDashboard();
+  } else {
+    document.getElementById('pin-error').textContent = 'Wrong PIN — try again';
+    document.querySelectorAll('#pin-row .pin-digit').forEach(d => d.value = '');
+    document.querySelector('#pin-row .pin-digit').focus();
+    setTimeout(() => document.getElementById('pin-error').textContent = '', 2500);
+  }
+}
+
+// ── Dashboard ─────────────────────────────────────────────────
+async function loadDashboard() {
+  showScreen('screen-loading');
+  await Promise.all([loadClaimedState(), loadPoints()]);
+  renderDashboard();
+  showScreen('screen-dashboard');
+}
+
+async function loadClaimedState() {
+  const todayKey = `daily_${householdId}_${getToday()}`;
+  const weekKey  = `weekly_${householdId}_${getWeekStart()}`;
+  const [dSnap, wSnap] = await Promise.all([
+    getDoc(doc(db, 'chore_claims', todayKey)),
+    getDoc(doc(db, 'chore_claims', weekKey))
+  ]);
+  dailyClaimed  = dSnap.exists()  ? dSnap.data()  : {};
+  weeklyClaimed = wSnap.exists()  ? wSnap.data()  : {};
+}
+
+async function loadPoints() {
+  pointsToday  = 0;
+  pointsPeriod = 0;
+  dailyDoneCount = 0;
+  const period = getPayPeriod();
+
+  const q = query(
+    collection(db, 'submissions'),
+    where('householdId', '==', householdId),
+    where('kidName',     '==', currentKid.name),
+    where('payPeriod',   '==', period),
+    where('status', 'in', ['approved', 'pending'])
+  );
+  const snaps = await getDocs(q);
+  snaps.forEach(d => {
+    const s = d.data();
+    const pts = (s.points || 0) + (s.bonusPoints || 0);
+    pointsPeriod += pts;
+    if (s.date === getToday()) {
+      pointsToday += pts;
+      dailyDoneCount++;
+    }
+  });
+}
+
+function renderDashboard() {
+  // Kid strip
+  const strip = document.getElementById('kid-strip');
+  strip.innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:space-between;
+                padding:12px 14px;border-radius:12px;margin-bottom:16px;
+                background:${currentKid.color}11;border:1px solid ${currentKid.color}33">
+      <div style="display:flex;align-items:center;gap:10px">
+        <div style="width:38px;height:38px;border-radius:50%;background:${currentKid.color}22;
+                    color:${currentKid.color};display:flex;align-items:center;
+                    justify-content:center;font-weight:800;font-size:16px">
+          ${currentKid.name.charAt(0)}
+        </div>
+        <div style="font-size:16px;font-weight:700;color:${currentKid.color}">
+          ${currentKid.name}
+        </div>
+      </div>
+      <button style="background:none;border:1px solid var(--border);border-radius:8px;
+                     color:var(--muted);font-size:12px;cursor:pointer;
+                     font-family:inherit;padding:5px 10px"
+              onclick="switchKid()">Switch</button>
+    </div>`;
+
+  // Date label
+  const d = new Date();
+  const days   = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  document.getElementById('daily-date').textContent =
+    `${days[d.getDay()]}, ${months[d.getMonth()]} ${d.getDate()}`;
+
+  // ── Points widget math ──────────────────────────────────────
+  // T = total daily chores visible to this kid
+  const T = household.chores?.filter(c =>
+    c.freq === 'daily' && (c.assignedTo === 'any' || c.assignedTo === currentKid.name)
+  ).length || 0;
+
+  // K = number of kids
+  const K = household.kids?.length || 1;
+
+  // Q = individual daily quota = T / K (rounded up)
+  const Q = Math.ceil(T / K);
+
+  // completionPct = chores done today / quota * 100
+  const pct = Q > 0 ? Math.min(Math.round((dailyDoneCount / Q) * 100), 100) : 0;
+
+  // Update points display
+  document.getElementById('pts-today').textContent     = pointsToday;
+  document.getElementById('pts-period-label').textContent = `pts today`;
+  document.getElementById('period-pts').textContent    = `${pointsPeriod} pts this period`;
+  document.getElementById('quota-label').textContent   =
+    `${dailyDoneCount} of ${Q} chores · ${pct}% towards today's goal`;
+
+  // Progress bar
+  const bar = document.getElementById('quota-bar');
+  bar.style.width = pct + '%';
+  if (pct >= 100) bar.classList.add('full');
+
+  // SVG quota ring
+  // Circumference of circle r=26: 2π×26 ≈ 163.4
+  const circumference = 163.4;
+  const dashOffset    = circumference - (circumference * pct / 100);
+  document.getElementById('quota-arc').style.strokeDashoffset = dashOffset;
+  document.getElementById('quota-pct').textContent = pct + '%';
+
+  renderChoreList('daily');
+  renderChoreList('weekly');
+}
+
+function renderChoreList(type) {
+  const isDaily = type === 'daily';
+  const chores  = (household.chores || []).filter(c =>
+    isDaily
+      ? c.freq === 'daily' && (c.assignedTo === 'any' || c.assignedTo === currentKid.name)
+      : c.freq === 'weekly'
+  );
+  const claimed  = isDaily ? dailyClaimed : weeklyClaimed;
+  const listEl   = document.getElementById(`${type}-list`);
+  const earnedEl = document.getElementById(`${type}-pts-label`);
+
+  let myPts = 0;
+  let html  = '';
+
+  for (const chore of chores) {
+    const status     = claimed[`${chore.id}_status`];
+    const claimedBy  = claimed[`${chore.id}_claimedBy`];
+    const isMine     = claimedBy === currentKid.name;
+    const isOther    = claimedBy && !isMine;
+    const isPending  = status === 'pending';
+
+    if (isMine && (status === 'submitted' || status === 'approved')) {
+      myPts += (chore.pointValue || 0);
+    }
+
+    const dotColor = isMine   ? 'var(--green)'
+                   : isOther  ? 'var(--muted)'
+                   : currentKid.color;
+
+    const sub = (status === 'submitted' || (isMine && isPending))
+                  ? '✓ Submitted'
+                  : isOther ? `✗ Claimed by ${claimedBy}`
+                  : isPending ? '⏳ Someone is claiming…'
+                  : 'Tap to claim';
+
+    const cls = isOther    ? 'locked'
+              : isPending && !isMine ? 'pending-lock'
+              : (status === 'submitted') && isMine ? 'mine'
+              : '';
+
+    const subTaskBadge = chore.subTasks?.length
+      ? `<span class="subtask-count">${chore.subTasks.length} tasks</span>`
+      : '';
+
+    const infoBtn = chore.desc
+      ? `<button onclick="event.stopPropagation();openInfo('${chore.id}')"
+                 style="background:none;border:none;color:var(--muted);
+                        font-size:16px;cursor:pointer;padding:4px;
+                        line-height:1;flex-shrink:0">ℹ️</button>`
+      : '';
+
+    const click = (!status || status === 'available' || status === 'rejected')
+      ? `onclick="openClaim('${chore.id}','${type}')"` : '';
+
+    html += `
+      <div class="chore-item ${cls}" ${click}>
+        <div class="chore-dot" style="background:${dotColor}"></div>
+        <div class="list-info">
+          <div style="font-size:14px;font-weight:700">
+            ${chore.name}${subTaskBadge}
+          </div>
+          <div style="font-size:11px;color:var(--muted);margin-top:2px">${sub}</div>
+        </div>
+        ${infoBtn}
+        <div class="chore-pts">${chore.pointValue || 0} pts</div>
+      </div>`;
+  }
+
+  if (!chores.length) {
+    html = `<div style="padding:20px;text-align:center;color:var(--muted);font-size:13px">
+      No ${type} chores assigned to you</div>`;
+  }
+
+  listEl.innerHTML  = html;
+  earnedEl.textContent = myPts > 0 ? `+${myPts} pts earned` : '';
+}
+
+// ── Info modal ────────────────────────────────────────────────
+window.openInfo = (choreId) => {
+  const chore = household.chores.find(c => c.id === choreId);
+  if (!chore?.desc) return;
+  document.getElementById('info-name').textContent = chore.name;
+  document.getElementById('info-desc').textContent = chore.desc;
+  document.getElementById('modal-info').classList.add('active');
+};
+
+// ── Claim modal ───────────────────────────────────────────────
+window.openClaim = async (choreId, type) => {
+  const chore  = household.chores.find(c => c.id === choreId);
+  if (!chore) return;
+
+  // ── CONCURRENCY FIX: call Cloud Function to atomically claim ──
+  // This prevents two kids from claiming simultaneously
+  try {
+    showToast('Claiming chore…');
+    await claimChore({ householdId, choreId, choreType: type, kidName: currentKid.name });
+  } catch(err) {
+    if (err.code === 'already-exists') {
+      showToast(`⚠️ ${err.message}`);
+    } else {
+      showToast('❌ Could not claim — try again');
+    }
+    // Refresh claimed state so UI shows current status
+    await loadClaimedState();
+    renderChoreList(type);
+    return;
+  }
+
+  // Claim succeeded — open the form
+  currentChore    = { ...chore, type };
+  currentPhoto    = null;
+  checkedSubTasks = new Set();
+
+  document.getElementById('claim-name').textContent = chore.name;
+  document.getElementById('claim-pts').textContent  = `${chore.pointValue || 0} points`;
+  document.getElementById('photo-input').value      = '';
+  document.getElementById('photo-zone').className   = 'photo-zone';
+  document.getElementById('photo-content').innerHTML = `
+    <div style="font-size:36px;margin-bottom:8px">📷</div>
+    <div style="font-size:14px;font-weight:700">Tap to take photo</div>
+    <div style="font-size:12px;color:var(--muted);margin-top:4px">Or choose from gallery</div>`;
+  document.getElementById('upload-progress').classList.remove('show');
+
+  // Render sub-tasks if any
+  const subSection = document.getElementById('subtasks-section');
+  if (chore.subTasks?.length) {
+    subSection.style.display = 'block';
+    renderSubTasks(chore.subTasks);
+  } else {
+    subSection.style.display = 'none';
+  }
+
+  updateSubmitButton();
+  document.getElementById('modal-claim').classList.add('active');
+};
+
+function renderSubTasks(subTasks) {
+  const sorted = [...subTasks].sort((a, b) => (a.order || 0) - (b.order || 0));
+  document.getElementById('subtask-list').innerHTML =
+    sorted.map(task => `
+      <div class="subtask-item ${checkedSubTasks.has(task.id) ? 'checked' : ''}"
+           onclick="toggleSubTask('${task.id}')">
+        <div class="subtask-check">
+          ${checkedSubTasks.has(task.id) ? '✓' : ''}
+        </div>
+        <div class="subtask-label">${task.label}</div>
+      </div>`).join('');
+
+  const total = subTasks.length;
+  const done  = checkedSubTasks.size;
+  document.getElementById('subtask-pct').textContent = `${done} / ${total}`;
+}
+
+window.toggleSubTask = (taskId) => {
+  if (checkedSubTasks.has(taskId)) {
+    checkedSubTasks.delete(taskId);
+  } else {
+    checkedSubTasks.add(taskId);
+  }
+  renderSubTasks(currentChore.subTasks);
+  updateSubmitButton();
+};
+
+function updateSubmitButton() {
+  const btn = document.getElementById('claim-submit-btn');
+  const allSubTasksDone = !currentChore?.subTasks?.length ||
+    currentChore.subTasks.every(t => checkedSubTasks.has(t.id));
+  const hasPhoto = !!currentPhoto;
+
+  // Both conditions must be true: all sub-tasks checked AND photo selected
+  btn.disabled      = !(allSubTasksDone && hasPhoto);
+  btn.style.opacity = (allSubTasksDone && hasPhoto) ? '1' : '0.35';
+}
+
+window.onPhotoSelected = (input) => {
+  if (!input.files || !input.files[0]) return;
+  const file = input.files[0];
+  if (file.size > 10 * 1024 * 1024) { showToast('Photo too large — choose a smaller one'); return; }
+  currentPhoto = file;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    document.getElementById('photo-content').innerHTML = `
+      <img src="${e.target.result}"
+           style="width:100%;max-height:150px;object-fit:cover;border-radius:8px;margin-bottom:8px">
+      <div style="font-size:13px;font-weight:700;color:var(--green)">✓ Photo ready</div>`;
+    document.getElementById('photo-zone').classList.add('ready');
+  };
+  reader.readAsDataURL(file);
+  updateSubmitButton();
+};
+
+// ── Submit with Firebase Storage upload ──────────────────────
+// FIX: Uses Firebase Storage + resumable upload instead of Netlify Forms.
+// Uploads the photo directly to Firebase Storage, gets a download URL,
+// then saves the submission to Firestore.
+// No more Netlify race condition.
+window.submitClaim = async () => {
+  if (!currentChore || !currentPhoto) return;
+
+  const btn = document.getElementById('claim-submit-btn');
+  btn.disabled = true; btn.textContent = 'Uploading photo…';
+
+  const today     = getToday();
+  const weekStart = getWeekStart();
+  const period    = getPayPeriod();
+
+  try {
+    // ── STEP 1: Upload photo to Firebase Storage ──────────────
+    // Path: photos/{householdId}/{kidName}/{choreId}/{date_timestamp}
+    const timestamp  = Date.now();
+    const ext        = currentPhoto.type.split('/')[1] || 'jpg';
+    const storagePath = `photos/${householdId}/${currentKid.name}/${currentChore.id}/${today}_${timestamp}.${ext}`;
+    const storageRef  = ref(storage, storagePath);
+
+    // Show upload progress bar
+    const progressDiv = document.getElementById('upload-progress');
+    const progressBar = document.getElementById('upload-bar-fill');
+    progressDiv.classList.add('show');
+
+    // uploadBytesResumable tracks progress so we can show a progress bar
+    const uploadTask = uploadBytesResumable(storageRef, currentPhoto);
+
+    const downloadUrl = await new Promise((resolve, reject) => {
+      uploadTask.on(
+        'state_changed',
+        // Progress callback — updates the progress bar
+        (snapshot) => {
+          const pct = Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100);
+          progressBar.style.width = pct + '%';
+        },
+        // Error callback — clean error message to the user
+        (error) => {
+          console.error('Upload error:', error);
+          reject(new Error('Photo upload failed. Check connection and try again.'));
+        },
+        // Success callback — get the download URL
+        async () => {
+          const url = await getDownloadURL(uploadTask.snapshot.ref);
+          resolve(url);
+        }
+      );
+    });
+
+    // ── STEP 2: Save submission to Firestore ──────────────────
+    const status = household.approvalMode === 'auto' ? 'approved' : 'pending';
+    await addDoc(collection(db, 'submissions'), {
+      householdId,
+      kidName:          currentKid.name,
+      choreId:          currentChore.id,
+      choreName:        currentChore.name,
+      points:           currentChore.pointValue || 0,
+      bonusPoints:      0,
+      freq:             currentChore.type,
+      status,
+      exceeded:         false,
+      bonusAmount:      0,
+      photoStoragePath: storagePath,
+      photoDownloadUrl: downloadUrl,
+      completedSubTasks: Array.from(checkedSubTasks),
+      date:             today,
+      weekStart,
+      payPeriod:        period,
+      timestamp:        new Date().toISOString(),
+    });
+
+    // ── STEP 3: Update chore claim status to "submitted" ──────
+    const claimDocId  = currentChore.type === 'daily'
+      ? `daily_${householdId}_${today}`
+      : `weekly_${householdId}_${weekStart}`;
+
+    const claimSnap = await getDoc(doc(db, 'chore_claims', claimDocId));
+    const updates   = { [`${currentChore.id}_status`]: 'submitted' };
+    if (claimSnap.exists()) {
+      const { updateDoc } = await import('https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore.js');
+      await updateDoc(doc(db, 'chore_claims', claimDocId), updates);
+    } else {
+      await setDoc(doc(db, 'chore_claims', claimDocId), updates);
+    }
+
+    // ── STEP 4: Update local state and show success ───────────
+    progressDiv.classList.remove('show');
+    closeModal('modal-claim');
+
+    if (currentChore.type === 'daily') {
+      dailyClaimed[`${currentChore.id}_status`]    = 'submitted';
+      dailyClaimed[`${currentChore.id}_claimedBy`] = currentKid.name;
+    } else {
+      weeklyClaimed[`${currentChore.id}_status`]    = 'submitted';
+      weeklyClaimed[`${currentChore.id}_claimedBy`] = currentKid.name;
+    }
+
+    pointsToday  += currentChore.pointValue || 0;
+    pointsPeriod += currentChore.pointValue || 0;
+    dailyDoneCount++;
+
+    document.getElementById('success-pts').textContent =
+      `+${currentChore.pointValue || 0} pts`;
+    document.getElementById('success-msg').innerHTML =
+      `<strong>${currentChore.name}</strong> logged!<br><br>
+       ${status === 'pending' ? 'Waiting for parent approval.' : 'Auto-approved ⚡'}<br><br>
+       Today: <strong style="color:var(--gold)">${pointsToday} pts</strong>`;
+
+    showScreen('screen-success');
+
+  } catch(e) {
+    console.error('Submit error:', e);
+    document.getElementById('upload-progress').classList.remove('show');
+    showToast('❌ ' + (e.message || 'Submission failed — try again'));
+    btn.disabled     = false;
+    btn.style.opacity = '1';
+    btn.textContent  = 'Submit & Claim';
+  }
+};
+
+window.cancelClaim = async () => {
+  // Release the pending claim so other kids can take it
+  if (currentChore) {
+    try {
+      const today     = getToday();
+      const weekStart = getWeekStart();
+      const claimDocId = currentChore.type === 'daily'
+        ? `daily_${householdId}_${today}`
+        : `weekly_${householdId}_${weekStart}`;
+      const { updateDoc } = await import('https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore.js');
+      await updateDoc(doc(db, 'chore_claims', claimDocId), {
+        [`${currentChore.id}_status`]:    'available',
+        [`${currentChore.id}_claimedBy`]: null,
+      });
+    } catch(e) { /* silent — Cloud Function will auto-release after 15 min */ }
+  }
+  closeModal('modal-claim');
+  currentChore = null;
+};
+
+window.returnToDashboard = async () => {
+  await loadDashboard();
+};
+window.switchKid = () => {
+  sessionStorage.removeItem('kidName');
+  renderKidSelect();
+  showScreen('screen-select');
+};
+window.closeModal = (id) => {
+  document.getElementById(id).classList.remove('active');
+};
+
+// ── PIN auto-advance ──────────────────────────────────────────
+document.addEventListener('input', (e) => {
+  if (!e.target.classList.contains('pin-digit')) return;
+  const inputs = [...e.target.closest('.pin-row').querySelectorAll('.pin-digit')];
+  const idx    = inputs.indexOf(e.target);
+  if (e.target.value && idx < inputs.length - 1) inputs[idx + 1].focus();
+  if (idx === inputs.length - 1 && e.target.value) checkPin();
+});
+document.addEventListener('keydown', (e) => {
+  if (!e.target.classList.contains('pin-digit')) return;
+  if (e.key === 'Backspace' && !e.target.value) {
+    const inputs = [...e.target.closest('.pin-row').querySelectorAll('.pin-digit')];
+    const idx    = inputs.indexOf(e.target);
+    if (idx > 0) { inputs[idx-1].focus(); inputs[idx-1].value = ''; }
+  }
+});
+
+// ── Date helpers ──────────────────────────────────────────────
+function getToday()  { return new Date().toISOString().split('T')[0]; }
+function isWeekend() { const d = new Date().getDay(); return d === 0 || d === 6; }
+function getWeekStart() {
+  const d = new Date(); const day = d.getDay();
+  const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+  return new Date(new Date(d).setDate(diff)).toISOString().split('T')[0];
+}
+function getPayPeriod() {
+  if (!household) return '';
+  const start = new Date(household.payPeriodStart + 'T00:00:00');
+  const today = new Date(); today.setHours(0,0,0,0);
+  const diff  = Math.floor((today - start) / 86400000);
+  const num   = Math.floor(Math.max(diff, 0) / household.payPeriodDays);
+  const ps    = new Date(start);
+  ps.setDate(start.getDate() + num * household.payPeriodDays);
+  return ps.toISOString().split('T')[0];
+}
+
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3500);
+}
+
+boot();
+</script>
+</body>
+</html>

@@ -1,0 +1,1054 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Parent Dashboard — I Did My Chores</title>
+  <link rel="stylesheet" href="../../css/app.css">
+  <style>
+    .screen { padding-bottom: 90px; }
+
+    /* ── Stats row ── */
+    .stats-row {
+      display: grid; grid-template-columns: repeat(3,1fr);
+      gap: 10px; margin-bottom: 16px;
+    }
+    .stat-tile {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: var(--radius-lg); padding: 14px;
+      text-align: center;
+    }
+    .stat-tile-num {
+      font-family: 'DM Mono', monospace;
+      font-size: 24px; font-weight: 500; color: var(--gold);
+      display: block;
+    }
+    .stat-tile-label { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+    /* ── Kid balance cards ── */
+    .kid-balance {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: var(--radius-lg); padding: 16px;
+      margin-bottom: 10px;
+    }
+
+    /* ── Chore admin cards ── */
+    .chore-admin-card {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: var(--radius-lg); overflow: hidden;
+      margin-bottom: 10px;
+    }
+    .chore-admin-header {
+      display: flex; align-items: center; gap: 12px;
+      padding: 14px 16px; cursor: pointer;
+    }
+    .chore-admin-header:hover { background: var(--card2); }
+    .chore-admin-body {
+      display: none; padding: 0 16px 16px;
+      border-top: 1px solid var(--border);
+    }
+    .chore-admin-card.expanded .chore-admin-body { display: block; }
+    .chore-admin-card.expanded .chore-expand-icon { transform: rotate(180deg); }
+    .chore-expand-icon { transition: transform 0.2s; color: var(--muted); }
+
+    /* ── Sub-task editor rows ── */
+    .subtask-editor-row {
+      display: flex; align-items: center; gap: 8px;
+      padding: 8px 0; border-bottom: 1px solid var(--border);
+    }
+    .subtask-editor-row:last-child { border-bottom: none; }
+    .subtask-editor-row input {
+      flex: 1; background: var(--card2); border: 1px solid var(--border);
+      border-radius: 6px; padding: 8px 10px; color: var(--text);
+      font-family: inherit; font-size: 13px; outline: none;
+    }
+    .subtask-editor-row input:focus { border-color: var(--gold); }
+    .drag-handle {
+      color: var(--muted); cursor: grab; font-size: 16px;
+      padding: 4px; line-height: 1;
+    }
+    .remove-btn {
+      background: none; border: none; color: var(--muted);
+      font-size: 16px; cursor: pointer; padding: 4px; line-height: 1;
+    }
+    .remove-btn:hover { color: var(--red); }
+
+    /* ── Approval cards ── */
+    .approval-card {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: var(--radius-lg); overflow: hidden; margin-bottom: 10px;
+    }
+    .approval-photo {
+      width: 100%; height: 200px;
+      object-fit: cover; display: block;
+      background: var(--card2); cursor: pointer;
+    }
+    .approval-placeholder {
+      width: 100%; height: 160px;
+      background: var(--card2);
+      display: flex; align-items: center;
+      justify-content: center; font-size: 32px; color: var(--muted);
+    }
+    .approval-subtasks {
+      background: var(--card2); border-radius: 8px;
+      padding: 10px 14px; margin: 10px 0; font-size: 12px;
+      color: var(--muted);
+    }
+    .approval-actions { display: flex; gap: 8px; margin-top: 12px; }
+    .btn-approve {
+      flex: 1; padding: 11px; font-family: inherit; font-size: 14px;
+      font-weight: 700; cursor: pointer; border-radius: var(--radius);
+      border: 1px solid rgba(52,211,153,0.3);
+      background: var(--green-dim); color: var(--green);
+    }
+    .btn-reject {
+      flex: 1; padding: 11px; font-family: inherit; font-size: 14px;
+      font-weight: 700; cursor: pointer; border-radius: var(--radius);
+      border: 1px solid rgba(248,113,113,0.3);
+      background: var(--red-dim); color: var(--red);
+    }
+    .btn-exceed {
+      width: 100%; padding: 10px; margin-top: 8px;
+      font-family: inherit; font-size: 13px; font-weight: 700;
+      cursor: pointer; border-radius: var(--radius);
+      border: 1px solid rgba(245,200,66,0.25);
+      background: var(--gold-dim); color: var(--gold);
+    }
+
+    /* ── Points config ── */
+    .points-formula {
+      background: var(--gold-dim); border: 1px solid rgba(245,200,66,0.2);
+      border-radius: 10px; padding: 14px;
+      font-size: 13px; color: var(--text); line-height: 1.7;
+      margin: 12px 0;
+    }
+
+    /* ── Add btn ── */
+    .add-row-btn {
+      width: 100%; padding: 11px;
+      background: none; border: 1px dashed var(--border);
+      border-radius: var(--radius); color: var(--muted);
+      font-family: inherit; font-size: 13px; font-weight: 600;
+      cursor: pointer; transition: all 0.15s;
+    }
+    .add-row-btn:hover { border-color: var(--gold); color: var(--gold); }
+
+    /* ── History chart bars ── */
+    .history-bar-row {
+      display: flex; align-items: center; gap: 10px; margin-bottom: 8px;
+    }
+    .history-bar-label { font-size: 12px; width: 36px; color: var(--muted); flex-shrink: 0; }
+    .history-bar-track {
+      flex: 1; height: 20px; background: var(--border);
+      border-radius: 4px; overflow: hidden;
+    }
+    .history-bar-fill {
+      height: 100%; border-radius: 4px;
+      background: linear-gradient(90deg, var(--gold), #fb923c);
+      transition: width 0.6s ease;
+    }
+    .history-bar-pct { font-size: 12px; color: var(--muted); width: 36px; text-align: right; }
+  </style>
+</head>
+<body>
+<div id="app">
+  <div id="toast"></div>
+
+  <!-- ══════════ OVERVIEW TAB ══════════ -->
+  <div id="screen-overview" class="screen active">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+      <div>
+        <div class="page-label">Parent Dashboard</div>
+        <h1 id="hh-name" style="font-size:22px">Loading…</h1>
+      </div>
+      <div id="period-badge" style="font-size:11px;color:var(--muted);text-align:right;line-height:1.6"></div>
+    </div>
+
+    <!-- Stats -->
+    <div class="stats-row" id="stats-row"></div>
+
+    <!-- Pending alert -->
+    <div id="pending-alert" style="display:none;margin-bottom:16px">
+      <div style="background:var(--gold-dim);border:1px solid rgba(245,200,66,0.2);
+                  border-radius:var(--radius-lg);padding:14px 16px;
+                  display:flex;align-items:center;gap:12px;cursor:pointer"
+           onclick="switchTab('approvals')">
+        <span style="font-size:24px">⏳</span>
+        <div>
+          <div style="font-weight:700;font-size:14px" id="pending-text">Waiting for review</div>
+          <div style="font-size:12px;color:var(--muted)">Tap to review</div>
+        </div>
+        <span style="margin-left:auto;color:var(--muted)">›</span>
+      </div>
+    </div>
+
+    <!-- Kid balances / points -->
+    <div class="page-label" style="margin-bottom:10px">This Period</div>
+    <div id="kid-balances"></div>
+
+    <!-- Today's activity -->
+    <div class="section-header" style="margin-top:20px">
+      <div class="page-label">Today's Activity</div>
+    </div>
+    <div id="today-activity">
+      <div class="loading-row"><div class="spinner"></div>Loading…</div>
+    </div>
+  </div>
+
+  <!-- ══════════ APPROVALS TAB ══════════ -->
+  <div id="screen-approvals" class="screen">
+    <div style="margin-bottom:20px">
+      <div class="page-label">Review Submissions</div>
+      <h1 style="font-size:22px">Approvals</h1>
+    </div>
+    <div id="approvals-list">
+      <div class="loading-row"><div class="spinner"></div>Loading…</div>
+    </div>
+  </div>
+
+  <!-- ══════════ CHORES ADMIN TAB ══════════ -->
+  <div id="screen-chores" class="screen">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+      <div>
+        <div class="page-label">Chore Manager</div>
+        <h1 style="font-size:22px">Chores</h1>
+      </div>
+      <button class="btn btn-primary btn-sm" onclick="openAddChore()">+ Add</button>
+    </div>
+
+    <div id="chores-admin-list">
+      <div class="loading-row"><div class="spinner"></div></div>
+    </div>
+  </div>
+
+  <!-- ══════════ HISTORY TAB ══════════ -->
+  <div id="screen-history" class="screen">
+    <div style="margin-bottom:20px">
+      <div class="page-label">7-Day History</div>
+      <h1 style="font-size:22px">History</h1>
+    </div>
+    <div id="history-content">
+      <div class="loading-row"><div class="spinner"></div></div>
+    </div>
+  </div>
+
+  <!-- ══════════ SETTINGS TAB ══════════ -->
+  <div id="screen-settings" class="screen">
+    <div style="margin-bottom:20px">
+      <div class="page-label">Household Settings</div>
+      <h1 style="font-size:22px">Settings</h1>
+    </div>
+
+    <!-- Points config -->
+    <div class="page-label" style="margin-bottom:10px">Points & Payout</div>
+    <div class="card" style="margin-bottom:16px">
+      <div class="field" style="margin-bottom:0">
+        <label>Points per $1.00 Payout</label>
+        <input type="number" id="s-multiplier" placeholder="100"
+               style="background:var(--card2);border:1px solid var(--border);
+                      border-radius:8px;padding:11px 14px;color:var(--text);
+                      font-family:inherit;font-size:14px;outline:none;width:100%">
+      </div>
+      <div class="points-formula" id="formula-preview">
+        100 points = $1.00 · Example: 350 pts = $3.50 payout
+      </div>
+      <div class="field">
+        <label>Bonus Budget (per pay period, $)</label>
+        <input type="number" id="s-bonus" placeholder="10"
+               style="background:var(--card2);border:1px solid var(--border);
+                      border-radius:8px;padding:11px 14px;color:var(--text);
+                      font-family:inherit;font-size:14px;outline:none;width:100%">
+      </div>
+      <button class="btn btn-primary btn-sm" onclick="savePointsConfig()">
+        Save Points Config
+      </button>
+    </div>
+
+    <!-- Approval mode -->
+    <div class="page-label" style="margin-bottom:10px">Approval Mode</div>
+    <div class="card" style="padding:4px 16px;margin-bottom:16px" id="settings-approval"></div>
+
+    <!-- Kids -->
+    <div class="page-label" style="margin-bottom:10px">Kids</div>
+    <div class="card" style="padding:4px 16px;margin-bottom:16px" id="settings-kids"></div>
+
+    <!-- Sign out -->
+    <div class="page-label" style="margin-bottom:10px">Account</div>
+    <div class="card" style="padding:4px 16px;margin-bottom:32px">
+      <div style="display:flex;align-items:center;justify-content:space-between;
+                  padding:15px 0;cursor:pointer" onclick="signOutUser()">
+        <span style="font-size:14px;font-weight:600;color:var(--red)">Sign Out</span>
+        <span style="color:var(--muted)">›</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bottom nav -->
+  <nav class="bottom-nav">
+    <button class="nav-item active" id="nav-overview"  onclick="switchTab('overview')">
+      <span class="nav-icon">🏠</span>Overview
+    </button>
+    <button class="nav-item" id="nav-approvals" onclick="switchTab('approvals')">
+      <span class="nav-icon" id="nav-approvals-icon">⏳</span>Approvals
+    </button>
+    <button class="nav-item" id="nav-chores"    onclick="switchTab('chores')">
+      <span class="nav-icon">📋</span>Chores
+    </button>
+    <button class="nav-item" id="nav-history"   onclick="switchTab('history')">
+      <span class="nav-icon">📊</span>History
+    </button>
+    <button class="nav-item" id="nav-settings"  onclick="switchTab('settings')">
+      <span class="nav-icon">⚙️</span>Settings
+    </button>
+  </nav>
+
+  <!-- ── Lightbox ── -->
+  <div id="lightbox" style="display:none;position:fixed;inset:0;
+       background:rgba(0,0,0,0.95);z-index:200;align-items:center;
+       justify-content:center" onclick="this.style.display='none'">
+    <img id="lightbox-img" style="max-width:100%;max-height:100%;object-fit:contain">
+  </div>
+
+  <!-- ── Exceeded modal ── -->
+  <div class="modal-overlay" id="modal-exceeded">
+    <div class="modal-sheet">
+      <div class="modal-handle"></div>
+      <div style="font-size:32px;text-align:center;margin-bottom:10px">⭐</div>
+      <h2 id="exc-title" style="text-align:center;margin-bottom:4px"></h2>
+      <p id="exc-sub" style="text-align:center;margin-bottom:20px"></p>
+      <div class="card" style="margin-bottom:16px;display:flex;
+           justify-content:space-between;align-items:center">
+        <span style="font-size:13px;color:var(--muted)">Bonus budget left</span>
+        <span class="mono text-gold" id="exc-budget"></span>
+      </div>
+      <div class="field">
+        <label>Bonus Points <span style="font-weight:400;text-transform:none;
+               color:var(--muted);font-size:10px">optional</span></label>
+        <input type="number" id="exc-pts" placeholder="e.g. 25" step="5" min="0"
+               style="background:var(--card2);border:1px solid var(--border);
+                      border-radius:8px;padding:11px 14px;color:var(--text);
+                      font-family:inherit;font-size:14px;outline:none;width:100%">
+      </div>
+      <button class="btn btn-primary mt-8" onclick="saveExceeded()">
+        ⭐ Award Exceeded
+      </button>
+      <button class="btn btn-ghost mt-8" onclick="closeModal('modal-exceeded')">Cancel</button>
+    </div>
+  </div>
+
+  <!-- ── Add/Edit Chore Modal ── -->
+  <div class="modal-overlay" id="modal-chore">
+    <div class="modal-sheet" style="max-height:88vh;overflow-y:auto">
+      <div class="modal-handle"></div>
+      <h2 id="chore-modal-title" style="margin-bottom:20px">Add a Chore</h2>
+
+      <div class="field">
+        <label>Chore Name</label>
+        <input type="text" id="cm-name" placeholder="e.g. Clean Kitchen" maxlength="40"
+               style="background:var(--card2);border:1px solid var(--border);
+                      border-radius:8px;padding:12px 14px;color:var(--text);
+                      font-family:inherit;font-size:15px;outline:none;width:100%">
+      </div>
+
+      <div class="field">
+        <label>Standard — what "clean" means</label>
+        <textarea id="cm-desc" placeholder="e.g. Wipe all surfaces, sweep floor, empty trash"
+                  maxlength="200"
+                  style="height:72px;resize:none;background:var(--card2);
+                         border:1px solid var(--border);border-radius:8px;
+                         padding:12px 14px;color:var(--text);font-family:inherit;
+                         font-size:14px;outline:none;width:100%"></textarea>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div class="field">
+          <label>Points Value</label>
+          <input type="number" id="cm-points" placeholder="50" min="1" max="999"
+                 style="background:var(--card2);border:1px solid var(--border);
+                        border-radius:8px;padding:12px 14px;color:var(--text);
+                        font-family:inherit;font-size:15px;outline:none;width:100%">
+        </div>
+        <div class="field">
+          <label>Frequency</label>
+          <select id="cm-freq"
+                  style="background:var(--card2);border:1px solid var(--border);
+                         border-radius:8px;padding:12px 14px;color:var(--text);
+                         font-family:inherit;font-size:14px;outline:none;
+                         width:100%;appearance:none">
+            <option value="daily">Daily</option>
+            <option value="weekly">Weekly Bonus</option>
+            <option value="bonus">One-time Bonus</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Assigned To</label>
+        <select id="cm-assign"
+                style="background:var(--card2);border:1px solid var(--border);
+                       border-radius:8px;padding:12px 14px;color:var(--text);
+                       font-family:inherit;font-size:14px;outline:none;
+                       width:100%;appearance:none">
+          <option value="any">Any kid (first to claim)</option>
+        </select>
+      </div>
+
+      <!-- Sub-tasks editor -->
+      <div class="page-label" style="margin-bottom:8px">
+        Sub-task Checklist
+        <span style="font-weight:400;text-transform:none;color:var(--muted);
+               font-size:10px;margin-left:6px">
+          Kids must check all before submitting
+        </span>
+      </div>
+      <div class="card" style="padding:4px 16px;margin-bottom:8px">
+        <div id="subtask-editor-list"></div>
+      </div>
+      <button class="add-row-btn" style="margin-bottom:16px" onclick="addSubTaskRow()">
+        ＋ Add Sub-task
+      </button>
+
+      <button class="btn btn-primary" onclick="saveChore()">Save Chore</button>
+      <button class="btn btn-ghost mt-8" onclick="closeModal('modal-chore')">Cancel</button>
+    </div>
+  </div>
+
+</div><!-- /app -->
+
+<script type="module">
+import { auth, db } from '../../app/js/firebase.js';
+import { onAuthStateChanged, signOut } from 'https://www.gstatic.com/firebasejs/10.11.0/firebase-auth.js';
+import {
+  doc, getDoc, updateDoc, collection,
+  query, where, getDocs, onSnapshot, addDoc
+} from 'https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore.js';
+
+let currentUser      = null;
+let household        = null;
+let submissionsCache = [];
+let pendingExceeded  = null;
+let editingChoreId   = null; // null = adding new, string = editing existing
+let subTaskRows      = [];   // local state for the sub-task editor
+
+// ── Auth ──────────────────────────────────────────────────────
+onAuthStateChanged(auth, async (user) => {
+  if (!user) { window.location.href = '../../login.html'; return; }
+  currentUser = user;
+  await loadHousehold();
+  setupRealtime();
+});
+
+async function loadHousehold() {
+  const snap = await getDoc(doc(db, 'households', currentUser.uid));
+  if (!snap.exists()) { window.location.href = 'onboarding.html'; return; }
+  household = snap.data();
+
+  document.getElementById('hh-name').textContent = household.name;
+  renderPeriodBadge();
+  renderSettings();
+  renderChoresAdmin();
+}
+
+function renderPeriodBadge() {
+  const start = new Date(household.payPeriodStart + 'T00:00:00');
+  const today = new Date(); today.setHours(0,0,0,0);
+  const diff  = Math.floor((today - start) / 86400000);
+  const num   = Math.floor(Math.max(diff,0) / household.payPeriodDays);
+  const ps    = new Date(start); ps.setDate(start.getDate() + num * household.payPeriodDays);
+  const pe    = new Date(ps);    pe.setDate(ps.getDate() + household.payPeriodDays - 1);
+  const fmt   = d => `${d.getMonth()+1}/${d.getDate()}`;
+  document.getElementById('period-badge').innerHTML =
+    `Pay Period<br>${fmt(ps)} – ${fmt(pe)}`;
+}
+
+// ── Realtime submissions listener ─────────────────────────────
+function setupRealtime() {
+  const q = query(
+    collection(db, 'submissions'),
+    where('householdId', '==', currentUser.uid)
+  );
+  onSnapshot(q, (snap) => {
+    submissionsCache = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    renderOverview();
+    renderApprovals();
+    updatePendingAlert();
+    renderHistory();
+  });
+}
+
+// ── Overview ──────────────────────────────────────────────────
+function renderOverview() {
+  if (!household) return;
+  const period = getPayPeriod();
+  const today  = getToday();
+
+  // ── POINTS MATH ──────────────────────────────────────────────
+  // T = total daily chores
+  const T = (household.chores || []).filter(c => c.freq === 'daily').length;
+  // K = number of kids
+  const K = household.kids?.length || 1;
+  // Q = individual daily quota
+  const Q = Math.ceil(T / K);
+
+  // Stats tiles
+  const todaySubs     = submissionsCache.filter(s => s.date === today);
+  const pendingCount  = submissionsCache.filter(s => s.status === 'pending').length;
+  const totalApproved = submissionsCache.filter(s => s.status === 'approved' && s.payPeriod === period).length;
+
+  document.getElementById('stats-row').innerHTML = `
+    <div class="stat-tile">
+      <span class="stat-tile-num">${todaySubs.length}</span>
+      <div class="stat-tile-label">Today's Subs</div>
+    </div>
+    <div class="stat-tile">
+      <span class="stat-tile-num" style="color:var(--red)">${pendingCount}</span>
+      <div class="stat-tile-label">Pending</div>
+    </div>
+    <div class="stat-tile">
+      <span class="stat-tile-num">${totalApproved}</span>
+      <div class="stat-tile-label">Approved</div>
+    </div>`;
+
+  // Kid balance cards (shows points)
+  const kidBalances = document.getElementById('kid-balances');
+  kidBalances.innerHTML = household.kids.map(kid => {
+    // Points earned this period (approved only)
+    const periodPts = submissionsCache
+      .filter(s => s.kidName === kid.name && s.payPeriod === period && s.status === 'approved')
+      .reduce((sum, s) => sum + (s.points || 0) + (s.bonusPoints || 0), 0);
+
+    // Today's chores done
+    const todayDone = submissionsCache
+      .filter(s => s.kidName === kid.name && s.date === today).length;
+
+    // completionPct = (done today / Q) * 100
+    const pct = Q > 0 ? Math.min(Math.round((todayDone / Q) * 100), 100) : 0;
+
+    // Payout formula: (points / pointsPerDollar) capped at capPerKid
+    const ptsPerDollar = household.pointMultiplier || 100;
+    const payout = Math.min(
+      (periodPts / ptsPerDollar).toFixed(2),
+      household.capPerKid || 120
+    );
+
+    return `
+      <div class="kid-balance">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+          <div style="display:flex;align-items:center;gap:10px">
+            <div style="width:36px;height:36px;border-radius:50%;
+                        background:${kid.color}22;color:${kid.color};
+                        display:flex;align-items:center;justify-content:center;
+                        font-weight:800;font-size:15px">${kid.name.charAt(0)}</div>
+            <div style="font-size:15px;font-weight:700">${kid.name}</div>
+          </div>
+          <div style="text-align:right">
+            <div style="font-family:'DM Mono',monospace;font-size:20px;
+                        color:var(--gold)">${periodPts} pts</div>
+            <div style="font-size:11px;color:var(--muted)">~$${payout} payout</div>
+          </div>
+        </div>
+        <div class="balance-bar">
+          <div class="balance-fill" style="width:${pct}%"></div>
+        </div>
+        <div style="display:flex;justify-content:space-between;margin-top:6px">
+          <span style="font-size:11px;color:var(--muted)">Today: ${todayDone}/${Q} chores (${pct}%)</span>
+          <span style="font-size:11px;color:var(--muted)">Cap: $${household.capPerKid}</span>
+        </div>
+      </div>`;
+  }).join('');
+
+  // Today's activity feed
+  const feed = document.getElementById('today-activity');
+  const items = submissionsCache
+    .filter(s => s.date === today)
+    .sort((a,b) => b.timestamp?.localeCompare?.(a.timestamp) || 0);
+
+  if (!items.length) {
+    feed.innerHTML = `<div class="empty-state" style="padding:24px">
+      <div class="empty-icon">😴</div><p>No submissions yet today</p></div>`;
+  } else {
+    feed.innerHTML = `<div class="card" style="padding:4px 16px">` +
+      items.map(s => {
+        const kid = household.kids.find(k => k.name === s.kidName);
+        return `
+          <div class="list-item">
+            <div style="width:34px;height:34px;border-radius:50%;flex-shrink:0;
+                        background:${kid?.color || '#666'}22;color:${kid?.color || '#666'};
+                        display:flex;align-items:center;justify-content:center;
+                        font-weight:800;font-size:13px">${s.kidName.charAt(0)}</div>
+            <div class="list-info">
+              <div class="list-name">${s.kidName} — ${s.choreName}</div>
+              <div class="list-sub">${formatTime(s.timestamp)}</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
+              <span style="font-family:'DM Mono',monospace;color:var(--gold);font-size:13px">
+                +${s.points || 0}pts
+              </span>
+              <span class="tag tag-${s.status==='approved'?'green':s.status==='rejected'?'red':'gold'}">
+                ${s.status}
+              </span>
+            </div>
+          </div>`}).join('') + `</div>`;
+  }
+}
+
+function updatePendingAlert() {
+  const count = submissionsCache.filter(s => s.status === 'pending').length;
+  document.getElementById('pending-alert').style.display = count > 0 ? 'block' : 'none';
+  document.getElementById('pending-text').textContent =
+    `${count} submission${count !== 1 ? 's' : ''} waiting for review`;
+  document.getElementById('nav-approvals-icon').textContent = count > 0 ? '🔴' : '⏳';
+}
+
+// ── Approvals ─────────────────────────────────────────────────
+function renderApprovals() {
+  const pending = submissionsCache.filter(s => s.status === 'pending');
+  const list    = document.getElementById('approvals-list');
+
+  if (!pending.length) {
+    list.innerHTML = `<div class="empty-state">
+      <div class="empty-icon">✅</div>
+      <h3>All caught up!</h3>
+      <p style="margin-top:8px">No pending submissions.</p>
+    </div>`;
+    return;
+  }
+
+  list.innerHTML = pending.map(s => {
+    // Build sub-task completion display
+    const chore    = household.chores?.find(c => c.id === s.choreId);
+    const subTasks = chore?.subTasks || [];
+    const doneIds  = new Set(s.completedSubTasks || []);
+    const subTaskHtml = subTasks.length
+      ? `<div class="approval-subtasks">
+           <strong>Checklist:</strong><br>
+           ${subTasks.map(t =>
+             `${doneIds.has(t.id) ? '✓' : '○'} ${t.label}`
+           ).join('  ·  ')}
+         </div>` : '';
+
+    return `
+      <div class="approval-card" id="sub-${s.id}">
+        ${s.photoDownloadUrl
+          ? `<img src="${s.photoDownloadUrl}" class="approval-photo"
+                  onclick="openLightbox('${s.photoDownloadUrl}')" alt="Proof photo">`
+          : `<div class="approval-placeholder">📷</div>`}
+        <div style="padding:14px">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <h3>${s.choreName}</h3>
+            <span style="font-family:'DM Mono',monospace;color:var(--gold)">
+              ${s.points || 0} pts
+            </span>
+          </div>
+          <div style="font-size:12px;color:var(--muted);margin-top:4px">
+            ${s.kidName} · ${formatDate(s.date)} · ${formatTime(s.timestamp)}
+          </div>
+          ${subTaskHtml}
+          <div class="approval-actions">
+            <button class="btn-approve" onclick="approveSubmission('${s.id}')">✓ Approve</button>
+            <button class="btn-reject"  onclick="rejectSubmission('${s.id}')">✗ Reject</button>
+          </div>
+          <button class="btn-exceed" onclick="openExceeded('${s.id}','${s.kidName}','${s.choreName}',${s.points||0})">
+            ⭐ Exceeded Expectations
+          </button>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+window.approveSubmission = async (id) => {
+  await updateDoc(doc(db, 'submissions', id), { status: 'approved' });
+  showToast('✅ Approved!');
+};
+window.rejectSubmission  = async (id) => {
+  await updateDoc(doc(db, 'submissions', id), { status: 'rejected' });
+  showToast('❌ Rejected');
+};
+
+window.openExceeded = (id, kidName, choreName, points) => {
+  pendingExceeded = { id, kidName, choreName, points };
+  document.getElementById('exc-title').textContent = choreName;
+  document.getElementById('exc-sub').textContent   = kidName;
+  const budget   = household.bonusBudget || 0;
+  const spent    = submissionsCache.filter(s => s.bonusAmount > 0)
+    .reduce((sum, s) => sum + (s.bonusAmount || 0), 0);
+  const ptsSpent = submissionsCache.filter(s => s.bonusPoints > 0)
+    .reduce((sum, s) => sum + (s.bonusPoints || 0), 0);
+  document.getElementById('exc-budget').textContent = `${budget - ptsSpent} pts left`;
+  document.getElementById('exc-pts').value = '';
+  document.getElementById('modal-exceeded').classList.add('active');
+};
+
+window.saveExceeded = async () => {
+  if (!pendingExceeded) return;
+  const bonusPts = parseInt(document.getElementById('exc-pts').value) || 0;
+  await updateDoc(doc(db, 'submissions', pendingExceeded.id), {
+    status:      'approved',
+    exceeded:    true,
+    bonusPoints: bonusPts,
+  });
+  closeModal('modal-exceeded');
+  showToast(`⭐ Exceeded awarded${bonusPts > 0 ? ` + ${bonusPts} bonus pts` : ''}`);
+};
+
+// ── Chores admin ──────────────────────────────────────────────
+function renderChoresAdmin() {
+  if (!household) return;
+  const list = document.getElementById('chores-admin-list');
+  const chores = household.chores || [];
+
+  if (!chores.length) {
+    list.innerHTML = `<div class="empty-state" style="padding:24px">
+      <div class="empty-icon">📋</div><p>No chores yet. Add your first one.</p></div>`;
+    return;
+  }
+
+  list.innerHTML = chores.map((chore, i) => {
+    const subCount = chore.subTasks?.length || 0;
+    const freqLabel = chore.freq === 'weekly' ? 'Weekly' : chore.freq === 'bonus' ? 'Bonus' : 'Daily';
+    const freqColor = chore.freq === 'weekly' ? 'var(--gold)' : chore.freq === 'bonus' ? 'var(--blue)' : 'var(--green)';
+
+    return `
+      <div class="chore-admin-card" id="chore-card-${chore.id}">
+        <div class="chore-admin-header" onclick="toggleChoreCard('${chore.id}')">
+          <div style="width:8px;height:8px;border-radius:50%;
+                      background:${freqColor};flex-shrink:0"></div>
+          <div class="list-info">
+            <div style="font-size:14px;font-weight:700">${chore.name}</div>
+            <div style="font-size:11px;color:var(--muted)">
+              ${chore.pointValue || 0} pts · ${freqLabel}
+              ${subCount ? ` · ${subCount} sub-tasks` : ''}
+              ${chore.assignedTo !== 'any' ? ` · ${chore.assignedTo} only` : ''}
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <button class="btn btn-sm btn-secondary" style="padding:6px 12px"
+                    onclick="event.stopPropagation();openEditChore('${chore.id}')">
+              Edit
+            </button>
+            <button class="btn btn-sm btn-danger" style="padding:6px 12px"
+                    onclick="event.stopPropagation();deleteChore('${chore.id}')">
+              ✕
+            </button>
+            <span class="chore-expand-icon">▼</span>
+          </div>
+        </div>
+        <div class="chore-admin-body">
+          ${chore.desc ? `<p style="font-size:13px;color:var(--muted);margin:10px 0">"${chore.desc}"</p>` : ''}
+          ${subCount ? `
+            <div class="page-label" style="margin:10px 0 6px">Sub-tasks</div>
+            <div>${(chore.subTasks || []).sort((a,b) => (a.order||0)-(b.order||0)).map(t =>
+              `<div style="font-size:13px;padding:4px 0;color:var(--muted)">☐ ${t.label}</div>`
+            ).join('')}</div>` : '<p style="font-size:13px;color:var(--muted);margin-top:10px">No sub-tasks</p>'}
+        </div>
+      </div>`;
+  }).join('');
+}
+
+window.toggleChoreCard = (id) => {
+  const card = document.getElementById(`chore-card-${id}`);
+  card.classList.toggle('expanded');
+};
+
+// ── Add / Edit chore modal ────────────────────────────────────
+window.openAddChore = () => {
+  editingChoreId = null;
+  subTaskRows    = [];
+  document.getElementById('chore-modal-title').textContent = 'Add a Chore';
+  document.getElementById('cm-name').value   = '';
+  document.getElementById('cm-desc').value   = '';
+  document.getElementById('cm-points').value = '';
+  document.getElementById('cm-freq').value   = 'daily';
+  updateAssignOptions('any');
+  renderSubTaskEditor();
+  document.getElementById('modal-chore').classList.add('active');
+};
+
+window.openEditChore = (choreId) => {
+  const chore = household.chores.find(c => c.id === choreId);
+  if (!chore) return;
+  editingChoreId = choreId;
+  subTaskRows    = (chore.subTasks || []).map(t => ({ ...t }));
+  document.getElementById('chore-modal-title').textContent = 'Edit Chore';
+  document.getElementById('cm-name').value   = chore.name;
+  document.getElementById('cm-desc').value   = chore.desc || '';
+  document.getElementById('cm-points').value = chore.pointValue || '';
+  document.getElementById('cm-freq').value   = chore.freq || 'daily';
+  updateAssignOptions(chore.assignedTo || 'any');
+  renderSubTaskEditor();
+  document.getElementById('modal-chore').classList.add('active');
+};
+
+function updateAssignOptions(selectedValue) {
+  const sel = document.getElementById('cm-assign');
+  sel.innerHTML = `<option value="any">Any kid (first to claim)</option>` +
+    (household.kids || []).map(k =>
+      `<option value="${k.name}" ${selectedValue === k.name ? 'selected' : ''}>${k.name} only</option>`
+    ).join('');
+  sel.value = selectedValue;
+}
+
+function renderSubTaskEditor() {
+  const container = document.getElementById('subtask-editor-list');
+  if (!subTaskRows.length) {
+    container.innerHTML = `<div style="padding:14px;text-align:center;
+      color:var(--muted);font-size:13px">No sub-tasks yet</div>`;
+    return;
+  }
+  container.innerHTML = subTaskRows.map((task, i) => `
+    <div class="subtask-editor-row">
+      <span class="drag-handle">⠿</span>
+      <input type="text" value="${task.label || ''}"
+             placeholder="e.g. Empty dishwasher"
+             oninput="updateSubTask(${i}, this.value)">
+      <button class="remove-btn" onclick="removeSubTask(${i})">✕</button>
+    </div>`).join('');
+}
+
+window.addSubTaskRow = () => {
+  subTaskRows.push({ id: Date.now().toString(), label: '', order: subTaskRows.length });
+  renderSubTaskEditor();
+  // Focus the new input
+  setTimeout(() => {
+    const inputs = document.querySelectorAll('.subtask-editor-row input');
+    inputs[inputs.length - 1]?.focus();
+  }, 50);
+};
+
+window.updateSubTask = (i, val) => {
+  subTaskRows[i].label = val;
+};
+
+window.removeSubTask = (i) => {
+  subTaskRows.splice(i, 1);
+  subTaskRows.forEach((t, idx) => t.order = idx);
+  renderSubTaskEditor();
+};
+
+window.saveChore = async () => {
+  const name   = document.getElementById('cm-name').value.trim();
+  const desc   = document.getElementById('cm-desc').value.trim();
+  const points = parseInt(document.getElementById('cm-points').value) || 0;
+  const freq   = document.getElementById('cm-freq').value;
+  const assign = document.getElementById('cm-assign').value;
+
+  if (!name)   { showToast('Please enter a chore name'); return; }
+  if (!points) { showToast('Please enter a points value'); return; }
+
+  // Filter out empty sub-task rows
+  const subTasks = subTaskRows
+    .filter(t => t.label.trim())
+    .map((t, i) => ({ id: t.id, label: t.label.trim(), order: i }));
+
+  const choreData = { name, desc, pointValue: points, freq, assignedTo: assign, subTasks };
+
+  let updatedChores;
+  if (editingChoreId) {
+    // Update existing chore
+    updatedChores = household.chores.map(c =>
+      c.id === editingChoreId ? { ...c, ...choreData } : c
+    );
+  } else {
+    // Add new chore
+    choreData.id = Date.now().toString();
+    updatedChores = [...(household.chores || []), choreData];
+  }
+
+  await updateDoc(doc(db, 'households', currentUser.uid), { chores: updatedChores });
+  household.chores = updatedChores;
+
+  closeModal('modal-chore');
+  renderChoresAdmin();
+  showToast(editingChoreId ? '✅ Chore updated' : '✅ Chore added');
+};
+
+window.deleteChore = async (choreId) => {
+  const updatedChores = household.chores.filter(c => c.id !== choreId);
+  await updateDoc(doc(db, 'households', currentUser.uid), { chores: updatedChores });
+  household.chores = updatedChores;
+  renderChoresAdmin();
+  showToast('Chore deleted');
+};
+
+// ── History ───────────────────────────────────────────────────
+function renderHistory() {
+  const today = new Date();
+  const histEl = document.getElementById('history-content');
+  const days   = [];
+
+  // Build last 7 days array
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(today);
+    d.setDate(today.getDate() - i);
+    days.push(d.toISOString().split('T')[0]);
+  }
+
+  // T and Q
+  const T = (household?.chores || []).filter(c => c.freq === 'daily').length;
+  const K = household?.kids?.length || 1;
+  const Q = Math.ceil(T / K) * K; // total household daily target
+
+  const rows = days.map(date => {
+    const dayApproved = submissionsCache.filter(
+      s => s.date === date && s.status === 'approved'
+    ).length;
+    const pct = Q > 0 ? Math.min(Math.round((dayApproved / Q) * 100), 100) : 0;
+    const d   = new Date(date + 'T00:00:00');
+    const label = d.toLocaleDateString('en-US', { weekday:'short', month:'numeric', day:'numeric' });
+
+    return `
+      <div class="history-bar-row">
+        <span class="history-bar-label">${label.split(',')[0]}</span>
+        <div class="history-bar-track">
+          <div class="history-bar-fill" style="width:${pct}%"></div>
+        </div>
+        <span class="history-bar-pct">${pct}%</span>
+      </div>`;
+  }).join('');
+
+  histEl.innerHTML = `
+    <div class="page-label" style="margin-bottom:12px">
+      Completion Rate — Last 7 Days
+    </div>
+    ${rows}
+    <div class="card" style="margin-top:16px">
+      <div class="page-label" style="margin-bottom:6px">Payday Formula</div>
+      <p style="font-size:13px;color:var(--muted);margin:0;line-height:1.7">
+        ${household?.pointMultiplier || 100} points = $1.00 payout<br>
+        Period cap: $${household?.capPerKid || 120} per kid<br>
+        Weekly approval handled from your Approvals tab
+      </p>
+    </div>`;
+}
+
+// ── Settings ──────────────────────────────────────────────────
+function renderSettings() {
+  if (!household) return;
+
+  // Pre-fill points config
+  const ptsPerDollar = household.pointMultiplier || 100;
+  document.getElementById('s-multiplier').value = ptsPerDollar;
+  document.getElementById('s-bonus').value       = household.bonusBudget || '';
+  updateFormulaPreview(ptsPerDollar);
+
+  // Approval mode
+  document.getElementById('settings-approval').innerHTML = `
+    <div style="padding:14px 0">
+      <div style="font-size:14px;font-weight:600">
+        ${household.approvalMode === 'manual' ? '✋ Manual Approval' : '⚡ Auto Approve'}
+      </div>
+      <div style="font-size:12px;color:var(--muted);margin-top:2px">
+        ${household.approvalMode === 'manual'
+          ? 'You review every photo before it counts'
+          : 'Submissions approved automatically on submit'}
+      </div>
+    </div>`;
+
+  // Kids with reset PIN
+  document.getElementById('settings-kids').innerHTML =
+    household.kids.map((k, i) => `
+      <div style="display:flex;align-items:center;justify-content:space-between;
+                  padding:13px 0;border-bottom:1px solid var(--border)">
+        <div style="display:flex;align-items:center;gap:10px">
+          <div style="width:32px;height:32px;border-radius:50%;
+                      background:${k.color}22;color:${k.color};
+                      display:flex;align-items:center;justify-content:center;
+                      font-weight:800;font-size:13px">${k.name.charAt(0)}</div>
+          <div>
+            <div style="font-size:14px;font-weight:600">${k.name}</div>
+            <div style="font-size:11px;color:var(--muted)">PIN: ${k.pin}</div>
+          </div>
+        </div>
+        <button onclick="resetPinPrompt(${i})"
+                style="background:none;border:1px solid var(--border);
+                       border-radius:6px;padding:5px 10px;color:var(--muted);
+                       font-family:inherit;font-size:11px;cursor:pointer">
+          Reset PIN
+        </button>
+      </div>`).join('') +
+    `<div style="padding:12px 0;text-align:center">
+       <button class="btn btn-ghost btn-sm" onclick="window.location.href='onboarding.html'">
+         + Add Kid
+       </button>
+     </div>`;
+}
+
+window.resetPinPrompt = async (idx) => {
+  const pin = prompt(`New 4-digit PIN for ${household.kids[idx].name}:`);
+  if (!pin || !/^\d{4}$/.test(pin)) { showToast('Invalid PIN — must be 4 digits'); return; }
+  household.kids[idx].pin = pin;
+  await updateDoc(doc(db, 'households', currentUser.uid), { kids: household.kids });
+  renderSettings();
+  showToast('✅ PIN updated');
+};
+
+// Live formula preview as user types
+document.getElementById('s-multiplier').addEventListener('input', (e) => {
+  updateFormulaPreview(parseInt(e.target.value) || 100);
+});
+
+function updateFormulaPreview(pts) {
+  const example = ((350 / pts)).toFixed(2);
+  document.getElementById('formula-preview').innerHTML =
+    `${pts} points = $1.00 · Example: 350 pts = $${example} payout`;
+}
+
+window.savePointsConfig = async () => {
+  const mult  = parseInt(document.getElementById('s-multiplier').value) || 100;
+  const bonus = parseInt(document.getElementById('s-bonus').value) || 0;
+  await updateDoc(doc(db, 'households', currentUser.uid), {
+    pointMultiplier: mult,
+    bonusBudget:     bonus,
+  });
+  household.pointMultiplier = mult;
+  household.bonusBudget     = bonus;
+  showToast('✅ Points config saved');
+  renderOverview(); // Refresh the payout estimates
+};
+
+// ── Nav ───────────────────────────────────────────────────────
+window.switchTab = (tab) => {
+  ['overview','approvals','chores','history','settings'].forEach(t => {
+    document.getElementById(`screen-${t}`).classList.toggle('active', t === tab);
+    document.getElementById(`nav-${t}`).classList.toggle('active', t === tab);
+  });
+};
+
+window.signOutUser = async () => {
+  await signOut(auth);
+  window.location.href = '../../login.html';
+};
+window.closeModal = (id) => document.getElementById(id).classList.remove('active');
+window.openLightbox = (url) => {
+  document.getElementById('lightbox-img').src = url;
+  document.getElementById('lightbox').style.display = 'flex';
+};
+
+// ── Helpers ───────────────────────────────────────────────────
+function getToday()  { return new Date().toISOString().split('T')[0]; }
+function getPayPeriod() {
+  if (!household) return '';
+  const start = new Date(household.payPeriodStart + 'T00:00:00');
+  const today = new Date(); today.setHours(0,0,0,0);
+  const diff  = Math.floor((today - start) / 86400000);
+  const num   = Math.floor(Math.max(diff,0) / household.payPeriodDays);
+  const ps    = new Date(start);
+  ps.setDate(start.getDate() + num * household.payPeriodDays);
+  return ps.toISOString().split('T')[0];
+}
+function formatDate(str) {
+  const d = new Date(str + 'T00:00:00');
+  return `${d.getMonth()+1}/${d.getDate()}/${d.getFullYear()}`;
+}
+function formatTime(iso) {
+  if (!iso) return '';
+  return new Date(iso).toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' });
+}
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+</script>
+</body>
+</html>

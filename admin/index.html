@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin — I Did My Chores</title>
+  <link rel="stylesheet" href="../css/site.css">
+  <style>
+    body { background: var(--bg); }
+    .admin-wrap {
+      max-width: 800px; margin: 0 auto;
+      padding: 100px 24px 80px;
+    }
+    .admin-section {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px; padding: 24px;
+      margin-bottom: 20px;
+    }
+    .admin-section h3 {
+      font-size: 15px; font-weight: 700;
+      margin-bottom: 16px; padding-bottom: 12px;
+      border-bottom: 1px solid var(--border);
+    }
+    .admin-row {
+      display: flex; gap: 12px; align-items: flex-start;
+      margin-bottom: 12px;
+    }
+    .admin-row label {
+      width: 160px; flex-shrink: 0;
+      font-size: 12px; font-weight: 700;
+      color: var(--muted); text-transform: uppercase;
+      letter-spacing: 0.06em; padding-top: 14px;
+    }
+    .admin-row input,
+    .admin-row textarea {
+      flex: 1; background: var(--card2);
+      border: 1px solid var(--border);
+      border-radius: 8px; padding: 12px 14px;
+      color: var(--text); font-family: inherit;
+      font-size: 14px; outline: none;
+      transition: border-color 0.15s;
+    }
+    .admin-row input:focus,
+    .admin-row textarea:focus { border-color: var(--gold); }
+    .admin-row textarea { height: 80px; resize: vertical; }
+    .save-btn {
+      background: var(--gold); color: #000;
+      border: none; border-radius: 8px;
+      padding: 10px 20px; font-family: inherit;
+      font-size: 13px; font-weight: 700;
+      cursor: pointer; transition: opacity 0.15s;
+    }
+    .save-btn:hover { opacity: 0.85; }
+    .stat-grid {
+      display: grid; grid-template-columns: repeat(3,1fr); gap: 12px;
+    }
+    .stat-card {
+      background: var(--card2); border: 1px solid var(--border);
+      border-radius: 10px; padding: 16px; text-align: center;
+    }
+    .stat-num {
+      font-family: 'DM Mono', monospace;
+      font-size: 28px; font-weight: 500; color: var(--gold);
+    }
+    .stat-label { font-size: 11px; color: var(--muted); margin-top: 4px; }
+  </style>
+</head>
+<body>
+<div class="admin-wrap">
+
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:32px">
+    <div>
+      <div style="font-size:11px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--muted);margin-bottom:6px">Hidden Admin Panel</div>
+      <h1 style="font-size:26px;font-weight:800;letter-spacing:-0.5px">I Did My Chores</h1>
+    </div>
+    <button onclick="signOutAdmin()" class="save-btn" style="background:var(--red-dim);color:var(--red);border:1px solid rgba(248,113,113,0.25)">Sign Out</button>
+  </div>
+
+  <!-- Auth gate -->
+  <div id="auth-gate" class="admin-section" style="text-align:center;padding:40px">
+    <div style="font-size:40px;margin-bottom:16px">🔒</div>
+    <h3 style="border:none;margin-bottom:8px">Admin Access</h3>
+    <p style="color:var(--muted);font-size:14px;margin-bottom:24px">Sign in with your owner account to continue</p>
+    <div style="max-width:320px;margin:0 auto">
+      <div class="form-field"><input type="email" id="admin-email" placeholder="Email"></div>
+      <div class="form-field"><input type="password" id="admin-pw" placeholder="Password"></div>
+      <button class="save-btn" style="width:100%" onclick="adminSignIn()">Sign In</button>
+      <div id="admin-error" style="color:var(--red);font-size:13px;margin-top:8px;display:none"></div>
+    </div>
+  </div>
+
+  <!-- Admin content (hidden until auth) -->
+  <div id="admin-content" style="display:none">
+
+    <!-- Stats -->
+    <div class="admin-section">
+      <h3>📊 Overview</h3>
+      <div class="stat-grid">
+        <div class="stat-card">
+          <div class="stat-num" id="stat-households">—</div>
+          <div class="stat-label">Households</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-num" id="stat-submissions">—</div>
+          <div class="stat-label">Total Submissions</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-num" id="stat-stars">—</div>
+          <div class="stat-label">Stars Awarded</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Site content editor -->
+    <div class="admin-section">
+      <h3>✏️ Site Content</h3>
+      <div class="admin-row">
+        <label>Hero Headline</label>
+        <input type="text" id="c-hero-headline" placeholder="Your kids cleaned up. Now they get paid.">
+      </div>
+      <div class="admin-row">
+        <label>Hero Subtext</label>
+        <textarea id="c-hero-sub" placeholder="Hero description text…"></textarea>
+      </div>
+      <div class="admin-row">
+        <label>About Blurb</label>
+        <textarea id="c-about-blurb" placeholder="Short founder bio for footer…"></textarea>
+      </div>
+      <div class="admin-row">
+        <label>Etsy URL</label>
+        <input type="url" id="c-etsy-url" placeholder="https://etsy.com/shop/ShegotSheets">
+      </div>
+      <div class="admin-row">
+        <label>Facebook URL</label>
+        <input type="url" id="c-fb-url" placeholder="https://facebook.com/yourpage">
+      </div>
+      <div style="display:flex;justify-content:flex-end;margin-top:8px">
+        <button class="save-btn" onclick="saveContent()">Save Content</button>
+      </div>
+    </div>
+
+    <!-- Pricing editor -->
+    <div class="admin-section">
+      <h3>💰 Pricing</h3>
+      <div class="admin-row">
+        <label>Family Price</label>
+        <input type="text" id="c-family-price" placeholder="2.99">
+      </div>
+      <div class="admin-row">
+        <label>Household+ Price</label>
+        <input type="text" id="c-household-price" placeholder="4.99">
+      </div>
+      <div class="admin-row">
+        <label>Promo Banner</label>
+        <input type="text" id="c-promo" placeholder="e.g. 🧹 Now Live · Introductory Pricing">
+      </div>
+      <div style="display:flex;justify-content:flex-end;margin-top:8px">
+        <button class="save-btn" onclick="savePricing()">Save Pricing</button>
+      </div>
+    </div>
+
+    <!-- Contact info -->
+    <div class="admin-section">
+      <h3>📬 Contact Settings</h3>
+      <div class="admin-row">
+        <label>Contact Email</label>
+        <input type="email" id="c-contact-email" placeholder="jmhodgefl@gmail.com" value="jmhodgefl@gmail.com">
+      </div>
+      <div style="display:flex;justify-content:flex-end;margin-top:8px">
+        <button class="save-btn" onclick="saveContact()">Save Contact</button>
+      </div>
+    </div>
+
+  </div><!-- /admin-content -->
+
+</div>
+
+<script type="module">
+import { auth, db } from '../app/js/firebase.js';
+import {
+  signInWithEmailAndPassword, signOut, onAuthStateChanged
+} from 'https://www.gstatic.com/firebasejs/10.11.0/firebase-auth.js';
+import {
+  doc, getDoc, setDoc, collection, getCountFromServer, query, where
+} from 'https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore.js';
+
+const OWNER_EMAIL = 'jmhodgefl@gmail.com';
+
+onAuthStateChanged(auth, async (user) => {
+  if (user && user.email === OWNER_EMAIL) {
+    showAdminContent(user);
+  } else if (user) {
+    document.getElementById('admin-error').textContent = 'Not authorized.';
+    document.getElementById('admin-error').style.display = 'block';
+    await signOut(auth);
+  }
+});
+
+window.adminSignIn = async () => {
+  const email = document.getElementById('admin-email').value;
+  const pw    = document.getElementById('admin-pw').value;
+  const err   = document.getElementById('admin-error');
+  try {
+    await signInWithEmailAndPassword(auth, email, pw);
+  } catch(e) {
+    err.textContent = 'Invalid credentials'; err.style.display = 'block';
+  }
+};
+
+async function showAdminContent(user) {
+  document.getElementById('auth-gate').style.display    = 'none';
+  document.getElementById('admin-content').style.display = 'block';
+  await loadStats();
+  await loadContent();
+}
+
+async function loadStats() {
+  try {
+    const hSnap  = await getCountFromServer(collection(db, 'households'));
+    const sSnap  = await getCountFromServer(collection(db, 'submissions'));
+    const stSnap = await getCountFromServer(query(collection(db, 'submissions'), where('exceeded','==',true)));
+    document.getElementById('stat-households').textContent  = hSnap.data().count;
+    document.getElementById('stat-submissions').textContent = sSnap.data().count;
+    document.getElementById('stat-stars').textContent       = stSnap.data().count;
+  } catch(e) { console.error('Stats error:', e); }
+}
+
+async function loadContent() {
+  try {
+    const snap = await getDoc(doc(db, 'admin', 'site_content'));
+    if (!snap.exists()) return;
+    const d = snap.data();
+    if (d.heroHeadline) document.getElementById('c-hero-headline').value = d.heroHeadline;
+    if (d.heroSub)      document.getElementById('c-hero-sub').value      = d.heroSub;
+    if (d.aboutBlurb)   document.getElementById('c-about-blurb').value   = d.aboutBlurb;
+    if (d.etsyUrl)      document.getElementById('c-etsy-url').value      = d.etsyUrl;
+    if (d.fbUrl)        document.getElementById('c-fb-url').value        = d.fbUrl;
+    if (d.familyPrice)  document.getElementById('c-family-price').value  = d.familyPrice;
+    if (d.householdPrice) document.getElementById('c-household-price').value = d.householdPrice;
+    if (d.promo)        document.getElementById('c-promo').value         = d.promo;
+    if (d.contactEmail) document.getElementById('c-contact-email').value = d.contactEmail;
+  } catch(e) { console.error('Load content error:', e); }
+}
+
+window.saveContent = async () => {
+  await setDoc(doc(db, 'admin', 'site_content'), {
+    heroHeadline: document.getElementById('c-hero-headline').value,
+    heroSub:      document.getElementById('c-hero-sub').value,
+    aboutBlurb:   document.getElementById('c-about-blurb').value,
+    etsyUrl:      document.getElementById('c-etsy-url').value,
+    fbUrl:        document.getElementById('c-fb-url').value,
+  }, { merge: true });
+  showToast('✅ Content saved');
+};
+
+window.savePricing = async () => {
+  await setDoc(doc(db, 'admin', 'site_content'), {
+    familyPrice:    document.getElementById('c-family-price').value,
+    householdPrice: document.getElementById('c-household-price').value,
+    promo:          document.getElementById('c-promo').value,
+  }, { merge: true });
+  showToast('✅ Pricing saved');
+};
+
+window.saveContact = async () => {
+  await setDoc(doc(db, 'admin', 'site_content'), {
+    contactEmail: document.getElementById('c-contact-email').value,
+  }, { merge: true });
+  showToast('✅ Contact saved');
+};
+
+window.signOutAdmin = async () => {
+  await signOut(auth);
+  document.getElementById('auth-gate').style.display    = 'block';
+  document.getElementById('admin-content').style.display = 'none';
+};
+
+function showToast(msg) {
+  const t = document.createElement('div');
+  t.textContent = msg;
+  t.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1c1c1c;border:1px solid #2a2a2a;border-radius:10px;padding:12px 20px;font-size:14px;font-weight:500;z-index:999';
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 2500);
+}
+</script>
+</body>
+</html>

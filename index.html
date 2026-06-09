@@ -1,0 +1,806 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#2B7A78">
+  <meta name="description" content="I Did My Chores — Turn chores into real paychecks. Photo proof required. Parent approval built in. Just like their first job.">
+  <title>I Did My Chores — Stop Nagging. Start Seeing Results.</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+
+    :root {
+      --teal:        #2B7A78;
+      --teal-dark:   #1B5553;
+      --gold:        #D4A574;
+      --bg:          #FFFFFF;
+      --bg-alt:      #F9F7F4;
+      --bg-taupe:    #E8E4E0;
+      --text:        #2C2C2C;
+      --text-gray:   #666666;
+      --text-light:  #999999;
+      --border:      #E0DDD8;
+      --green:       #27AE60;
+      --ease:        all 0.3s cubic-bezier(0.4,0,0.2,1);
+    }
+
+    /* Dark mode */
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg:        #0a0a0a;
+        --bg-alt:    #111111;
+        --text:      #f0ede8;
+        --text-gray: #aaaaaa;
+        --text-light:#666666;
+        --border:    #2a2a2a;
+      }
+    }
+    [data-theme="dark"] {
+      --bg:        #0a0a0a !important;
+      --bg-alt:    #111111 !important;
+      --text:      #f0ede8 !important;
+      --text-gray: #aaaaaa !important;
+      --text-light:#666666 !important;
+      --border:    #2a2a2a !important;
+    }
+    [data-theme="light"] {
+      --bg:        #FFFFFF !important;
+      --bg-alt:    #F9F7F4 !important;
+      --text:      #2C2C2C !important;
+      --text-gray: #666666 !important;
+      --text-light:#999999 !important;
+      --border:    #E0DDD8 !important;
+    }
+
+    html { scroll-behavior: smooth; font-size:16px; }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg); color: var(--text);
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+      transition: background 0.2s, color 0.2s;
+    }
+
+    h1,h2,h3 {
+      font-family: 'Poppins', -apple-system, sans-serif;
+      font-weight: 700; line-height: 1.2;
+    }
+    h1 { font-size: clamp(32px,8vw,56px); color: var(--text); margin-bottom:1rem; }
+    h2 { font-size: clamp(26px,5vw,40px); color: var(--text); margin-bottom:1rem; }
+    h3 { font-size: clamp(18px,3vw,22px); color: var(--text); margin-bottom:.75rem; }
+    p  { font-size:15px; line-height:1.7; color:var(--text-gray); margin-bottom:1rem; }
+    a  { color:var(--teal); text-decoration:none; transition:var(--ease); }
+
+    .container  { max-width:1100px; margin:0 auto; padding:0 24px; }
+    .section    { padding:96px 24px; }
+    .section.alt { background:var(--bg-alt); }
+    .text-center { text-align:center; }
+
+    @media(max-width:768px) { .section { padding:60px 20px; } }
+
+    /* ── Nav ── */
+    nav {
+      position:sticky; top:0; z-index:1000;
+      background:var(--bg);
+      box-shadow:0 2px 8px rgba(0,0,0,0.07);
+      padding:14px 0;
+      transition: background 0.2s;
+    }
+    nav .container { display:flex; justify-content:space-between; align-items:center; }
+
+    .nav-logo {
+      font-family:'Poppins',sans-serif;
+      font-size:18px; font-weight:700;
+      color:var(--teal); text-decoration:none;
+    }
+
+    .nav-links { display:flex; gap:28px; list-style:none; }
+    .nav-links a { font-size:14px; font-weight:500; color:var(--text-gray); }
+    .nav-links a:hover { color:var(--teal); }
+
+    .nav-right { display:flex; align-items:center; gap:10px; }
+
+    .theme-btn {
+      background:var(--bg-alt); border:1px solid var(--border);
+      border-radius:8px; padding:6px 9px; cursor:pointer;
+      font-size:15px; line-height:1; transition:var(--ease);
+    }
+    .theme-btn:hover { border-color:var(--teal); }
+
+    .btn-nav-login {
+      font-size:13px; font-weight:600; color:var(--teal);
+      border:1.5px solid var(--teal); border-radius:8px;
+      padding:7px 16px; transition:var(--ease);
+    }
+    .btn-nav-login:hover { background:var(--teal); color:#fff; }
+
+    .btn-nav-cta {
+      font-size:13px; font-weight:700;
+      background:var(--teal); color:#fff;
+      border-radius:8px; padding:8px 18px; transition:var(--ease);
+    }
+    .btn-nav-cta:hover { background:var(--teal-dark); }
+
+    .nav-hamburger {
+      display:none; background:none; border:none;
+      font-size:22px; color:var(--text); cursor:pointer; padding:4px;
+    }
+
+    @media(max-width:720px) {
+      .nav-links { display:none; }
+      .nav-hamburger { display:block; }
+      .btn-nav-login { display:none; }
+    }
+
+    /* ── Buttons ── */
+    .btn {
+      display:inline-flex; align-items:center; justify-content:center;
+      gap:8px; padding:14px 28px; border-radius:8px;
+      font-weight:600; font-size:15px; cursor:pointer;
+      transition:var(--ease); border:2px solid transparent;
+      text-decoration:none; min-height:46px; font-family:inherit;
+    }
+    .btn:active { transform:scale(0.97); }
+    .btn-primary { background:var(--teal); color:#fff; }
+    .btn-primary:hover { background:var(--teal-dark); transform:translateY(-2px); box-shadow:0 8px 20px rgba(43,122,120,0.25); }
+    .btn-secondary { background:transparent; color:var(--teal); border-color:var(--teal); }
+    .btn-secondary:hover { background:var(--bg-alt); border-color:var(--teal-dark); }
+    .btn-sm { padding:10px 22px; font-size:13px; }
+
+    /* ── Hero ── */
+    .hero {
+      display:grid; grid-template-columns:1fr 1fr;
+      gap:60px; align-items:center;
+      padding:120px 24px 100px;
+      max-width:1100px; margin:0 auto;
+    }
+
+    .hero-sub {
+      font-size:18px; line-height:1.7;
+      color:var(--text-gray); margin-bottom:28px; max-width:480px;
+    }
+
+    .trust-pills {
+      display:flex; gap:20px; margin-bottom:36px; flex-wrap:wrap;
+    }
+    .trust-pill {
+      display:flex; align-items:center; gap:8px;
+      font-size:13px; color:var(--text-gray);
+    }
+    .trust-pill::before { content:"✓"; color:var(--green); font-weight:700; }
+
+    .hero-btns { display:flex; gap:14px; flex-wrap:wrap; }
+
+    .hero-visual {
+      aspect-ratio:1;
+      background:linear-gradient(135deg,#E8D5C4,#D4A574);
+      border-radius:20px;
+      box-shadow:0 20px 60px rgba(43,122,120,0.18);
+      display:flex; align-items:center; justify-content:center;
+      flex-direction:column; gap:12px; text-align:center; padding:32px;
+    }
+
+    @media(max-width:768px) {
+      .hero { grid-template-columns:1fr; padding:90px 20px 60px; gap:36px; }
+      .hero-visual { order:-1; aspect-ratio:unset; padding:40px 24px; }
+    }
+
+    /* ── Stats ── */
+    .stats-row {
+      display:grid; grid-template-columns:repeat(3,1fr);
+      gap:32px; text-align:center; margin-bottom:48px;
+    }
+    .stat-num {
+      font-family:'Poppins',sans-serif;
+      font-size:38px; font-weight:700; color:var(--teal);
+      display:block; margin-bottom:4px;
+    }
+    .stat-label { font-size:13px; color:var(--text-gray); }
+
+    @media(max-width:640px) { .stats-row { grid-template-columns:1fr; } }
+
+    /* ── Feature cards ── */
+    .feature-grid {
+      display:grid; grid-template-columns:repeat(3,1fr);
+      gap:24px; margin-bottom:40px;
+    }
+    .feat-card {
+      background:var(--bg); border:1px solid var(--border);
+      border-radius:14px; padding:32px 24px; text-align:center;
+      transition:var(--ease);
+    }
+    .feat-card:hover { border-color:var(--teal); transform:translateY(-4px); box-shadow:0 12px 32px rgba(43,122,120,0.1); }
+    .feat-icon {
+      width:68px; height:68px; border-radius:14px; font-size:32px;
+      background:linear-gradient(135deg,rgba(43,122,120,.1),rgba(212,165,116,.1));
+      display:flex; align-items:center; justify-content:center;
+      margin:0 auto 16px;
+    }
+
+    @media(max-width:768px) { .feature-grid { grid-template-columns:1fr; } }
+
+    /* ── Steps ── */
+    .steps-grid {
+      display:grid; grid-template-columns:repeat(4,1fr);
+      gap:20px; margin-bottom:40px;
+    }
+    .step-card {
+      background:var(--bg); border:2px solid var(--border);
+      border-radius:14px; padding:28px 20px; text-align:center;
+      transition:var(--ease);
+    }
+    .step-card:hover { border-color:var(--teal); background:var(--bg-alt); }
+    .step-num {
+      width:46px; height:46px; border-radius:50%;
+      background:var(--teal); color:#fff;
+      font-family:'Poppins',sans-serif; font-weight:700; font-size:20px;
+      display:inline-flex; align-items:center; justify-content:center;
+      margin-bottom:14px;
+    }
+    .step-card h3 { font-size:17px; }
+    .step-card p  { font-size:13px; min-height:54px; }
+    .step-outcome {
+      background:var(--bg-alt); border-radius:6px;
+      padding:10px 14px; font-size:12px; color:var(--text-gray); margin-top:12px;
+    }
+
+    @media(max-width:1024px) { .steps-grid { grid-template-columns:repeat(2,1fr); } }
+    @media(max-width:600px)  { .steps-grid { grid-template-columns:1fr; } }
+
+    /* ── Testimonials ── */
+    .testi-grid {
+      display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr));
+      gap:24px; margin-bottom:48px;
+    }
+    .testi-card {
+      background:var(--bg); border:1px solid var(--border);
+      border-left:4px solid var(--teal);
+      border-radius:0 14px 14px 0; padding:28px;
+      transition:var(--ease);
+    }
+    .testi-card:hover { box-shadow:0 12px 32px rgba(43,122,120,.1); transform:translateY(-3px); }
+    .stars { color:var(--gold); letter-spacing:2px; margin-bottom:14px; font-size:14px; }
+    .testi-text { font-style:italic; font-size:14px; line-height:1.75; margin-bottom:18px; }
+    .testi-author { display:flex; align-items:center; gap:12px; }
+    .author-av {
+      width:38px; height:38px; border-radius:50%; flex-shrink:0;
+      background:linear-gradient(135deg,var(--teal),var(--gold));
+      display:flex; align-items:center; justify-content:center;
+      color:#fff; font-weight:700; font-size:14px;
+    }
+    .author-name { font-size:14px; font-weight:600; color:var(--text); }
+    .author-sub  { font-size:12px; color:var(--text-light); }
+
+    /* ── Pricing ── */
+    .pricing-grid {
+      display:grid; grid-template-columns:repeat(3,1fr);
+      gap:24px; margin-bottom:32px;
+    }
+    .price-card {
+      background:var(--bg); border:2px solid var(--border);
+      border-radius:16px; padding:36px 28px; text-align:center;
+      position:relative; transition:var(--ease);
+    }
+    .price-card.featured {
+      border-color:var(--teal);
+      background:linear-gradient(135deg,rgba(43,122,120,.03),rgba(212,165,116,.03));
+      transform:scale(1.04);
+    }
+    .price-card:hover { box-shadow:0 16px 48px rgba(43,122,120,.12); }
+    .price-badge {
+      position:absolute; top:-13px; left:50%; transform:translateX(-50%);
+      background:var(--teal); color:#fff; font-size:11px; font-weight:700;
+      text-transform:uppercase; letter-spacing:.06em;
+      padding:4px 16px; border-radius:99px; white-space:nowrap;
+    }
+    .price-tier { font-size:11px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:var(--text-light); margin-bottom:10px; }
+    .price-amount { font-family:'Poppins',sans-serif; font-size:46px; font-weight:700; color:var(--teal); line-height:1; }
+    .price-amount sup { font-size:22px; vertical-align:super; }
+    .price-period { font-size:13px; color:var(--text-light); margin:6px 0 24px; }
+    .price-features { list-style:none; text-align:left; margin-bottom:28px; }
+    .price-features li {
+      font-size:14px; color:var(--text-gray);
+      padding:9px 0; border-bottom:1px solid var(--border);
+      display:flex; align-items:center; gap:8px;
+    }
+    .price-features li:last-child { border-bottom:none; }
+    .price-features li::before { content:"✓"; color:var(--green); font-weight:700; font-size:13px; flex-shrink:0; }
+    .price-note { font-size:11px; color:var(--text-light); font-style:italic; margin-top:10px; }
+
+    @media(max-width:900px) { .pricing-grid { grid-template-columns:1fr; } .price-card.featured { transform:none; } }
+
+    /* ── FAQ ── */
+    .faq-wrap { max-width:680px; margin:0 auto; }
+    .faq-item {
+      background:var(--bg); border:1px solid var(--border);
+      border-radius:10px; padding:20px 22px; margin-bottom:12px;
+      cursor:pointer; transition:var(--ease);
+    }
+    .faq-item:hover { border-color:var(--teal); background:var(--bg-alt); }
+    .faq-q {
+      font-weight:600; color:var(--text); font-size:15px;
+      display:flex; justify-content:space-between; align-items:center;
+    }
+    .faq-arrow { color:var(--teal); font-size:18px; transition:transform 0.25s; flex-shrink:0; }
+    .faq-item.open .faq-arrow { transform:rotate(180deg); }
+    .faq-a {
+      display:none; margin-top:14px; padding-top:14px;
+      border-top:1px solid var(--border);
+      font-size:14px; line-height:1.75; color:var(--text-gray);
+    }
+    .faq-item.open .faq-a { display:block; }
+
+    /* ── Quote block ── */
+    .quote-block {
+      background:var(--bg-alt); border:1px solid var(--border);
+      border-left:4px solid var(--teal);
+      border-radius:0 14px 14px 0; padding:28px 32px;
+      max-width:720px; margin:0 auto;
+    }
+    .quote-text { font-size:18px; font-style:italic; color:var(--text-gray); line-height:1.75; margin-bottom:14px; }
+    .quote-author { font-size:14px; font-weight:700; color:var(--teal); }
+
+    /* ── Footer ── */
+    footer {
+      background: var(--text); color:#fff;
+      padding:60px 24px 36px;
+    }
+    .footer-grid {
+      display:grid; grid-template-columns:repeat(4,1fr);
+      gap:40px; max-width:1100px; margin:0 auto 40px;
+    }
+    footer h4 {
+      font-size:13px; font-weight:700; text-transform:uppercase;
+      letter-spacing:.06em; color:var(--gold); margin-bottom:14px;
+    }
+    footer ul { list-style:none; }
+    footer li { margin-bottom:10px; }
+    footer a { font-size:14px; color:rgba(255,255,255,.65); transition:var(--ease); }
+    footer a:hover { color:var(--gold); }
+    .footer-bottom {
+      max-width:1100px; margin:32px auto 0;
+      padding-top:24px; border-top:1px solid rgba(255,255,255,.1);
+      display:flex; justify-content:space-between; align-items:center;
+      flex-wrap:wrap; gap:12px;
+    }
+    .footer-copy { font-size:12px; color:rgba(255,255,255,.45); }
+    .social-row { display:flex; gap:14px; list-style:none; }
+
+    @media(max-width:768px) {
+      .footer-grid { grid-template-columns:1fr 1fr; }
+      .footer-bottom { flex-direction:column; text-align:center; }
+    }
+    @media(max-width:480px) { .footer-grid { grid-template-columns:1fr; } }
+
+    /* ── How it works image col ── */
+    @media(max-width:900px) {
+      .hiw-grid { grid-template-columns:1fr !important; }
+      .hiw-sticky { position:static !important; }
+    }
+
+    /* ── Mobile nav ── */
+    #mobile-nav {
+      display:none; padding:12px 24px 20px;
+      border-top:1px solid var(--border);
+      background:var(--bg);
+    }
+    #mobile-nav a {
+      display:block; padding:10px 0;
+      font-weight:600; font-size:15px; color:var(--text-gray);
+      border-bottom:1px solid var(--border);
+    }
+    #mobile-nav a:last-child { border-bottom:none; }
+    #mobile-nav a:hover { color:var(--teal); }
+  </style>
+</head>
+<body>
+
+<!-- ══════════════════ NAV ══════════════════ -->
+<nav id="main-nav">
+  <div class="container">
+    <a href="/" class="nav-logo">🧹 I Did My Chores</a>
+    <ul class="nav-links">
+      <li><a href="#how-it-works">How It Works</a></li>
+      <li><a href="#features">Features</a></li>
+      <li><a href="#pricing">Pricing</a></li>
+      <li><a href="pages/about.html">About</a></li>
+      <li><a href="pages/contact.html">Contact</a></li>
+    </ul>
+    <div class="nav-right">
+      <button class="theme-btn" id="theme-btn" onclick="cycleTheme()" title="Toggle theme">🌙</button>
+      <a href="login.html" class="btn-nav-login">Log In</a>
+      <a href="login.html?signup=true" class="btn btn-primary btn-sm">Get Started Free</a>
+    </div>
+    <button class="nav-hamburger" onclick="toggleMobile()">☰</button>
+  </div>
+  <div id="mobile-nav">
+    <a href="#how-it-works" onclick="toggleMobile()">How It Works</a>
+    <a href="#features" onclick="toggleMobile()">Features</a>
+    <a href="#pricing" onclick="toggleMobile()">Pricing</a>
+    <a href="pages/about.html">About</a>
+    <a href="pages/contact.html">Contact</a>
+    <a href="login.html" style="color:var(--teal);font-weight:700">Log In</a>
+    <a href="login.html?signup=true" style="color:var(--teal);font-weight:700">Get Started Free →</a>
+  </div>
+</nav>
+
+<!-- ══════════════════ HERO ══════════════════ -->
+<div style="max-width:1100px;margin:0 auto">
+  <div class="hero">
+    <div>
+      <h1>Stop Nagging.<br>Start Seeing Results.</h1>
+      <p class="hero-sub">Turn chores into real paychecks. Photo proof required. Parent approval built in. Just like their first job.</p>
+      <div class="trust-pills">
+        <div class="trust-pill">No credit card needed</div>
+        <div class="trust-pill">Setup in 5 minutes</div>
+        <div class="trust-pill">Works on any phone</div>
+      </div>
+      <div class="hero-btns">
+        <a href="login.html?signup=true" class="btn btn-primary">Start Free — No Card Needed</a>
+        <a href="#how-it-works" class="btn btn-secondary">See How It Works</a>
+      </div>
+    </div>
+    <div class="hero-visual" style="background:none;box-shadow:none;border-radius:20px;overflow:hidden;padding:0;aspect-ratio:1">
+      <img src="images/hero-mom-daughter.png"
+           alt="Mom and daughter smiling looking at chore approval on phone"
+           style="width:100%;height:100%;object-fit:cover;border-radius:20px;box-shadow:0 20px 60px rgba(43,122,120,0.18)">
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════ STATS ══════════════════ -->
+<section class="section alt">
+  <div class="container">
+    <div class="stats-row">
+      <div>
+        <span class="stat-num">847</span>
+        <div class="stat-label">Families Using IDMC</div>
+      </div>
+      <div>
+        <span class="stat-num">52K</span>
+        <div class="stat-label">Chores Approved Monthly</div>
+      </div>
+      <div>
+        <span class="stat-num">4.8★</span>
+        <div class="stat-label">Average Rating</div>
+      </div>
+    </div>
+
+    <div style="text-align:center;padding-top:36px;border-top:1px solid var(--border)">
+      <p style="font-size:14px;margin-bottom:0">
+        <strong style="color:var(--text)">Built by Joanna Hodge</strong> — a mom who wanted her kids to understand real paycheck cycles, not just chores.
+        <a href="pages/about.html" style="color:var(--teal);font-weight:600;margin-left:6px">Read our story →</a>
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════ QUOTE ══════════════════ -->
+<section class="section">
+  <div class="container">
+    <div class="quote-block">
+      <p class="quote-text">"I'm a mom on the go, raising kids who need more than an allowance — they need experience. I built this because I wanted my kids to understand pay cycles, show proof of their work, receive real feedback, and take ownership of their space. This isn't just a chore app. It's their first timesheet."</p>
+      <div class="quote-author">— Joanna Hodge, founder · She Got Sheets · Jacksonville, FL</div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════ FEATURES ══════════════════ -->
+<section class="section alt" id="features">
+  <div class="container">
+    <div class="text-center" style="margin-bottom:48px">
+      <h2>Real Pay. Real Proof. Real Habits.</h2>
+      <p style="max-width:520px;margin:0 auto">Everything else is secondary. Photo proof + real pay + fair assignment is the only way kids understand what work actually means.</p>
+    </div>
+    <div class="feature-grid">
+      <div class="feat-card">
+        <div class="feat-icon">📷</div>
+        <h3>Photo Proof Required</h3>
+        <p>No photo, no pay. No games. Every submission requires a picture so you can see the work before approving it.</p>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon">💰</div>
+        <h3>Real Paycheck Cycles</h3>
+        <p>Weekly, biweekly, or monthly pay periods with earning caps. Kids learn how a real paycheck actually works.</p>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon">⚡</div>
+        <h3>First-to-Claim Locking</h3>
+        <p>Shared chores are locked the moment one kid claims them. No double-work. No "but I thought I was doing it" arguments.</p>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon">📋</div>
+        <h3>Chore Standards Built In</h3>
+        <p>Define what "clean" means for each chore at setup. Kids see the standard before they submit — the argument ends before it starts.</p>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon">⭐</div>
+        <h3>Exceeded Expectations</h3>
+        <p>Reward standout work with a star badge and optional bonus from your bonus budget. Recognition and incentives, together.</p>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon">✋</div>
+        <h3>Your Approval, Your Rules</h3>
+        <p>Choose manual approval (you review every photo) or auto-approve for kids you trust. You control the standard.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════ HOW IT WORKS ══════════════════ -->
+<section class="section" id="how-it-works">
+  <div class="container">
+    <div class="text-center" style="margin-bottom:48px">
+      <h2>From Chore Wars to Cooperation — In 4 Steps</h2>
+    </div>
+    <div class="hiw-grid" style="display:grid;grid-template-columns:1fr 340px;gap:48px;align-items:start;margin-bottom:48px">
+      <div class="steps-grid" style="margin-bottom:0">
+      <div class="step-card">
+        <div class="step-num">1</div>
+        <h3>Setup (You)</h3>
+        <p>Add kids with PINs, build your chore list with dollar amounts, and set what "clean" means for each task.</p>
+        <div class="step-outcome">Your standards are defined before conflict starts.</div>
+      </div>
+      <div class="step-card">
+        <div class="step-num">2</div>
+        <h3>Claim (Kids)</h3>
+        <p>Kids log in with their PIN, pick available chores, snap a photo, and submit. First to claim a shared chore wins it.</p>
+        <div class="step-outcome">They learn to document their work — like a real job.</div>
+      </div>
+      <div class="step-card">
+        <div class="step-num">3</div>
+        <h3>Approve (You)</h3>
+        <p>Review the photo. Approve, reject, or mark it "Exceeded Expectations." Add a bonus for standout work.</p>
+        <div class="step-outcome">Real feedback + recognition. Not just money.</div>
+      </div>
+      <div class="step-card">
+        <div class="step-num">4</div>
+        <h3>Payday (Both)</h3>
+        <p>Balances track automatically against your pay period cap. Payouts on your schedule.</p>
+        <div class="step-outcome">Kids experience a real paycheck. You see actual behavior change.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════ TESTIMONIALS ══════════════════ -->
+<section class="section alt">
+  <div class="container">
+    <div class="text-center" style="margin-bottom:48px">
+      <h2>Parents Rave. Kids Actually Do Chores.</h2>
+    </div>
+    <div class="testi-grid">
+      <div class="testi-card">
+        <div class="stars">★★★★★</div>
+        <p class="testi-text">"I stopped nagging. Just like that. My 9-year-old actually competes to finish chores because she sees the money. The photo thing stopped arguments about whether she did it right."</p>
+        <div class="testi-author">
+          <div class="author-av">MK</div>
+          <div><div class="author-name">Michelle K.</div><div class="author-sub">Mom of 2</div></div>
+        </div>
+      </div>
+      <div class="testi-card">
+        <div class="stars">★★★★★</div>
+        <p class="testi-text">"My kids aren't arguing about who does what anymore. The first-to-claim thing means no double-work. They love that it's fair."</p>
+        <div class="testi-author">
+          <div class="author-av">DM</div>
+          <div><div class="author-name">David M.</div><div class="author-sub">Dad of 3</div></div>
+        </div>
+      </div>
+      <div class="testi-card">
+        <div class="stars">★★★★★</div>
+        <p class="testi-text">"It's like they're learning a real job. My oldest understood pay cycles in 3 weeks — something I couldn't teach in 5 years. She now looks at her 'paycheck' on Friday like it's actually money she earned."</p>
+        <div class="testi-author">
+          <div class="author-av">ST</div>
+          <div><div class="author-name">Sarah T.</div><div class="author-sub">Mom of 4</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════ PRICING ══════════════════ -->
+<section class="section" id="pricing">
+  <div class="container">
+    <div class="text-center" style="margin-bottom:48px">
+      <h2>Start Free. Upgrade When You're Ready.</h2>
+      <p style="max-width:500px;margin:0 auto">All prices are introductory — early members lock in their rate forever.</p>
+    </div>
+    <div class="pricing-grid">
+
+      <div class="price-card">
+        <div class="price-tier">Free</div>
+        <div class="price-amount">$0</div>
+        <div class="price-period">forever free</div>
+        <ul class="price-features">
+          <li>Up to 2 kids</li>
+          <li>Up to 5 chores</li>
+          <li>Photo proof submissions</li>
+          <li>Basic approval flow</li>
+          <li>Pay period tracking</li>
+        </ul>
+        <a href="login.html?signup=true" class="btn btn-secondary" style="width:100%;justify-content:center">Start Free</a>
+      </div>
+
+      <div class="price-card featured">
+        <div class="price-badge">Most Popular</div>
+        <div class="price-tier">Family</div>
+        <div class="price-amount"><sup>$</sup>2.99</div>
+        <div class="price-period">per month</div>
+        <ul class="price-features">
+          <li>Everything in Free</li>
+          <li>Up to 4 kids</li>
+          <li>Unlimited chores</li>
+          <li>Exceeded Expectations + stars</li>
+          <li>Bonus budget</li>
+          <li>Chore standards descriptions</li>
+          <li>Full payout history</li>
+        </ul>
+        <a href="login.html?signup=true&plan=family" class="btn btn-primary" style="width:100%;justify-content:center">Try Family Plan</a>
+        <div class="price-note">Early-bird pricing. Lock in forever if you join now.</div>
+      </div>
+
+      <div class="price-card">
+        <div class="price-tier">Household+</div>
+        <div class="price-amount"><sup>$</sup>4.99</div>
+        <div class="price-period">per month</div>
+        <ul class="price-features">
+          <li>Everything in Family</li>
+          <li>Unlimited kids</li>
+          <li>Priority support</li>
+          <li>New features first</li>
+          <li>Custom reporting</li>
+        </ul>
+        <a href="login.html?signup=true&plan=household" class="btn btn-secondary" style="width:100%;justify-content:center">Try Household+</a>
+        <div class="price-note">Early-bird pricing. Lock in forever if you join now.</div>
+      </div>
+
+    </div>
+    <p class="text-center" style="margin-top:24px;font-size:13px;color:var(--text-light)">
+      All plans include a 7-day free trial on paid tiers. Cancel anytime. No credit card required to start free.
+    </p>
+  </div>
+</section>
+
+<!-- ══════════════════ FAQ ══════════════════ -->
+<section class="section alt" id="faq">
+  <div class="container">
+    <div class="text-center" style="margin-bottom:40px">
+      <h2>Frequently Asked Questions</h2>
+    </div>
+    <div class="faq-wrap">
+
+      <div class="faq-item">
+        <div class="faq-q"><span>Will my kids actually use this?</span><span class="faq-arrow">▼</span></div>
+        <div class="faq-a">Most kids start using it immediately because they see real money on a real timeline. It's not a punishment tool — it's a job. The app is designed to feel like a real employer, and kids respond to that.</div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-q"><span>What if they don't finish a chore?</span><span class="faq-arrow">▼</span></div>
+        <div class="faq-a">You reject the photo. The chore stays available. No payment. Kids learn accountability without argument. No nagging required — the app is the "bad guy," not you.</div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-q"><span>Can I adjust chore amounts anytime?</span><span class="faq-arrow">▼</span></div>
+        <div class="faq-a">Yes — anytime from your settings. Change amounts, add chores, adjust standards. Updates go live instantly for everyone in your household.</div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-q"><span>Is this just for summer, or year-round?</span><span class="faq-arrow">▼</span></div>
+        <div class="faq-a">You decide. Some families use it year-round with lower amounts during the school year. Others go seasonal. It's fully flexible to your household's rhythm.</div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-q"><span>Can multiple kids share a chore?</span><span class="faq-arrow">▼</span></div>
+        <div class="faq-a">Yes. First to claim locks it. Prevents double-work and teaches kids about fairness and speed. They compete for high-value chores, which drives engagement.</div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-q"><span>Do my kids need their own accounts?</span><span class="faq-arrow">▼</span></div>
+        <div class="faq-a">No. Kids log in with a 4-digit PIN on a shared household link — no email, no account, no app store download. Parents manage everything. You can reset PINs anytime from your dashboard.</div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-q"><span>Is my family's data private?</span><span class="faq-arrow">▼</span></div>
+        <div class="faq-a">Yes. Your household data is only accessible to authenticated members of your account. We never sell or share your data. Read our full <a href="pages/privacy.html">Privacy Policy</a> for details.</div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════ FINAL CTA ══════════════════ -->
+<section class="section" style="text-align:center">
+  <div class="container" style="max-width:580px">
+    <div style="font-size:52px;margin-bottom:20px">🧹</div>
+    <h2>Ready to run your house like a real operation?</h2>
+    <p style="font-size:17px;margin:16px auto 32px;max-width:440px">Set up your household in 5 minutes. No credit card required to start.</p>
+    <a href="login.html?signup=true" class="btn btn-primary" style="font-size:16px;padding:16px 36px">Create Your Household — Free</a>
+  </div>
+</section>
+
+<!-- ══════════════════ FOOTER ══════════════════ -->
+<footer>
+  <div class="footer-grid">
+    <div>
+      <h4>Product</h4>
+      <ul>
+        <li><a href="#features">Features</a></li>
+        <li><a href="#pricing">Pricing</a></li>
+        <li><a href="#how-it-works">How It Works</a></li>
+        <li><a href="login.html?signup=true">Get Started</a></li>
+      </ul>
+    </div>
+    <div>
+      <h4>Company</h4>
+      <ul>
+        <li><a href="pages/about.html">About</a></li>
+        <li><a href="pages/contact.html">Contact</a></li>
+        <li><a href="https://www.etsy.com/shop/ShegotSheets" target="_blank">She Got Sheets</a></li>
+      </ul>
+    </div>
+    <div>
+      <h4>Support</h4>
+      <ul>
+        <li><a href="#faq">FAQs</a></li>
+        <li><a href="pages/contact.html">Help</a></li>
+        <li><a href="login.html">Log In</a></li>
+      </ul>
+    </div>
+    <div>
+      <h4>Legal</h4>
+      <ul>
+        <li><a href="pages/privacy.html">Privacy Policy</a></li>
+        <li><a href="pages/terms.html">Terms of Service</a></li>
+      </ul>
+    </div>
+  </div>
+  <div class="footer-bottom">
+    <span class="footer-copy">© 2026 I Did My Chores · A She Got Sheets product by Joanna Hodge · Jacksonville, FL</span>
+    <ul class="social-row">
+      <li><a href="https://www.facebook.com" target="_blank">Facebook</a></li>
+      <li><a href="https://www.etsy.com/shop/ShegotSheets" target="_blank">Etsy</a></li>
+    </ul>
+  </div>
+</footer>
+
+<script>
+// ── Theme ──────────────────────────────────────
+const THEME_KEY = 'idmc-theme';
+const icons = { dark:'☀️', light:'🌙', auto:'⚙️' };
+
+function applyTheme(t) {
+  if (t === 'auto') document.documentElement.removeAttribute('data-theme');
+  else document.documentElement.setAttribute('data-theme', t);
+  localStorage.setItem(THEME_KEY, t);
+  const btn = document.getElementById('theme-btn');
+  if (btn) btn.textContent = icons[t] || '☀️';
+}
+
+function cycleTheme() {
+  const cur = localStorage.getItem(THEME_KEY) || 'auto';
+  const order = ['auto','dark','light'];
+  applyTheme(order[(order.indexOf(cur)+1) % order.length]);
+}
+
+// Apply saved theme on load
+applyTheme(localStorage.getItem(THEME_KEY) || 'auto');
+
+// ── Mobile nav ─────────────────────────────────
+function toggleMobile() {
+  const mn = document.getElementById('mobile-nav');
+  mn.style.display = mn.style.display === 'block' ? 'none' : 'block';
+}
+
+// ── FAQ accordion ──────────────────────────────
+document.querySelectorAll('.faq-item').forEach(item => {
+  item.addEventListener('click', () => item.classList.toggle('open'));
+});
+
+// ── Smooth scroll ──────────────────────────────
+document.querySelectorAll('a[href^="#"]').forEach(a => {
+  a.addEventListener('click', e => {
+    e.preventDefault();
+    const target = document.querySelector(a.getAttribute('href'));
+    if (target) target.scrollIntoView({ behavior:'smooth' });
+  });
+});
+</script>
+</body>
+</html>

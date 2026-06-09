@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#090909">
+  <title>Setup — I Did My Chores</title>
+  <link rel="stylesheet" href="../css/app.css">
+  <style>
+    /* Step progress */
+    .step-bar {
+      display: flex; gap: 6px; margin-bottom: 32px;
+    }
+    .step-pip {
+      flex: 1; height: 4px; border-radius: 99px;
+      background: var(--border);
+      transition: background 0.3s;
+    }
+    .step-pip.done  { background: var(--green); }
+    .step-pip.active { background: var(--gold); }
+
+    /* Kid card in list */
+    .kid-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 14px 16px;
+      display: flex; align-items: center; gap: 12px;
+      margin-bottom: 8px;
+    }
+    .kid-delete {
+      background: none; border: none;
+      color: var(--muted); font-size: 18px;
+      cursor: pointer; padding: 4px; line-height: 1;
+    }
+    .kid-delete:hover { color: var(--red); }
+
+    /* Chore card in list */
+    .chore-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 14px 16px;
+      display: flex; align-items: center; gap: 12px;
+      margin-bottom: 8px;
+    }
+
+    /* Add button */
+    .add-btn {
+      display: flex; align-items: center; justify-content: center; gap: 6px;
+      width: 100%; padding: 13px;
+      background: var(--card2); border: 1px dashed var(--border);
+      border-radius: var(--radius-lg);
+      color: var(--muted); font-size: 14px; font-weight: 600;
+      cursor: pointer; transition: all 0.15s;
+      font-family: inherit;
+    }
+    .add-btn:hover { border-color: var(--gold); color: var(--gold); }
+
+    /* Approval option cards */
+    .option-card {
+      background: var(--card);
+      border: 2px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 16px;
+      cursor: pointer;
+      transition: all 0.15s;
+      margin-bottom: 10px;
+    }
+    .option-card.selected {
+      border-color: var(--gold);
+      background: var(--gold-dim);
+    }
+    .option-title { font-size: 15px; font-weight: 700; margin-bottom: 4px; }
+    .option-desc  { font-size: 13px; color: var(--muted); line-height: 1.5; }
+
+    /* Color swatches */
+    .swatch {
+      width: 28px; height: 28px; border-radius: 50%;
+      border: 2px solid transparent;
+      cursor: pointer; flex-shrink: 0;
+    }
+    .swatch.sel { border-color: #fff; }
+  </style>
+</head>
+<body>
+<div id="app">
+  <div id="toast"></div>
+
+  <div id="screen-onboarding" class="screen active">
+    <div class="step-bar" id="step-bar"></div>
+    <div id="step-content"></div>
+  </div>
+
+  <!-- ── Add Kid Modal ── -->
+  <div class="modal-overlay" id="modal-kid">
+    <div class="modal-sheet">
+      <div class="modal-handle"></div>
+      <h2 style="margin-bottom:20px">Add a Kid</h2>
+      <div class="field">
+        <label>Name</label>
+        <input type="text" id="kid-name-input" placeholder="e.g. Janai" maxlength="20">
+      </div>
+      <div class="field">
+        <label>4-Digit PIN</label>
+        <div class="pin-row" id="add-pin-row">
+          <input class="pin-digit" maxlength="1" type="tel" inputmode="numeric">
+          <input class="pin-digit" maxlength="1" type="tel" inputmode="numeric">
+          <input class="pin-digit" maxlength="1" type="tel" inputmode="numeric">
+          <input class="pin-digit" maxlength="1" type="tel" inputmode="numeric">
+        </div>
+      </div>
+      <div class="field">
+        <label>Avatar Color</label>
+        <div class="color-picker" id="kid-color-picker"></div>
+      </div>
+      <button class="btn btn-primary mt-8" onclick="saveKid()">Add Kid</button>
+      <button class="btn btn-ghost mt-8" onclick="closeModal('modal-kid')">Cancel</button>
+    </div>
+  </div>
+
+  <!-- ── Add Chore Modal ── -->
+  <div class="modal-overlay" id="modal-chore">
+    <div class="modal-sheet">
+      <div class="modal-handle"></div>
+      <h2 style="margin-bottom:20px">Add a Chore</h2>
+      <div class="field">
+        <label>Chore Name</label>
+        <input type="text" id="chore-name-input" placeholder="e.g. Vacuum Living Room" maxlength="40">
+      </div>
+      <div class="field">
+        <label>Dollar Amount ($)</label>
+        <input type="number" id="chore-amount-input" placeholder="2.50" step="0.25" min="0.25" max="50">
+      </div>
+      <div class="field">
+        <label>What Does "Clean" Mean? <span style="color:var(--muted);font-weight:400;text-transform:none;font-size:10px">(optional — kids see this)</span></label>
+        <textarea id="chore-desc-input" placeholder="e.g. Wipe inside and outside, remove all food, no fingerprints on handles" maxlength="200" style="height:80px;resize:none"></textarea>
+      </div>
+      <div class="field">
+        <label>Frequency</label>
+        <select id="chore-freq-input">
+          <option value="daily">Daily</option>
+          <option value="weekly">Weekly Bonus</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Assigned To</label>
+        <select id="chore-assign-input">
+          <option value="any">Any kid (first to claim)</option>
+        </select>
+      </div>
+      <button class="btn btn-primary mt-8" onclick="saveChore()">Add Chore</button>
+      <button class="btn btn-ghost mt-8" onclick="closeModal('modal-chore')">Cancel</button>
+    </div>
+  </div>
+
+</div>
+
+<script type="module">
+import { auth, db } from '../js/firebase.js';
+import {
+  onAuthStateChanged, signOut
+} from 'https://www.gstatic.com/firebasejs/10.11.0/firebase-auth.js';
+import {
+  doc, setDoc, updateDoc, getDoc
+} from 'https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore.js';
+
+// ── State ────────────────────────────────────────────
+let currentUser  = null;
+let currentStep  = 0;
+let household    = {
+  name:              '',
+  payPeriodStart:    '',
+  payPeriodDays:     14,
+  capPerKid:         120,
+  approvalMode:      'manual',
+  onboardingComplete: false,
+};
+let kids   = [];
+let chores = [];
+
+const TOTAL_STEPS = 4;
+const AVATAR_COLORS = [
+  '#f472b6','#60a5fa','#34d399','#fb923c',
+  '#a78bfa','#f87171','#facc15','#4ade80'
+];
+
+// ── Auth gate ─────────────────────────────────────────
+onAuthStateChanged(auth, (user) => {
+  if (!user) { window.location.href = '../index.html'; return; }
+  currentUser = user;
+  renderStep();
+});
+
+// ── Step rendering ────────────────────────────────────
+function renderStepBar() {
+  const bar = document.getElementById('step-bar');
+  bar.innerHTML = Array.from({length: TOTAL_STEPS}, (_,i) => {
+    const cls = i < currentStep ? 'done' : i === currentStep ? 'active' : '';
+    return `<div class="step-pip ${cls}"></div>`;
+  }).join('');
+}
+
+function renderStep() {
+  renderStepBar();
+  const content = document.getElementById('step-content');
+  const renders = [renderStep0, renderStep1, renderStep2, renderStep3];
+  content.innerHTML = '';
+  renders[currentStep](content);
+}
+
+// ── Step 0: Household basics ──────────────────────────
+function renderStep0(el) {
+  el.innerHTML = `
+    <div class="page-label">Step 1 of ${TOTAL_STEPS}</div>
+    <h1 style="margin-bottom:8px">Set up your<br>household</h1>
+    <p style="margin-bottom:28px">This takes about 2 minutes.</p>
+
+    <div class="field">
+      <label>Household Name</label>
+      <input type="text" id="s0-name" placeholder='e.g. "The Everhart House"'
+             value="${household.name}" maxlength="40">
+    </div>
+    <div class="field">
+      <label>Pay Period Start Date</label>
+      <input type="date" id="s0-date" value="${household.payPeriodStart}">
+    </div>
+    <div class="field">
+      <label>Pay Period Length</label>
+      <select id="s0-days">
+        <option value="14" ${household.payPeriodDays==14?'selected':''}>Every 2 weeks (Biweekly)</option>
+        <option value="7"  ${household.payPeriodDays==7?'selected':''}>Weekly</option>
+        <option value="30" ${household.payPeriodDays==30?'selected':''}>Monthly</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>Max Earnings Per Kid Per Period ($)</label>
+      <input type="number" id="s0-cap" placeholder="120" value="${household.capPerKid}" min="10" max="999">
+    </div>
+    <div class="field">
+      <label>Weekly Bonus Budget ($) <span style="color:var(--muted);font-weight:400;text-transform:none;font-size:10px">optional — for Exceeded Expectations rewards</span></label>
+      <input type="number" id="s0-bonus" placeholder="e.g. 10" value="${household.bonusBudget||''}" min="0" max="999">
+    </div>
+    <button class="btn btn-primary mt-16" onclick="saveStep0()">Continue →</button>
+  `;
+}
+
+window.saveStep0 = () => {
+  const name  = document.getElementById('s0-name').value.trim();
+  const date  = document.getElementById('s0-date').value;
+  const days  = parseInt(document.getElementById('s0-days').value);
+  const cap   = parseFloat(document.getElementById('s0-cap').value);
+  if (!name)  { showToast('Please enter a household name'); return; }
+  if (!date)  { showToast('Please select a pay period start date'); return; }
+  if (!cap || cap < 1) { showToast('Please enter a valid cap amount'); return; }
+  household.name = name;
+  household.payPeriodStart = date;
+  household.payPeriodDays  = days;
+  household.capPerKid      = cap;
+  household.bonusBudget    = parseFloat(document.getElementById('s0-bonus').value) || 0;
+  currentStep = 1;
+  renderStep();
+};
+
+// ── Step 1: Add kids ──────────────────────────────────
+function renderStep1(el) {
+  el.innerHTML = `
+    <div class="page-label">Step 2 of ${TOTAL_STEPS}</div>
+    <h1 style="margin-bottom:8px">Add your kids</h1>
+    <p style="margin-bottom:24px">Each kid gets a PIN to log in on their phone. You can add more later.</p>
+    <div id="kids-list"></div>
+    <button class="add-btn mt-8" onclick="openAddKid()">＋ Add a Kid</button>
+    <div style="margin-top:auto;padding-top:32px">
+      <button class="btn btn-primary" onclick="saveStep1()" ${kids.length===0?'disabled':''} id="step1-next">
+        Continue →
+      </button>
+      <button class="btn btn-ghost mt-8" onclick="goBack()">← Back</button>
+    </div>
+  `;
+  renderKidsList();
+}
+
+function renderKidsList() {
+  const list = document.getElementById('kids-list');
+  if (!list) return;
+  if (kids.length === 0) {
+    list.innerHTML = `<div class="empty-state" style="padding:24px">
+      <div class="empty-icon">👦</div>
+      <p>No kids added yet</p>
+    </div>`;
+  } else {
+    list.innerHTML = kids.map((k, i) => `
+      <div class="kid-card">
+        <div class="list-avatar" style="background:${k.color}22;color:${k.color}">
+          ${k.name.charAt(0).toUpperCase()}
+        </div>
+        <div class="list-info">
+          <div class="list-name">${k.name}</div>
+          <div class="list-sub">PIN: ${k.pin} · ${k.color}</div>
+        </div>
+        <button class="kid-delete" onclick="removeKid(${i})">✕</button>
+      </div>`).join('');
+  }
+  const btn = document.getElementById('step1-next');
+  if (btn) btn.disabled = kids.length === 0;
+}
+
+window.openAddKid = () => {
+  document.getElementById('kid-name-input').value = '';
+  document.querySelectorAll('#add-pin-row .pin-digit').forEach(d => d.value = '');
+  renderColorPicker();
+  document.getElementById('modal-kid').classList.add('active');
+  setTimeout(() => document.getElementById('kid-name-input').focus(), 100);
+};
+
+function renderColorPicker() {
+  const used = kids.map(k => k.color);
+  const picker = document.getElementById('kid-color-picker');
+  picker.innerHTML = AVATAR_COLORS.map(c => `
+    <div class="swatch ${!used.includes(c) && picker.querySelector('.sel') === null ? 'sel' : ''}"
+         style="background:${c}" data-color="${c}"
+         onclick="selectColor(this)"></div>`).join('');
+  // auto-select first available
+  const first = picker.querySelector(`.swatch:not(.sel)`);
+  if (first) first.classList.add('sel');
+  // if none selected yet, select first
+  if (!picker.querySelector('.sel')) picker.querySelector('.swatch').classList.add('sel');
+}
+
+window.selectColor = (el) => {
+  document.querySelectorAll('#kid-color-picker .swatch').forEach(s => s.classList.remove('sel'));
+  el.classList.add('sel');
+};
+
+window.saveKid = () => {
+  const name = document.getElementById('kid-name-input').value.trim();
+  const pins  = [...document.querySelectorAll('#add-pin-row .pin-digit')].map(d => d.value);
+  const pin   = pins.join('');
+  const colorEl = document.querySelector('#kid-color-picker .sel');
+  const color = colorEl ? colorEl.dataset.color : AVATAR_COLORS[0];
+
+  if (!name)        { showToast('Please enter a name'); return; }
+  if (pin.length !== 4 || !/^\d{4}$/.test(pin)) { showToast('Please enter a 4-digit PIN'); return; }
+  if (kids.find(k => k.name.toLowerCase() === name.toLowerCase())) {
+    showToast('A kid with that name already exists'); return;
+  }
+
+  kids.push({ name, pin, color, id: Date.now().toString() });
+  closeModal('modal-kid');
+  renderKidsList();
+  updateChoreAssignOptions();
+};
+
+window.removeKid = (i) => {
+  kids.splice(i, 1);
+  renderKidsList();
+  updateChoreAssignOptions();
+};
+
+window.saveStep1 = () => {
+  if (kids.length === 0) { showToast('Add at least one kid to continue'); return; }
+  currentStep = 2;
+  renderStep();
+};
+
+// ── Step 2: Add chores ────────────────────────────────
+function renderStep2(el) {
+  el.innerHTML = `
+    <div class="page-label">Step 3 of ${TOTAL_STEPS}</div>
+    <h1 style="margin-bottom:8px">Build your chore list</h1>
+    <p style="margin-bottom:24px">Set each chore's name, value, and whether it's daily or a weekly bonus. You can edit these anytime.</p>
+    <div id="chores-list"></div>
+    <button class="add-btn mt-8" onclick="openAddChore()">＋ Add a Chore</button>
+    <div style="margin-top:auto;padding-top:32px">
+      <button class="btn btn-primary" onclick="saveStep2()">Continue →</button>
+      <button class="btn btn-ghost mt-8" onclick="goBack()">← Back</button>
+    </div>
+  `;
+  renderChoresList();
+}
+
+function renderChoresList() {
+  const list = document.getElementById('chores-list');
+  if (!list) return;
+  if (chores.length === 0) {
+    list.innerHTML = `<div class="empty-state" style="padding:24px">
+      <div class="empty-icon">📋</div>
+      <p>No chores added yet</p>
+    </div>`;
+  } else {
+    list.innerHTML = chores.map((c, i) => `
+      <div class="chore-card">
+        <div style="width:8px;height:8px;border-radius:50%;background:${c.freq==='weekly'?'var(--gold)':'var(--green)'};flex-shrink:0"></div>
+        <div class="list-info">
+          <div class="list-name">${c.name}</div>
+          <div class="list-sub">$${parseFloat(c.amount).toFixed(2)} · ${c.freq === 'weekly' ? 'Weekly bonus' : 'Daily'} · ${c.assignedTo === 'any' ? 'Shared' : c.assignedTo}</div>
+        </div>
+        <button class="kid-delete" onclick="removeChore(${i})">✕</button>
+      </div>`).join('');
+  }
+}
+
+function updateChoreAssignOptions() {
+  const sel = document.getElementById('chore-assign-input');
+  if (!sel) return;
+  const current = sel.value;
+  sel.innerHTML = `<option value="any">Any kid (first to claim)</option>` +
+    kids.map(k => `<option value="${k.name}" ${current===k.name?'selected':''}>${k.name} only</option>`).join('');
+}
+
+window.openAddChore = () => {
+  document.getElementById('chore-name-input').value   = '';
+  document.getElementById('chore-amount-input').value = '';
+  document.getElementById('chore-desc-input').value   = '';
+  document.getElementById('chore-freq-input').value   = 'daily';
+  updateChoreAssignOptions();
+  document.getElementById('modal-chore').classList.add('active');
+  setTimeout(() => document.getElementById('chore-name-input').focus(), 100);
+};
+
+window.saveChore = () => {
+  const name   = document.getElementById('chore-name-input').value.trim();
+  const amount = parseFloat(document.getElementById('chore-amount-input').value);
+  const freq   = document.getElementById('chore-freq-input').value;
+  const assign = document.getElementById('chore-assign-input').value;
+  const desc   = document.getElementById('chore-desc-input').value.trim();
+
+  if (!name)            { showToast('Please enter a chore name'); return; }
+  if (!amount || amount <= 0) { showToast('Please enter a valid dollar amount'); return; }
+
+  chores.push({ name, amount, freq, assignedTo: assign, desc, id: Date.now().toString() });
+  closeModal('modal-chore');
+  renderChoresList();
+};
+
+window.removeChore = (i) => {
+  chores.splice(i, 1);
+  renderChoresList();
+};
+
+window.saveStep2 = () => {
+  currentStep = 3;
+  renderStep();
+};
+
+// ── Step 3: Approval mode ─────────────────────────────
+function renderStep3(el) {
+  el.innerHTML = `
+    <div class="page-label">Step 4 of ${TOTAL_STEPS}</div>
+    <h1 style="margin-bottom:8px">Approval settings</h1>
+    <p style="margin-bottom:24px">How should chore submissions be handled?</p>
+
+    <div class="option-card ${household.approvalMode==='manual'?'selected':''}"
+         onclick="selectApproval('manual')" id="opt-manual">
+      <div class="option-title">✋ Manual Approval</div>
+      <div class="option-desc">You review each submission and approve or reject it before it counts toward their balance. Best if you want to verify the quality of work.</div>
+    </div>
+
+    <div class="option-card ${household.approvalMode==='auto'?'selected':''}"
+         onclick="selectApproval('auto')" id="opt-auto">
+      <div class="option-title">⚡ Auto Approve</div>
+      <div class="option-desc">Submissions are approved immediately on submit. Photo proof is still required and stored. Best for trusted kids.</div>
+    </div>
+
+    <div style="margin-top:32px">
+      <button class="btn btn-primary" id="finish-btn" onclick="finishOnboarding()">
+        Launch My Household 🎉
+      </button>
+      <button class="btn btn-ghost mt-8" onclick="goBack()">← Back</button>
+    </div>
+  `;
+}
+
+window.selectApproval = (mode) => {
+  household.approvalMode = mode;
+  document.getElementById('opt-manual').classList.toggle('selected', mode === 'manual');
+  document.getElementById('opt-auto').classList.toggle('selected', mode === 'auto');
+};
+
+window.finishOnboarding = async () => {
+  const btn = document.getElementById('finish-btn');
+  btn.disabled = true;
+  btn.textContent = 'Saving…';
+  try {
+    const hData = {
+      ...household,
+      onboardingComplete: true,
+      ownerId: currentUser.uid,
+      ownerEmail: currentUser.email,
+      createdAt: new Date().toISOString(),
+      kids: kids,
+      chores: chores,
+    };
+    await setDoc(doc(db, 'households', currentUser.uid), hData);
+    window.location.href = 'parent-dashboard.html';
+  } catch(e) {
+    console.error(e);
+    showToast('❌ Error saving — check your connection');
+    btn.disabled = false;
+    btn.textContent = 'Launch My Household 🎉';
+  }
+};
+
+// ── PIN input auto-advance ────────────────────────────
+document.addEventListener('input', (e) => {
+  if (!e.target.classList.contains('pin-digit')) return;
+  const inputs = [...e.target.closest('.pin-row').querySelectorAll('.pin-digit')];
+  const idx    = inputs.indexOf(e.target);
+  if (e.target.value && idx < inputs.length - 1) inputs[idx + 1].focus();
+});
+
+document.addEventListener('keydown', (e) => {
+  if (!e.target.classList.contains('pin-digit')) return;
+  if (e.key === 'Backspace' && !e.target.value) {
+    const inputs = [...e.target.closest('.pin-row').querySelectorAll('.pin-digit')];
+    const idx    = inputs.indexOf(e.target);
+    if (idx > 0) { inputs[idx - 1].focus(); inputs[idx - 1].value = ''; }
+  }
+});
+
+// ── Shared helpers ────────────────────────────────────
+window.goBack = () => {
+  if (currentStep > 0) { currentStep--; renderStep(); }
+};
+
+window.closeModal = (id) => {
+  document.getElementById(id).classList.remove('active');
+};
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+</script>
+</body>
+</html>

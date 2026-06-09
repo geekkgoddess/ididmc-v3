@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Contact — I Did My Chores</title>
+  <link rel="stylesheet" href="../css/site.css">
+</head>
+<body>
+<div class="page-top">
+  <div class="page-content">
+    <div style="max-width:640px;margin:0 auto;padding:48px 0 80px">
+
+      <div class="section-label" style="margin-bottom:12px">Get In Touch</div>
+      <h1 style="font-size:clamp(28px,5vw,42px);font-weight:800;letter-spacing:-0.8px;margin-bottom:12px">
+        We'd love to hear from you.
+      </h1>
+      <p style="font-size:16px;color:var(--muted);margin-bottom:40px;line-height:1.7">
+        Questions, feedback, feature requests — or just want to share how your household is running now? Fill out the form below and we'll get back to you at <strong style="color:var(--text)">jmhodgefl@gmail.com</strong>.
+      </p>
+
+      <!-- Success message -->
+      <div id="success-msg" style="display:none;background:var(--green-dim);border:1px solid rgba(52,211,153,0.3);
+           border-radius:12px;padding:20px 24px;margin-bottom:24px;text-align:center">
+        <div style="font-size:32px;margin-bottom:8px">✅</div>
+        <div style="font-weight:700;font-size:16px">Message sent!</div>
+        <p style="font-size:14px;color:var(--muted);margin-top:4px">We'll get back to you soon.</p>
+      </div>
+
+      <form id="contact-form" name="contact" netlify netlify-honeypot="bot-field"
+            onsubmit="handleSubmit(event)">
+        <input type="hidden" name="form-name" value="contact">
+        <input type="text" name="bot-field" style="display:none">
+
+        <div class="form-field">
+          <label>Your Name</label>
+          <input type="text" name="name" placeholder="First and last name" required>
+        </div>
+        <div class="form-field">
+          <label>Email Address</label>
+          <input type="email" name="email" placeholder="you@email.com" required>
+        </div>
+        <div class="form-field">
+          <label>Subject</label>
+          <select name="subject" required>
+            <option value="" disabled selected>Select a topic</option>
+            <option value="General Question">General Question</option>
+            <option value="Feature Request">Feature Request</option>
+            <option value="Bug Report">Bug Report</option>
+            <option value="Billing">Billing</option>
+            <option value="Partnership">Partnership / Collaboration</option>
+            <option value="Other">Other</option>
+          </select>
+        </div>
+        <div class="form-field">
+          <label>Message</label>
+          <textarea name="message" placeholder="Tell us what's on your mind…" required></textarea>
+        </div>
+
+        <button type="submit" class="btn btn-primary" style="width:100%;justify-content:center" id="submit-btn">
+          Send Message
+        </button>
+      </form>
+
+      <hr style="border:none;border-top:1px solid var(--border);margin:48px 0">
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+        <a href="https://www.etsy.com/shop/ShegotSheets" target="_blank" class="card" style="text-decoration:none;transition:border-color 0.15s" onmouseover="this.style.borderColor='var(--gold)'" onmouseout="this.style.borderColor='var(--border)'">
+          <div style="font-size:24px;margin-bottom:8px">🛍️</div>
+          <div style="font-weight:700;font-size:14px">She Got Sheets</div>
+          <div style="font-size:12px;color:var(--muted);margin-top:4px">Visit us on Etsy</div>
+        </a>
+        <a href="https://www.facebook.com" target="_blank" class="card" style="text-decoration:none;transition:border-color 0.15s" onmouseover="this.style.borderColor='var(--gold)'" onmouseout="this.style.borderColor='var(--border)'">
+          <div style="font-size:24px;margin-bottom:8px">📘</div>
+          <div style="font-weight:700;font-size:14px">Facebook</div>
+          <div style="font-size:12px;color:var(--muted);margin-top:4px">Follow us</div>
+        </a>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script src="../js/site.js"></script>
+<script>
+function handleSubmit(e) {
+  e.preventDefault();
+  const btn  = document.getElementById('submit-btn');
+  btn.disabled = true; btn.textContent = 'Sending…';
+  const form = document.getElementById('contact-form');
+  const data = new FormData(form);
+  fetch('/', { method: 'POST', body: data })
+    .then(() => {
+      form.style.display = 'none';
+      document.getElementById('success-msg').style.display = 'block';
+    })
+    .catch(() => {
+      btn.disabled = false; btn.textContent = 'Send Message';
+      alert('Something went wrong. Please email jmhodgefl@gmail.com directly.');
+    });
+}
+</script>
+</body>
+</html>

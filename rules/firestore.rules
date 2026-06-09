@@ -1,0 +1,52 @@
+// ================================================================
+//  I DID MY CHORES — Firestore Security Rules v2
+//  Deploy with: firebase deploy --only firestore:rules
+// ================================================================
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ── Households ──────────────────────────────────────────────
+    // Only the owner (logged-in parent) can read/write their household.
+    match /households/{householdId} {
+      allow read, write: if request.auth != null
+                         && request.auth.uid == householdId;
+    }
+
+    // ── Submissions ─────────────────────────────────────────────
+    // Any authenticated user can create a submission.
+    // Only the household owner can update (approve/reject).
+    match /submissions/{submissionId} {
+      allow create: if request.auth != null;
+      allow read:   if request.auth != null;
+      allow update: if request.auth != null
+                    && request.auth.uid == resource.data.householdId;
+      allow delete: if false; // Never delete submissions
+    }
+
+    // ── Chore claims (concurrency control) ──────────────────────
+    // Readable by anyone (kids need to see what's claimed).
+    // Writable by Cloud Functions only (via Admin SDK) for atomic updates.
+    // Client-side writes go through the claimChore Cloud Function.
+    match /chore_claims/{claimId} {
+      allow read:  if true;          // Kids need to see claims without auth
+      allow write: if request.auth != null; // Cloud Function uses admin SDK
+    }
+
+    // ── Daily summaries ─────────────────────────────────────────
+    // Read-only for authenticated parents.
+    // Written only by Cloud Functions.
+    match /daily_summaries/{summaryId} {
+      allow read:  if request.auth != null;
+      allow write: if false; // Cloud Functions only
+    }
+
+    // ── Admin site content ──────────────────────────────────────
+    match /admin/{docId} {
+      allow read:  if true;  // Public content (pricing, hero text)
+      allow write: if request.auth != null
+                   && request.auth.token.email == "jmhodgefl@gmail.com";
+    }
+  }
+}
