@@ -6,9 +6,10 @@
  * ================================================================
  */
 
-const {onSchedule}        = require("firebase-functions/v2/scheduler");
-const {onObjectFinalized} = require("firebase-functions/v2/storage");
-const functions           = require("firebase-functions");
+const {onSchedule}          = require("firebase-functions/v2/scheduler");
+const {onObjectFinalized}   = require("firebase-functions/v2/storage");
+const {onDocumentCreated}   = require("firebase-functions/v2/firestore");
+const functions             = require("firebase-functions");
 const admin               = require("firebase-admin");
 const nodemailer          = require("nodemailer");
 const crypto              = require("crypto");       // built-in Node.js — no install needed
@@ -969,14 +970,28 @@ async function sendWelcomeEmail({ email, householdName }) {
   console.log(`Welcome email sent to ${email}`);
 }
 
-exports.sendWelcomeEmail = sendWelcomeEmail;   // export so other functions can call it
+// ── Cloud Function trigger: fires when a new household is created ─
+// Requires onboarding to write onboardingComplete: true at save time.
+exports.onHouseholdCreated = onDocumentCreated('households/{uid}', async (event) => {
+  const uid  = event.params.uid;
+  const data = event.data.data();
+  if (!data.onboardingComplete) return null;   // skip partial / in-progress documents
+  try {
+    const userRecord = await admin.auth().getUser(uid);
+    if (userRecord.email) {
+      await sendWelcomeEmail({ email: userRecord.email, householdName: data.name });
+    }
+  } catch (e) {
+    console.error('Welcome email trigger error:', e);
+  }
+  return null;
+});
 
 
 // ================================================================
 //  EMAIL #8 — SUBSCRIBER / NEWSLETTER EMAIL
-//  Call: sendSubscriberEmail({ email, firstName })
-//  Trigger from a Firestore onCreate on a "subscribers" collection,
-//  or from your marketing sign-up form handler.
+//  Firestore trigger: write a document to subscribers/{email}
+//  with optional field { firstName: "..." } to fire this email.
 // ================================================================
 async function sendSubscriberEmail({ email, firstName }) {
   const year = new Date().getFullYear();
@@ -1109,4 +1124,15 @@ async function sendSubscriberEmail({ email, firstName }) {
   console.log(`Subscriber email sent to ${email}`);
 }
 
-exports.sendSubscriberEmail = sendSubscriberEmail;
+// ── Cloud Function trigger: fires when a new subscriber document is created ─
+// Write { firstName: "..." } to subscribers/{email} to trigger this.
+exports.onSubscriberCreated = onDocumentCreated('subscribers/{email}', async (event) => {
+  const email     = event.params.email;
+  const firstName = (event.data.data() || {}).firstName || '';
+  try {
+    await sendSubscriberEmail({ email, firstName });
+  } catch (e) {
+    console.error('Subscriber email trigger error:', e);
+  }
+  return null;
+});

@@ -206,6 +206,32 @@
       transition: width 0.6s ease;
     }
     .history-bar-pct { font-size: 12px; color: var(--muted); width: 36px; text-align: right; }
+
+    /* ── Settings accordion ── */
+    .sacc {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 12px; margin-bottom: 10px; overflow: hidden;
+    }
+    .sacc-hdr {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 14px 16px; cursor: pointer; user-select: none;
+      transition: background 0.12s;
+    }
+    .sacc-hdr:hover { background: var(--card2); }
+    .sacc-title {
+      font-size: 12px; font-weight: 700; color: var(--muted);
+      letter-spacing: 0.06em; text-transform: uppercase;
+    }
+    .sacc-chevron {
+      color: var(--muted); font-size: 18px;
+      transition: transform 0.2s; display: inline-block; line-height: 1;
+    }
+    .sacc-chevron.open { transform: rotate(90deg); }
+    .sacc-body {
+      border-top: 1px solid var(--border);
+      padding: 0 16px; display: none;
+    }
+    .sacc-body-bare { border-top: 1px solid var(--border); display: none; }
   </style>
 </head>
 <body>
@@ -297,82 +323,153 @@
       <h1 style="font-size:22px">Settings</h1>
     </div>
 
-    <!-- Compensation Model (rendered dynamically in renderSettings) -->
-    <div class="page-label" style="margin-bottom:10px">Compensation Model <span class="info-icon" onclick="openInfoModal('comp-model')" data-tooltip="How kids earn money">ⓘ</span></div>
-    <div id="settings-comp-model" style="margin-bottom:16px"></div>
+    <!-- ── Accordion sections (all collapsed by default) ── -->
+
+    <!-- Compensation Model -->
+    <div class="sacc">
+      <div class="sacc-hdr" onclick="toggleSAcc('comp-model')">
+        <div style="display:flex;align-items:center;gap:8px">
+          <span class="sacc-title">Compensation Model</span>
+          <span class="info-icon" onclick="openInfoModal('comp-model');event.stopPropagation()" data-tooltip="How kids earn money">ⓘ</span>
+        </div>
+        <span class="sacc-chevron" id="sacc-chev-comp-model">›</span>
+      </div>
+      <div class="sacc-body-bare" id="settings-comp-model"></div>
+    </div>
 
     <!-- Pay Cycle -->
-    <div class="page-label" style="margin-bottom:10px">Pay Cycle <span class="info-icon" onclick="openInfoModal('pay-cycle')" data-tooltip="Set pay frequency and dates">ⓘ</span></div>
-    <div class="card" style="padding:4px 16px;margin-bottom:16px" id="settings-pay-cycle"></div>
+    <div class="sacc">
+      <div class="sacc-hdr" onclick="toggleSAcc('pay-cycle')">
+        <div style="display:flex;align-items:center;gap:8px">
+          <span class="sacc-title">Pay Cycle</span>
+          <span class="info-icon" onclick="openInfoModal('pay-cycle');event.stopPropagation()" data-tooltip="Set pay frequency and dates">ⓘ</span>
+        </div>
+        <span class="sacc-chevron" id="sacc-chev-pay-cycle">›</span>
+      </div>
+      <div class="sacc-body" id="settings-pay-cycle"></div>
+    </div>
 
-    <!-- Approval mode -->
-    <div class="page-label" style="margin-bottom:10px">Approval Mode <span class="info-icon" onclick="openInfoModal('approval-mode')" data-tooltip="Choose approval workflow">ⓘ</span></div>
-    <div class="card" style="padding:4px 16px;margin-bottom:16px" id="settings-approval"></div>
+    <!-- Approval Mode -->
+    <div class="sacc">
+      <div class="sacc-hdr" onclick="toggleSAcc('approval')">
+        <div style="display:flex;align-items:center;gap:8px">
+          <span class="sacc-title">Approval Mode</span>
+          <span class="info-icon" onclick="openInfoModal('approval-mode');event.stopPropagation()" data-tooltip="Choose approval workflow">ⓘ</span>
+        </div>
+        <span class="sacc-chevron" id="sacc-chev-approval">›</span>
+      </div>
+      <div class="sacc-body" id="settings-approval"></div>
+    </div>
 
     <!-- Kids -->
-    <div class="page-label" style="margin-bottom:10px">Kids <span class="info-icon" onclick="openInfoModal('kids')" data-tooltip="Manage children & PINs">ⓘ</span></div>
-    <div class="card" style="padding:4px 16px;margin-bottom:16px" id="settings-kids"></div>
+    <div class="sacc">
+      <div class="sacc-hdr" onclick="toggleSAcc('kids')">
+        <div style="display:flex;align-items:center;gap:8px">
+          <span class="sacc-title">Kids</span>
+          <span class="info-icon" onclick="openInfoModal('kids');event.stopPropagation()" data-tooltip="Manage children & PINs">ⓘ</span>
+        </div>
+        <span class="sacc-chevron" id="sacc-chev-kids">›</span>
+      </div>
+      <div class="sacc-body" id="settings-kids"></div>
+    </div>
 
     <!-- PTO / Days Off -->
-    <div class="page-label" style="margin-bottom:10px">PTO / Days Off <span class="info-icon" onclick="openInfoModal('pto')" data-tooltip="Grant paid days off per kid">ⓘ</span></div>
-    <div class="card" style="padding:4px 16px;margin-bottom:16px" id="settings-pto"></div>
+    <div class="sacc">
+      <div class="sacc-hdr" onclick="toggleSAcc('pto')">
+        <div style="display:flex;align-items:center;gap:8px">
+          <span class="sacc-title">PTO / Days Off</span>
+          <span class="info-icon" onclick="openInfoModal('pto');event.stopPropagation()" data-tooltip="Grant paid days off per kid">ⓘ</span>
+        </div>
+        <span class="sacc-chevron" id="sacc-chev-pto">›</span>
+      </div>
+      <div class="sacc-body" id="settings-pto"></div>
+    </div>
 
     <!-- Email Notifications -->
-    <div class="page-label" style="margin-bottom:10px">Email Notifications <span class="info-icon" onclick="openInfoModal('email-settings')" data-tooltip="Configure email schedule">ⓘ</span></div>
-    <div class="card" style="padding:4px 16px;margin-bottom:16px" id="settings-email"></div>
-
-    <!-- Kids Dashboard Link -->
-    <div class="page-label" style="margin-bottom:10px">Share with Kids <span class="info-icon" onclick="openInfoModal('share-kids')" data-tooltip="Generate kid dashboard link">ⓘ</span></div>
-    <div class="card" style="padding:16px;margin-bottom:16px">
-      <div style="margin-bottom:12px">
-        <label style="font-size:12px;color:var(--muted);display:block;margin-bottom:6px">Household ID</label>
-        <div style="background:var(--card2);border:1px solid var(--border);border-radius:8px;
-                    padding:11px 14px;color:var(--text);font-family:monospace;font-size:13px;
-                    word-break:break-all;margin-bottom:12px" id="household-id-display">
-          Loading...
+    <div class="sacc">
+      <div class="sacc-hdr" onclick="toggleSAcc('email')">
+        <div style="display:flex;align-items:center;gap:8px">
+          <span class="sacc-title">Email Notifications</span>
+          <span class="info-icon" onclick="openInfoModal('email-settings');event.stopPropagation()" data-tooltip="Configure email schedule">ⓘ</span>
         </div>
+        <span class="sacc-chevron" id="sacc-chev-email">›</span>
       </div>
-      <button class="btn btn-primary" style="width:100%;justify-content:center;margin-bottom:8px"
-              onclick="copyKidLink()">
-        📋 Copy Kid Dashboard Link
-      </button>
-      <p style="font-size:12px;color:var(--muted);margin:0;text-align:center">
-        Share this link with your kids to let them log in and complete chores
-      </p>
+      <div class="sacc-body" id="settings-email"></div>
     </div>
 
-    <!-- Sign out & Delete Account -->
-    <div class="page-label" style="margin-bottom:10px">Account</div>
-    <div class="card" style="padding:4px 16px;margin-bottom:16px">
-      <div style="display:flex;align-items:center;justify-content:space-between;
-                  padding:15px 0;cursor:pointer" onclick="signOutUser()">
-        <span style="font-size:14px;font-weight:600;color:var(--text)">Sign Out</span>
-        <span style="color:var(--muted)">›</span>
+    <!-- Share with Kids -->
+    <div class="sacc">
+      <div class="sacc-hdr" onclick="toggleSAcc('share-kids')">
+        <div style="display:flex;align-items:center;gap:8px">
+          <span class="sacc-title">Share with Kids</span>
+          <span class="info-icon" onclick="openInfoModal('share-kids');event.stopPropagation()" data-tooltip="Generate kid dashboard link">ⓘ</span>
+        </div>
+        <span class="sacc-chevron" id="sacc-chev-share-kids">›</span>
       </div>
-      <div style="border-top:1px solid var(--border)"></div>
-      <div style="display:flex;align-items:center;justify-content:space-between;
-                  padding:15px 0;cursor:pointer" onclick="openDeleteAccountModal()">
-        <span style="font-size:14px;font-weight:600;color:var(--red)">Delete Account</span>
-        <span style="color:var(--muted)">›</span>
+      <div class="sacc-body" id="settings-share-kids" style="display:none;padding:16px">
+        <div style="margin-bottom:12px">
+          <label style="font-size:12px;color:var(--muted);display:block;margin-bottom:6px">Household ID</label>
+          <div style="background:var(--card2);border:1px solid var(--border);border-radius:8px;
+                      padding:11px 14px;color:var(--text);font-family:monospace;font-size:13px;
+                      word-break:break-all;margin-bottom:12px" id="household-id-display">
+            Loading...
+          </div>
+        </div>
+        <button class="btn btn-primary" style="width:100%;justify-content:center;margin-bottom:8px"
+                onclick="copyKidLink()">
+          📋 Copy Kid Dashboard Link
+        </button>
+        <p style="font-size:12px;color:var(--muted);margin:0;text-align:center">
+          Share this link with your kids to let them log in and complete chores
+        </p>
       </div>
-      <p style="font-size:11px;color:var(--muted);margin:12px 0 0;line-height:1.5">
-        Permanently delete your account, household, and all associated data. This cannot be undone.
-      </p>
     </div>
 
-    <!-- Legal Links -->
-    <div class="page-label" style="margin-bottom:10px">Legal</div>
-    <div class="card" style="padding:4px 16px;margin-bottom:32px">
-      <a href="/pages/privacy.html" target="_blank" style="display:flex;align-items:center;justify-content:space-between;
-                  padding:15px 0;cursor:pointer;color:inherit;text-decoration:none;border-bottom:1px solid var(--border)">
-        <span style="font-size:14px;font-weight:600;color:var(--text)">Privacy Policy</span>
-        <span style="color:var(--muted)">›</span>
-      </a>
-      <a href="/pages/terms.html" target="_blank" style="display:flex;align-items:center;justify-content:space-between;
-                  padding:15px 0;cursor:pointer;color:inherit;text-decoration:none">
-        <span style="font-size:14px;font-weight:600;color:var(--text)">Terms of Service</span>
-        <span style="color:var(--muted)">›</span>
-      </a>
+    <!-- Account -->
+    <div class="sacc">
+      <div class="sacc-hdr" onclick="toggleSAcc('account')">
+        <span class="sacc-title">Account</span>
+        <span class="sacc-chevron" id="sacc-chev-account">›</span>
+      </div>
+      <div class="sacc-body" id="settings-account" style="display:none">
+        <div style="display:flex;align-items:center;justify-content:space-between;
+                    padding:15px 0;cursor:pointer" onclick="signOutUser()">
+          <span style="font-size:14px;font-weight:600;color:var(--text)">Sign Out</span>
+          <span style="color:var(--muted)">›</span>
+        </div>
+        <div style="border-top:1px solid var(--border)"></div>
+        <div style="display:flex;align-items:center;justify-content:space-between;
+                    padding:15px 0;cursor:pointer" onclick="openDeleteAccountModal()">
+          <span style="font-size:14px;font-weight:600;color:var(--red)">Delete Account</span>
+          <span style="color:var(--muted)">›</span>
+        </div>
+        <p style="font-size:11px;color:var(--muted);margin:0 0 14px;line-height:1.5">
+          Permanently delete your account, household, and all associated data. This cannot be undone.
+        </p>
+      </div>
+    </div>
+
+    <!-- Legal -->
+    <div class="sacc" style="margin-bottom:32px">
+      <div class="sacc-hdr" onclick="toggleSAcc('legal')">
+        <span class="sacc-title">Legal</span>
+        <span class="sacc-chevron" id="sacc-chev-legal">›</span>
+      </div>
+      <div class="sacc-body" id="settings-legal" style="display:none;padding:0">
+        <a href="/pages/privacy.html" target="_blank"
+           style="display:flex;align-items:center;justify-content:space-between;
+                  padding:15px 16px;cursor:pointer;color:inherit;text-decoration:none;
+                  border-bottom:1px solid var(--border)">
+          <span style="font-size:14px;font-weight:600;color:var(--text)">Privacy Policy</span>
+          <span style="color:var(--muted)">›</span>
+        </a>
+        <a href="/pages/terms.html" target="_blank"
+           style="display:flex;align-items:center;justify-content:space-between;
+                  padding:15px 16px;cursor:pointer;color:inherit;text-decoration:none">
+          <span style="font-size:14px;font-weight:600;color:var(--text)">Terms of Service</span>
+          <span style="color:var(--muted)">›</span>
+        </a>
+      </div>
     </div>
   </div>
 
@@ -1289,6 +1386,35 @@ function renderHistory() {
     </div>`;
 }
 
+// ── Settings accordion ────────────────────────────────────────
+// IDs of all accordion sections (matches sacc-chev-{id} and settings-{id})
+const SACC_IDS = ['comp-model','pay-cycle','approval','kids','pto','email','share-kids','account','legal'];
+
+// Persist which sections the parent left open
+const _saccOpen = new Set(JSON.parse(localStorage.getItem('saccOpen') || '[]'));
+
+window.toggleSAcc = (id) => {
+  // settings-comp-model uses sacc-body-bare (no padding), all others use sacc-body
+  const body = document.getElementById('settings-' + id);
+  const chev = document.getElementById('sacc-chev-' + id);
+  if (!body) return;
+  const isOpen = body.style.display !== 'none';
+  body.style.display = isOpen ? 'none' : 'block';
+  if (chev) chev.classList.toggle('open', !isOpen);
+  if (isOpen) _saccOpen.delete(id); else _saccOpen.add(id);
+  localStorage.setItem('saccOpen', JSON.stringify([..._saccOpen]));
+};
+
+// Restore previously-open sections on page load (called from setupRealtime after household loads)
+function restoreSAccState() {
+  _saccOpen.forEach(id => {
+    const body = document.getElementById('settings-' + id);
+    const chev = document.getElementById('sacc-chev-' + id);
+    if (body) { body.style.display = 'block'; }
+    if (chev)  chev.classList.add('open');
+  });
+}
+
 // ── Settings ──────────────────────────────────────────────────
 function renderSettings() {
   if (!household) return;
@@ -1348,6 +1474,9 @@ function renderSettings() {
          + Add Kid
        </button>
      </div>`;
+
+  // Restore open/closed state after content is populated
+  restoreSAccState();
 }
 
 // ── Pay Cycle Settings ─────────────────────────────────────────
@@ -1749,7 +1878,7 @@ function renderCompModelSettings() {
   }
 
   document.getElementById('settings-comp-model').innerHTML = `
-    <div class="card" style="margin-bottom:0">
+    <div style="padding:14px 16px">
       <div style="display:flex;gap:8px;margin-bottom:16px">
         ${modelBtn('points', 'A', 'Points')}
         ${modelBtn('flat',   'B', 'Flat Pay')}
