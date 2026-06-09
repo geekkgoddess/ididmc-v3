@@ -594,6 +594,62 @@
     </div>
   </div>
 
+  <!-- Add Kid Modal -->
+  <div id="modal-add-kid" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;
+                                  background:rgba(0,0,0,0.75);z-index:3000;
+                                  align-items:center;justify-content:center;padding:20px"
+       onclick="if(event.target===this)closeAddKidModal()">
+    <div style="background:var(--bg);border:1px solid var(--border);border-radius:16px;
+                padding:24px;width:100%;max-width:360px;position:relative">
+      <button onclick="closeAddKidModal()"
+              style="position:absolute;top:14px;right:14px;background:none;border:none;
+                     color:var(--muted);font-size:22px;line-height:1;cursor:pointer">×</button>
+      <h3 style="margin:0 0 20px;font-size:18px;font-weight:700;color:var(--gold)">Add a Kid</h3>
+
+      <div style="margin-bottom:14px">
+        <label style="font-size:12px;color:var(--muted);display:block;margin-bottom:6px">Name</label>
+        <input id="add-kid-name" type="text" placeholder="Kid's name"
+               style="width:100%;box-sizing:border-box;background:var(--card2);
+                      border:1px solid var(--border);border-radius:8px;
+                      padding:10px 12px;color:var(--text);font-family:inherit;font-size:14px">
+      </div>
+
+      <div style="margin-bottom:14px">
+        <label style="font-size:12px;color:var(--muted);display:block;margin-bottom:8px">4-Digit PIN</label>
+        <div class="pin-row" id="add-kid-pin-row" style="display:flex;gap:8px">
+          <input class="pin-digit" maxlength="1" type="tel" inputmode="numeric"
+                 style="width:48px;height:48px;text-align:center;background:var(--card2);
+                        border:1px solid var(--border);border-radius:8px;
+                        color:var(--text);font-size:22px;font-family:inherit">
+          <input class="pin-digit" maxlength="1" type="tel" inputmode="numeric"
+                 style="width:48px;height:48px;text-align:center;background:var(--card2);
+                        border:1px solid var(--border);border-radius:8px;
+                        color:var(--text);font-size:22px;font-family:inherit">
+          <input class="pin-digit" maxlength="1" type="tel" inputmode="numeric"
+                 style="width:48px;height:48px;text-align:center;background:var(--card2);
+                        border:1px solid var(--border);border-radius:8px;
+                        color:var(--text);font-size:22px;font-family:inherit">
+          <input class="pin-digit" maxlength="1" type="tel" inputmode="numeric"
+                 style="width:48px;height:48px;text-align:center;background:var(--card2);
+                        border:1px solid var(--border);border-radius:8px;
+                        color:var(--text);font-size:22px;font-family:inherit">
+        </div>
+      </div>
+
+      <div style="margin-bottom:22px">
+        <label style="font-size:12px;color:var(--muted);display:block;margin-bottom:8px">Color</label>
+        <div id="add-kid-color-picker" style="display:flex;gap:8px;flex-wrap:wrap"></div>
+      </div>
+
+      <button onclick="saveNewKid()"
+              style="width:100%;padding:13px;background:var(--gold);color:#111;
+                     border:none;border-radius:8px;font-weight:700;font-size:15px;
+                     cursor:pointer;font-family:inherit">
+        Add Kid
+      </button>
+    </div>
+  </div>
+
   <!-- Bottom nav -->
   <nav class="bottom-nav">
     <button class="nav-item active" id="nav-overview"  onclick="switchTab('overview')">
@@ -1470,7 +1526,7 @@ function renderSettings() {
         </button>
       </div>`).join('') +
     `<div style="padding:12px 0;text-align:center">
-       <button class="btn btn-ghost btn-sm" onclick="window.location.href='onboarding.html'">
+       <button class="btn btn-ghost btn-sm" onclick="openAddKidModal()">
          + Add Kid
        </button>
      </div>`;
@@ -1589,6 +1645,93 @@ window.resetPinPrompt = async (idx) => {
   renderSettings();
   showToast('✅ PIN updated');
 };
+
+// ── Add Kid Modal ──────────────────────────────────────────────────
+const ADD_KID_COLORS = [
+  '#f472b6','#60a5fa','#34d399','#fb923c',
+  '#a78bfa','#f87171','#facc15','#4ade80'
+];
+
+window.openAddKidModal = () => {
+  // Clear inputs
+  document.getElementById('add-kid-name').value = '';
+  document.querySelectorAll('#add-kid-pin-row .pin-digit').forEach(d => d.value = '');
+
+  // Build color picker — auto-select first color not already used by a kid
+  const usedColors = (household.kids || []).map(k => k.color);
+  const firstFree  = ADD_KID_COLORS.findIndex(c => !usedColors.includes(c));
+  const picker = document.getElementById('add-kid-color-picker');
+  picker.innerHTML = ADD_KID_COLORS.map((c, i) => {
+    const isSel = i === (firstFree >= 0 ? firstFree : 0);
+    return `<div class="add-kid-swatch${isSel ? ' sel' : ''}"
+                 data-color="${c}"
+                 onclick="addKidSelectColor(this)"
+                 style="width:28px;height:28px;border-radius:50%;background:${c};cursor:pointer;
+                        box-sizing:border-box;
+                        border:3px solid ${isSel ? 'white' : 'transparent'};
+                        opacity:${usedColors.includes(c) ? 0.35 : 1}"></div>`;
+  }).join('');
+
+  const modal = document.getElementById('modal-add-kid');
+  modal.style.display = 'flex';
+  setTimeout(() => document.getElementById('add-kid-name').focus(), 100);
+};
+
+window.closeAddKidModal = () => {
+  document.getElementById('modal-add-kid').style.display = 'none';
+};
+
+window.addKidSelectColor = (el) => {
+  // Allow picking already-used colors (dimmed but not blocked)
+  document.querySelectorAll('#add-kid-color-picker .add-kid-swatch').forEach(s => {
+    s.classList.remove('sel');
+    s.style.border = '3px solid transparent';
+  });
+  el.classList.add('sel');
+  el.style.border = '3px solid white';
+};
+
+window.saveNewKid = async () => {
+  const name    = document.getElementById('add-kid-name').value.trim();
+  const pins    = [...document.querySelectorAll('#add-kid-pin-row .pin-digit')].map(d => d.value);
+  const pin     = pins.join('');
+  const colorEl = document.querySelector('#add-kid-color-picker .sel');
+  const color   = colorEl ? colorEl.dataset.color : ADD_KID_COLORS[0];
+
+  if (!name)                                   { showToast('Please enter a name'); return; }
+  if (pin.length !== 4 || !/^\d{4}$/.test(pin)) { showToast('Please enter a 4-digit PIN'); return; }
+  if ((household.kids || []).find(k => k.name.toLowerCase() === name.toLowerCase())) {
+    showToast('A kid with that name already exists'); return;
+  }
+
+  const newKid     = { name, pin, color, id: Date.now().toString() };
+  const updatedKids = [...(household.kids || []), newKid];
+
+  await updateDoc(doc(db, 'households', currentUser.uid), { kids: updatedKids });
+  closeAddKidModal();
+  showToast(`✅ ${name} added!`);
+  // renderSettings fires automatically via the household onSnapshot listener
+};
+
+// PIN auto-advance for Add Kid modal
+document.addEventListener('input', (e) => {
+  if (!e.target.classList.contains('pin-digit')) return;
+  const row    = e.target.closest('.pin-row');
+  if (!row) return;
+  const inputs = [...row.querySelectorAll('.pin-digit')];
+  const idx    = inputs.indexOf(e.target);
+  if (e.target.value && idx < inputs.length - 1) inputs[idx + 1].focus();
+});
+document.addEventListener('keydown', (e) => {
+  if (!e.target.classList.contains('pin-digit')) return;
+  if (e.key === 'Backspace' && !e.target.value) {
+    const row    = e.target.closest('.pin-row');
+    if (!row) return;
+    const inputs = [...row.querySelectorAll('.pin-digit')];
+    const idx    = inputs.indexOf(e.target);
+    if (idx > 0) { inputs[idx - 1].focus(); inputs[idx - 1].value = ''; }
+  }
+});
 
 // ── PTO / Days Off ─────────────────────────────────────────────
 function renderPtoSettings() {
