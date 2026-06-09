@@ -297,30 +297,9 @@
       <h1 style="font-size:22px">Settings</h1>
     </div>
 
-    <!-- Points config -->
-    <div class="page-label" style="margin-bottom:10px">Points & Payout <span class="info-icon" onclick="openInfoModal('points-payout')" data-tooltip="Configure payment settings">ⓘ</span></div>
-    <div class="card" style="margin-bottom:16px">
-      <div class="field" style="margin-bottom:0">
-        <label>Points per $1.00 Payout</label>
-        <input type="number" id="s-multiplier" placeholder="100"
-               style="background:var(--card2);border:1px solid var(--border);
-                      border-radius:8px;padding:11px 14px;color:var(--text);
-                      font-family:inherit;font-size:14px;outline:none;width:100%">
-      </div>
-      <div class="points-formula" id="formula-preview">
-        100 points = $1.00 · Example: 350 pts = $3.50 payout
-      </div>
-      <div class="field">
-        <label>Bonus Budget (per pay period, $)</label>
-        <input type="number" id="s-bonus" placeholder="10"
-               style="background:var(--card2);border:1px solid var(--border);
-                      border-radius:8px;padding:11px 14px;color:var(--text);
-                      font-family:inherit;font-size:14px;outline:none;width:100%">
-      </div>
-      <button class="btn btn-primary btn-sm" onclick="savePointsConfig()">
-        Save Points Config
-      </button>
-    </div>
+    <!-- Compensation Model (rendered dynamically in renderSettings) -->
+    <div class="page-label" style="margin-bottom:10px">Compensation Model <span class="info-icon" onclick="openInfoModal('comp-model')" data-tooltip="How kids earn money">ⓘ</span></div>
+    <div id="settings-comp-model" style="margin-bottom:16px"></div>
 
     <!-- Approval mode -->
     <div class="page-label" style="margin-bottom:10px">Approval Mode <span class="info-icon" onclick="openInfoModal('approval-mode')" data-tooltip="Choose approval workflow">ⓘ</span></div>
@@ -329,6 +308,14 @@
     <!-- Kids -->
     <div class="page-label" style="margin-bottom:10px">Kids <span class="info-icon" onclick="openInfoModal('kids')" data-tooltip="Manage children & PINs">ⓘ</span></div>
     <div class="card" style="padding:4px 16px;margin-bottom:16px" id="settings-kids"></div>
+
+    <!-- PTO / Days Off -->
+    <div class="page-label" style="margin-bottom:10px">PTO / Days Off <span class="info-icon" onclick="openInfoModal('pto')" data-tooltip="Grant paid days off per kid">ⓘ</span></div>
+    <div class="card" style="padding:4px 16px;margin-bottom:16px" id="settings-pto"></div>
+
+    <!-- Email Notifications -->
+    <div class="page-label" style="margin-bottom:10px">Email Notifications <span class="info-icon" onclick="openInfoModal('email-settings')" data-tooltip="Configure email schedule">ⓘ</span></div>
+    <div class="card" style="padding:4px 16px;margin-bottom:16px" id="settings-email"></div>
 
     <!-- Kids Dashboard Link -->
     <div class="page-label" style="margin-bottom:10px">Share with Kids <span class="info-icon" onclick="openInfoModal('share-kids')" data-tooltip="Generate kid dashboard link">ⓘ</span></div>
@@ -439,18 +426,18 @@
     </div>
   </div>
 
-  <!-- Points & Payout Info Modal -->
-  <div id="info-modal-points-payout" class="info-modal" onclick="if(event.target === this) closeInfoModal('points-payout')">
+  <!-- Compensation Model Info Modal -->
+  <div id="info-modal-comp-model" class="info-modal" onclick="if(event.target === this) closeInfoModal('comp-model')">
     <div class="info-modal-content">
-      <button class="info-modal-close" onclick="closeInfoModal('points-payout')">×</button>
-      <h3>Points & Payout</h3>
-      <p><strong>What does this control?</strong></p>
-      <p>This is where you set the exchange rate for how many chore points equal real money.</p>
-      <p><strong>Points per $1.00 Payout</strong></p>
-      <p>How many points a child needs to earn to get $1.00. For example: 100 points = $1.00 means kids get $0.50 for 50 points.</p>
-      <p><strong>Bonus Budget</strong></p>
-      <p>Optional: Set a weekly spending cap to control how much the kids can earn through bonuses or extra chores.</p>
-      <p><strong>Example:</strong> If you set 100 pts = $1 and a kid earns 350 points, they get $3.50.</p>
+      <button class="info-modal-close" onclick="closeInfoModal('comp-model')">×</button>
+      <h3>Compensation Model</h3>
+      <p>Choose how your kids earn money for completing chores. You can change models at any time.</p>
+      <p><strong>Model A — Points</strong></p>
+      <p>Each chore is worth a set number of points. You control how many points equal $1.00. Great for households that want flexibility and bonuses.</p>
+      <p><strong>Model B — Flat Pay</strong></p>
+      <p>Each chore pays a set dollar amount. Simple and straightforward — kids know exactly what they'll earn before they start.</p>
+      <p><strong>Model C — Daily Minimum</strong></p>
+      <p>All chores count equally. If a kid completes the required number of chores, they earn their full day's pay. Rewards consistency over cherry-picking.</p>
     </div>
   </div>
 
@@ -583,26 +570,38 @@
                          font-size:14px;outline:none;width:100%"></textarea>
       </div>
 
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-        <div class="field">
-          <label>Points Value</label>
+      <!-- Points + Flat Pay row — one is active per model, the other greyed out -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px" id="cm-pay-row">
+        <div class="field" id="cm-points-field">
+          <label id="cm-points-label">Points Value</label>
           <input type="number" id="cm-points" placeholder="50" min="1" max="999"
                  style="background:var(--card2);border:1px solid var(--border);
                         border-radius:8px;padding:12px 14px;color:var(--text);
                         font-family:inherit;font-size:15px;outline:none;width:100%">
         </div>
-        <div class="field">
-          <label>Frequency</label>
-          <select id="cm-freq"
-                  style="background:var(--card2);border:1px solid var(--border);
-                         border-radius:8px;padding:12px 14px;color:var(--text);
-                         font-family:inherit;font-size:14px;outline:none;
-                         width:100%;appearance:none">
-            <option value="daily">Daily</option>
-            <option value="weekly">Weekly Bonus</option>
-            <option value="bonus">One-time Bonus</option>
-          </select>
+        <div class="field" id="cm-flat-field">
+          <label id="cm-flat-label">Flat Pay ($)</label>
+          <input type="number" id="cm-flat" placeholder="5.00" min="0" step="0.01"
+                 style="background:var(--card2);border:1px solid var(--border);
+                        border-radius:8px;padding:12px 14px;color:var(--text);
+                        font-family:inherit;font-size:15px;outline:none;width:100%">
         </div>
+      </div>
+
+      <!-- Frequency — expanded options including bi-weekly, monthly, as-needed -->
+      <div class="field">
+        <label>Frequency</label>
+        <select id="cm-freq"
+                style="background:var(--card2);border:1px solid var(--border);
+                       border-radius:8px;padding:12px 14px;color:var(--text);
+                       font-family:inherit;font-size:14px;outline:none;
+                       width:100%;appearance:none">
+          <option value="daily">Daily</option>
+          <option value="weekly">Weekly</option>
+          <option value="biweekly">Bi-weekly</option>
+          <option value="monthly">Monthly</option>
+          <option value="as-needed">As-needed</option>
+        </select>
       </div>
 
       <div class="field">
@@ -684,8 +683,20 @@ function renderPeriodBadge() {
     `Pay Period<br>${fmt(ps)} – ${fmt(pe)}`;
 }
 
-// ── Realtime submissions listener ─────────────────────────────
+// ── Realtime listeners ────────────────────────────────────────
 function setupRealtime() {
+  // Household listener — keeps chore list and settings in sync when parent
+  // saves changes (without this, edits only appear after a page reload).
+  onSnapshot(doc(db, 'households', currentUser.uid), (snap) => {
+    if (!snap.exists()) { window.location.href = 'onboarding.html'; return; }
+    household = snap.data();
+    document.getElementById('hh-name').textContent = household.name;
+    renderPeriodBadge();
+    renderSettings();
+    renderChoresAdmin();
+  });
+
+  // Submissions listener — approvals, pending counts, history all update live
   const q = query(
     collection(db, 'submissions'),
     where('householdId', '==', currentUser.uid)
@@ -807,8 +818,8 @@ function renderOverview() {
               <span style="font-family:'DM Mono',monospace;color:var(--gold);font-size:13px">
                 +${s.points || 0}pts
               </span>
-              <span class="tag tag-${s.status==='approved'?'green':s.status==='rejected'?'red':'gold'}">
-                ${s.status}
+              <span class="tag tag-${s.status==='approved'?'green':(s.status==='rejected'||s.status==='rejected_fraud')?'red':'gold'}">
+                ${s.status==='rejected_fraud'?'⚠ fraud':s.status}
               </span>
             </div>
           </div>`}).join('') + `</div>`;
@@ -826,9 +837,10 @@ function updatePendingAlert() {
 // ── Approvals ─────────────────────────────────────────────────
 function renderApprovals() {
   const pending = submissionsCache.filter(s => s.status === 'pending');
+  const fraud   = submissionsCache.filter(s => s.status === 'rejected_fraud');
   const list    = document.getElementById('approvals-list');
 
-  if (!pending.length) {
+  if (!pending.length && !fraud.length) {
     list.innerHTML = `<div class="empty-state">
       <div class="empty-icon">✅</div>
       <h3>All caught up!</h3>
@@ -837,7 +849,42 @@ function renderApprovals() {
     return;
   }
 
-  list.innerHTML = pending.map(s => {
+  // Fraud section — shown above pending so parents see it immediately
+  const fraudHtml = fraud.length ? `
+    <div style="margin-bottom:20px">
+      <div class="page-label" style="color:var(--red,#ef4444);margin-bottom:10px">
+        ⚠️ Fraud Detected (${fraud.length})
+      </div>
+      ${fraud.map(s => `
+        <div class="approval-card" id="sub-${s.id}" style="border-left:3px solid var(--red,#ef4444)">
+          ${s.photoDownloadUrl
+            ? `<img src="${s.photoDownloadUrl}" class="approval-photo"
+                    onclick="openLightbox('${s.photoDownloadUrl}')" alt="Proof photo">`
+            : `<div class="approval-placeholder">📷</div>`}
+          <div style="padding:14px">
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <h3>${s.choreName}</h3>
+              <span class="tag tag-red">⚠ fraud</span>
+            </div>
+            <div style="font-size:12px;color:var(--muted);margin-top:4px">
+              ${s.kidName} · ${formatDate(s.date)} · ${formatTime(s.timestamp)}
+            </div>
+            <div style="font-size:12px;color:var(--muted);margin-top:6px;font-style:italic">
+              ${s.fraudReason || 'Photo failed fraud check (duplicate or backdated EXIF date)'}
+            </div>
+            <div class="approval-actions" style="margin-top:12px">
+              <button class="btn-reject" onclick="acknowledgeFraud('${s.id}')">Dismiss</button>
+            </div>
+          </div>
+        </div>`).join('')}
+    </div>` : '';
+
+  if (!pending.length) {
+    list.innerHTML = fraudHtml;
+    return;
+  }
+
+  list.innerHTML = fraudHtml + pending.map(s => {
     // Build sub-task completion display
     const chore    = household.chores?.find(c => c.id === s.choreId);
     const subTasks = chore?.subTasks || [];
@@ -887,6 +934,11 @@ window.rejectSubmission  = async (id) => {
   await updateDoc(doc(db, 'submissions', id), { status: 'rejected' });
   showToast('❌ Rejected');
 };
+// Dismiss a fraud-flagged submission — keeps it as rejected in history
+window.acknowledgeFraud = async (id) => {
+  await updateDoc(doc(db, 'submissions', id), { status: 'rejected', fraudAcknowledged: true });
+  showToast('⚠️ Fraud dismissed');
+};
 
 window.openExceeded = (id, kidName, choreName, points) => {
   pendingExceeded = { id, kidName, choreName, points };
@@ -928,8 +980,16 @@ function renderChoresAdmin() {
 
   list.innerHTML = chores.map((chore, i) => {
     const subCount = chore.subTasks?.length || 0;
-    const freqLabel = chore.freq === 'weekly' ? 'Weekly' : chore.freq === 'bonus' ? 'Bonus' : 'Daily';
-    const freqColor = chore.freq === 'weekly' ? 'var(--gold)' : chore.freq === 'bonus' ? 'var(--blue)' : 'var(--green)';
+    // Map frequency values to display labels and dot colors
+    const freqMap = {
+      daily:     { label: 'Daily',     color: 'var(--green)' },
+      weekly:    { label: 'Weekly',    color: 'var(--gold)'  },
+      biweekly:  { label: 'Bi-weekly', color: 'var(--gold)'  },
+      monthly:   { label: 'Monthly',   color: 'var(--blue)'  },
+      'as-needed':{ label: 'As-needed',color: 'var(--muted)' },
+      bonus:     { label: 'Bonus',     color: 'var(--blue)'  }, // legacy value
+    };
+    const { label: freqLabel, color: freqColor } = freqMap[chore.freq] || freqMap.daily;
 
     return `
       <div class="chore-admin-card" id="chore-card-${chore.id}">
@@ -939,7 +999,12 @@ function renderChoresAdmin() {
           <div class="list-info">
             <div style="font-size:14px;font-weight:700">${chore.name}</div>
             <div style="font-size:11px;color:var(--muted)">
-              ${chore.pointValue || 0} pts · ${freqLabel}
+              ${household.compModel === 'flat'
+                  ? `$${(chore.flatPayValue || 0).toFixed(2)}`
+                  : household.compModel === 'daily-min'
+                    ? '1 unit'
+                    : `${chore.pointValue || 0} pts`
+               } · ${freqLabel}
               ${subCount ? ` · ${subCount} sub-tasks` : ''}
               ${chore.assignedTo !== 'any' ? ` · ${chore.assignedTo} only` : ''}
             </div>
@@ -981,9 +1046,11 @@ window.openAddChore = () => {
   document.getElementById('cm-name').value   = '';
   document.getElementById('cm-desc').value   = '';
   document.getElementById('cm-points').value = '';
+  document.getElementById('cm-flat').value   = '';
   document.getElementById('cm-freq').value   = 'daily';
   updateAssignOptions('any');
   renderSubTaskEditor();
+  updateChoreModalFieldStates(); // grey out inactive pay field for current model
   document.getElementById('modal-chore').classList.add('active');
 };
 
@@ -995,12 +1062,46 @@ window.openEditChore = (choreId) => {
   document.getElementById('chore-modal-title').textContent = 'Edit Chore';
   document.getElementById('cm-name').value   = chore.name;
   document.getElementById('cm-desc').value   = chore.desc || '';
-  document.getElementById('cm-points').value = chore.pointValue || '';
+  document.getElementById('cm-points').value = chore.pointValue  || '';
+  document.getElementById('cm-flat').value   = chore.flatPayValue || '';
   document.getElementById('cm-freq').value   = chore.freq || 'daily';
   updateAssignOptions(chore.assignedTo || 'any');
   renderSubTaskEditor();
+  updateChoreModalFieldStates(); // grey out inactive pay field for current model
   document.getElementById('modal-chore').classList.add('active');
 };
+
+// Grey out / enable the Points and Flat Pay fields based on the active comp model.
+// Model A (points)    → points active, flat greyed
+// Model B (flat)      → flat active, points greyed
+// Model C (daily-min) → both greyed (all chores worth 1 unit)
+function updateChoreModalFieldStates() {
+  const model        = household?.compModel || 'points';
+  const pointsInput  = document.getElementById('cm-points');
+  const flatInput    = document.getElementById('cm-flat');
+  const pointsField  = document.getElementById('cm-points-field');
+  const flatField    = document.getElementById('cm-flat-field');
+  if (!pointsInput || !flatInput) return; // modal not in DOM yet
+
+  const dim = 'opacity:0.4;pointer-events:none';
+
+  if (model === 'points') {
+    pointsInput.disabled = false;
+    flatInput.disabled   = true;
+    pointsField.style.cssText = '';
+    flatField.style.cssText   = dim;
+  } else if (model === 'flat') {
+    pointsInput.disabled = true;
+    flatInput.disabled   = false;
+    pointsField.style.cssText = dim;
+    flatField.style.cssText   = '';
+  } else { // daily-min — both greyed, values irrelevant
+    pointsInput.disabled = true;
+    flatInput.disabled   = true;
+    pointsField.style.cssText = dim;
+    flatField.style.cssText   = dim;
+  }
+}
 
 function updateAssignOptions(selectedValue) {
   const sel = document.getElementById('cm-assign');
@@ -1049,21 +1150,32 @@ window.removeSubTask = (i) => {
 };
 
 window.saveChore = async () => {
-  const name   = document.getElementById('cm-name').value.trim();
-  const desc   = document.getElementById('cm-desc').value.trim();
-  const points = parseInt(document.getElementById('cm-points').value) || 0;
-  const freq   = document.getElementById('cm-freq').value;
-  const assign = document.getElementById('cm-assign').value;
+  const name     = document.getElementById('cm-name').value.trim();
+  const desc     = document.getElementById('cm-desc').value.trim();
+  const points   = parseInt(document.getElementById('cm-points').value)   || 0;
+  const flatPay  = parseFloat(document.getElementById('cm-flat').value)   || 0;
+  const freq     = document.getElementById('cm-freq').value;
+  const assign   = document.getElementById('cm-assign').value;
+  const model    = household?.compModel || 'points';
 
-  if (!name)   { showToast('Please enter a chore name'); return; }
-  if (!points) { showToast('Please enter a points value'); return; }
+  if (!name) { showToast('Please enter a chore name'); return; }
+
+  // Validate the active pay field for the current model
+  if (model === 'points'   && !points)  { showToast('Please enter a points value'); return; }
+  if (model === 'flat'     && !flatPay) { showToast('Please enter a flat pay amount'); return; }
+  // Model C (daily-min) needs no per-chore value — all chores count equally
 
   // Filter out empty sub-task rows
   const subTasks = subTaskRows
     .filter(t => t.label.trim())
     .map((t, i) => ({ id: t.id, label: t.label.trim(), order: i }));
 
-  const choreData = { name, desc, pointValue: points, freq, assignedTo: assign, subTasks };
+  const choreData = {
+    name, desc, freq, assignedTo: assign, subTasks,
+    pointValue:   points,    // Model A — points per chore
+    flatPayValue: flatPay,   // Model B — dollars per chore
+    // Model C uses neither; all chores count as 1 unit toward daily minimum
+  };
 
   let updatedChores;
   if (editingChoreId) {
@@ -1137,7 +1249,17 @@ function renderHistory() {
     <div class="card" style="margin-top:16px">
       <div class="page-label" style="margin-bottom:6px">Payday Formula</div>
       <p style="font-size:13px;color:var(--muted);margin:0;line-height:1.7">
-        ${household?.pointMultiplier || 100} points = $1.00 payout<br>
+        ${(() => {
+          const m  = household?.compModel || 'points';
+          const cs = household?.compSettings || {};
+          if (m === 'points') {
+            return `${cs.pointsPerDollar || household?.pointMultiplier || 100} pts = $1.00`;
+          } else if (m === 'flat') {
+            return 'Flat pay per chore — see Chores tab for amounts';
+          } else {
+            return `Daily min: ${cs.choreMin || 0} chores → $${cs.fullDayPay || 0}`;
+          }
+        })()}<br>
         Period cap: $${household?.capPerKid || 120} per kid<br>
         Weekly approval handled from your Approvals tab
       </p>
@@ -1148,11 +1270,14 @@ function renderHistory() {
 function renderSettings() {
   if (!household) return;
 
-  // Pre-fill points config
-  const ptsPerDollar = household.pointMultiplier || 100;
-  document.getElementById('s-multiplier').value = ptsPerDollar;
-  document.getElementById('s-bonus').value       = household.bonusBudget || '';
-  updateFormulaPreview(ptsPerDollar);
+  // ── Compensation Model ────────────────────────────────────────
+  renderCompModelSettings();
+
+  // PTO / Days Off
+  renderPtoSettings();
+
+  // Email Notifications
+  renderEmailSettings();
 
   // Approval mode
   document.getElementById('settings-approval').innerHTML = `
@@ -1208,28 +1333,360 @@ window.resetPinPrompt = async (idx) => {
   showToast('✅ PIN updated');
 };
 
-// Live formula preview as user types
-document.getElementById('s-multiplier').addEventListener('input', (e) => {
-  updateFormulaPreview(parseInt(e.target.value) || 100);
-});
+// ── PTO / Days Off ─────────────────────────────────────────────
+function renderPtoSettings() {
+  const ptoPerYear = household.ptoDaysPerYear || 0;
+  const schedule   = household.ptoSchedule   || {};
+  const todayStr   = new Date().toISOString().split('T')[0];
 
-function updateFormulaPreview(pts) {
-  const example = ((350 / pts)).toFixed(2);
-  document.getElementById('formula-preview').innerHTML =
-    `${pts} points = $1.00 · Example: 350 pts = $${example} payout`;
+  let html = `<div style="padding:14px 0">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+      <div>
+        <div style="font-size:14px;font-weight:600">Paid Days Off Per Year</div>
+        <div style="font-size:12px;color:var(--muted);margin-top:2px">Set to 0 to disable PTO</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <input type="number" id="pto-per-year" value="${ptoPerYear}" min="0" max="365"
+               style="width:60px;background:var(--card2);border:1px solid var(--border);
+                      border-radius:8px;padding:7px 10px;color:var(--text);
+                      font-family:inherit;font-size:14px;text-align:center">
+        <button onclick="savePtoDaysPerYear()"
+                style="background:var(--gold);border:none;border-radius:8px;
+                       color:#000;font-size:13px;font-weight:700;
+                       padding:8px 12px;cursor:pointer">Save</button>
+      </div>
+    </div>`;
+
+  if (ptoPerYear > 0) {
+    html += household.kids.map(k => {
+      const used      = schedule[k.name] || [];
+      const upcoming  = used.filter(d => d >= todayStr).sort();
+      const usedCount = used.filter(d => d < todayStr).length;
+      const remaining = Math.max(0, ptoPerYear - usedCount);
+      return `
+        <div style="border-top:1px solid var(--border);padding:12px 0 6px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+            <div style="display:flex;align-items:center;gap:8px">
+              <div style="width:28px;height:28px;border-radius:50%;
+                          background:${k.color}22;color:${k.color};
+                          display:flex;align-items:center;justify-content:center;
+                          font-weight:800;font-size:12px">${k.name.charAt(0)}</div>
+              <div>
+                <div style="font-size:13px;font-weight:600">${k.name}</div>
+                <div style="font-size:11px;color:var(--muted)">${usedCount} used · ${remaining} remaining</div>
+              </div>
+            </div>
+            <div style="display:flex;align-items:center;gap:6px">
+              <input type="date" id="pto-date-${k.name.replace(/\s+/g,'_')}"
+                     min="${todayStr}"
+                     style="background:var(--card2);border:1px solid var(--border);
+                            border-radius:8px;padding:6px 8px;color:var(--text);
+                            font-family:inherit;font-size:12px">
+              <button onclick="grantPtoDay('${k.name.replace(/'/g,"\\'")}', this)"
+                      style="background:none;border:1px solid var(--border);
+                             border-radius:8px;padding:6px 10px;color:var(--text);
+                             font-size:12px;cursor:pointer;white-space:nowrap">+ Day Off</button>
+            </div>
+          </div>
+          ${upcoming.length
+            ? upcoming.map(d => `
+                <div style="display:flex;align-items:center;justify-content:space-between;
+                            padding:5px 0;font-size:12px">
+                  <span>🏖️ ${formatDate(d)}</span>
+                  <button onclick="removePtoDay('${k.name.replace(/'/g,"\\'")}','${d}')"
+                          style="background:none;border:none;color:var(--muted);
+                                 cursor:pointer;font-size:11px;padding:2px 4px">✕ Cancel</button>
+                </div>`).join('')
+            : `<div style="font-size:12px;color:var(--muted);padding:2px 0">No days scheduled</div>`}
+        </div>`;
+    }).join('');
+  }
+
+  html += `</div>`;
+  document.getElementById('settings-pto').innerHTML = html;
 }
 
-window.savePointsConfig = async () => {
-  const mult  = parseInt(document.getElementById('s-multiplier').value) || 100;
-  const bonus = parseInt(document.getElementById('s-bonus').value) || 0;
+window.savePtoDaysPerYear = async () => {
+  const val = parseInt(document.getElementById('pto-per-year')?.value) || 0;
+  household.ptoDaysPerYear = val;
+  await updateDoc(doc(db, 'households', currentUser.uid), { ptoDaysPerYear: val });
+  renderSettings();
+  showToast('✅ PTO days saved');
+};
+
+window.grantPtoDay = async (kidName) => {
+  const inputId = `pto-date-${kidName.replace(/\s+/g,'_')}`;
+  const dateVal = document.getElementById(inputId)?.value;
+  if (!dateVal) { showToast('Select a date first'); return; }
+  const schedule = household.ptoSchedule || {};
+  const kidDays  = [...(schedule[kidName] || [])];
+  if (kidDays.includes(dateVal)) { showToast('Already scheduled'); return; }
+  kidDays.push(dateVal);
+  schedule[kidName]     = kidDays;
+  household.ptoSchedule = schedule;
+  await updateDoc(doc(db, 'households', currentUser.uid), { ptoSchedule: schedule });
+  renderSettings();
+  showToast(`🏖️ Day off granted for ${kidName}`);
+};
+
+window.removePtoDay = async (kidName, dateVal) => {
+  const schedule        = household.ptoSchedule || {};
+  schedule[kidName]     = (schedule[kidName] || []).filter(d => d !== dateVal);
+  household.ptoSchedule = schedule;
+  await updateDoc(doc(db, 'households', currentUser.uid), { ptoSchedule: schedule });
+  renderSettings();
+  showToast('Day off cancelled');
+};
+
+// ── Email Notifications Settings ───────────────────────────────
+function renderEmailSettings() {
+  const es  = household.emailSettings || {};
+  // Defaults: both on, daily at 6pm, weekly on Friday at 6pm, combined
+  const dailyOn  = es.dailySummary  !== false;
+  const weeklyOn = es.weeklySummary !== false;
+  const perKid   = es.perKidEmails  === true;
+  const dailyT   = es.dailyTime     || '18:00';
+  const weeklyD  = es.weeklyDay     || 'friday';
+  const weeklyT  = es.weeklyTime    || '18:00';
+
+  // Reusable toggle row — uses a CSS checkbox-as-toggle via inline styles
+  const toggle = (id, label, sub, checked) => `
+    <div style="display:flex;align-items:center;justify-content:space-between;
+                padding:13px 0;border-bottom:1px solid var(--border)">
+      <div>
+        <div style="font-size:14px;font-weight:600">${label}</div>
+        <div style="font-size:12px;color:var(--muted);margin-top:2px">${sub}</div>
+      </div>
+      <div onclick="toggleEmailSetting('${id}')"
+           style="width:44px;height:26px;border-radius:99px;flex-shrink:0;cursor:pointer;
+                  background:${checked ? 'var(--gold)' : 'var(--border)'};
+                  position:relative;transition:background 0.2s" id="toggle-${id}">
+        <div style="position:absolute;top:3px;left:${checked ? '21' : '3'}px;
+                    width:20px;height:20px;background:#fff;border-radius:50%;
+                    transition:left 0.2s" id="toggle-knob-${id}"></div>
+      </div>
+    </div>`;
+
+  const weekdays = ['monday','tuesday','wednesday','thursday','friday','saturday','sunday'];
+
+  document.getElementById('settings-email').innerHTML = `
+    <div style="padding:4px 0">
+      ${toggle('daily', '📊 Daily Summary', 'End-of-day chore recap email', dailyOn)}
+      ${dailyOn ? `
+        <div style="padding:10px 0;border-bottom:1px solid var(--border)">
+          <label style="font-size:12px;color:var(--muted)">Send time</label>
+          <input type="time" id="es-daily-time" value="${dailyT}"
+                 style="display:block;margin-top:4px;background:var(--card2);
+                        border:1px solid var(--border);border-radius:8px;
+                        padding:7px 10px;color:var(--text);font-family:inherit;font-size:13px"
+                 onchange="saveEmailSettings()">
+        </div>` : ''}
+      ${toggle('weekly', '💰 Weekly Payday', 'End-of-week earnings summary + payout', weeklyOn)}
+      ${weeklyOn ? `
+        <div style="padding:10px 0;border-bottom:1px solid var(--border)">
+          <div style="display:flex;gap:8px">
+            <div style="flex:1">
+              <label style="font-size:12px;color:var(--muted)">Send on</label>
+              <select id="es-weekly-day"
+                      style="display:block;width:100%;margin-top:4px;background:var(--card2);
+                             border:1px solid var(--border);border-radius:8px;
+                             padding:7px 10px;color:var(--text);font-family:inherit;font-size:13px"
+                      onchange="saveEmailSettings()">
+                ${weekdays.map(d =>
+                  `<option value="${d}" ${weeklyD === d ? 'selected' : ''}>${d[0].toUpperCase()+d.slice(1)}</option>`
+                ).join('')}
+              </select>
+            </div>
+            <div style="flex:1">
+              <label style="font-size:12px;color:var(--muted)">At</label>
+              <input type="time" id="es-weekly-time" value="${weeklyT}"
+                     style="display:block;width:100%;margin-top:4px;background:var(--card2);
+                            border:1px solid var(--border);border-radius:8px;
+                            padding:7px 10px;color:var(--text);font-family:inherit;font-size:13px"
+                     onchange="saveEmailSettings()">
+            </div>
+          </div>
+        </div>` : ''}
+      ${toggle('perkid', '👦 Per-Kid Emails', 'Separate email per kid instead of combined', perKid)}
+    </div>`;
+}
+
+// Toggle a boolean email setting and save — avoids re-rendering the whole settings page
+// which would lose focus on any time inputs the user is editing
+window.toggleEmailSetting = async (id) => {
+  const prev = household.emailSettings || {};
+  const keyMap = { daily: 'dailySummary', weekly: 'weeklySummary', perkid: 'perKidEmails' };
+  const key = keyMap[id];
+  if (!key) return;
+  const newVal = !(prev[key] !== false && key !== 'perKidEmails' ? true : (prev[key] || false));
+  // Determine correct new value — dailySummary/weeklySummary default true, perKidEmails defaults false
+  const currentVal = key === 'perKidEmails' ? (prev[key] === true) : (prev[key] !== false);
+  const toggled    = !currentVal;
+  household.emailSettings = { ...prev, [key]: toggled };
+  await updateDoc(doc(db, 'households', currentUser.uid), { emailSettings: household.emailSettings });
+  renderEmailSettings(); // re-render to show/hide time inputs
+  showToast(toggled ? '✅ Enabled' : '⏸️ Disabled');
+};
+
+window.saveEmailSettings = async () => {
+  const prev       = household.emailSettings || {};
+  const dailyTime  = document.getElementById('es-daily-time')?.value  || prev.dailyTime  || '18:00';
+  const weeklyDay  = document.getElementById('es-weekly-day')?.value  || prev.weeklyDay  || 'friday';
+  const weeklyTime = document.getElementById('es-weekly-time')?.value || prev.weeklyTime || '18:00';
+  household.emailSettings = { ...prev, dailyTime, weeklyDay, weeklyTime };
+  await updateDoc(doc(db, 'households', currentUser.uid), { emailSettings: household.emailSettings });
+  // No toast on auto-save — it fires on every change event
+};
+
+// ── Compensation Model UI ─────────────────────────────────────
+// Renders the full comp model card in Settings dynamically.
+// Called from renderSettings() and re-called when the parent
+// switches models (selectCompModel) so only relevant fields show.
+function renderCompModelSettings() {
+  const model = household.compModel || 'points'; // default to Points for existing households
+  const cs    = household.compSettings || {};
+  const inp   = (id, val, ph, extra = '') =>
+    `<input type="number" id="${id}" value="${val}" placeholder="${ph}"
+            style="background:var(--card2);border:1px solid var(--border);border-radius:8px;
+                   padding:11px 14px;color:var(--text);font-family:inherit;font-size:14px;
+                   outline:none;width:100%" ${extra}>`;
+
+  // Model-selector — 3 buttons, highlighted one = current model
+  const modelBtn = (m, label, sub) =>
+    `<button onclick="selectCompModel('${m}')"
+             style="padding:10px 8px;border:2px solid ${model === m ? 'var(--gold)' : 'var(--border)'};
+                    border-radius:8px;background:${model === m ? 'var(--gold-dim)' : 'transparent'};
+                    color:var(--text);font-size:13px;font-weight:700;cursor:pointer;text-align:center;
+                    flex:1">
+       ${label}<br>
+       <span style="font-size:10px;font-weight:400;color:var(--muted)">${sub}</span>
+     </button>`;
+
+  // Contextual fields — only the relevant ones are shown
+  let fields = '';
+  if (model === 'points') {
+    const ptsPerDollar = cs.pointsPerDollar || household.pointMultiplier || 100;
+    const example      = (350 / ptsPerDollar).toFixed(2);
+    fields = `
+      <div class="field" style="margin-bottom:8px">
+        <label>Points per $1.00</label>
+        ${inp('cs-pts-per-dollar', ptsPerDollar, '100')}
+        <div style="font-size:11px;color:var(--muted);margin-top:6px" id="cs-pts-formula">
+          ${ptsPerDollar} pts = $1.00 · example: 350 pts = $${example}
+        </div>
+      </div>
+      <div class="field" style="margin-bottom:8px">
+        <label>Min points for a full day <span style="font-weight:400;color:var(--muted);font-size:10px">optional</span></label>
+        ${inp('cs-daily-min-pts', cs.dailyMinPoints || '', 'e.g. 200')}
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+        <input type="checkbox" id="cs-cap-toggle" ${cs.dailyCapEnabled ? 'checked' : ''}
+               onchange="document.getElementById('cs-cap-pts').disabled=!this.checked"
+               style="width:16px;height:16px;cursor:pointer">
+        <label for="cs-cap-toggle" style="font-size:13px;cursor:pointer">Daily cap (points)</label>
+        ${inp('cs-cap-pts', cs.dailyCapPoints || '', 'e.g. 500', cs.dailyCapEnabled ? '' : 'disabled')}
+      </div>`;
+  } else if (model === 'flat') {
+    fields = `
+      <p style="font-size:12px;color:var(--muted);margin-bottom:12px">
+        Each chore has its own $ value set on the chore card.
+      </p>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+        <input type="checkbox" id="cs-cap-toggle" ${cs.dailyCapEnabled ? 'checked' : ''}
+               onchange="document.getElementById('cs-cap-amount').disabled=!this.checked"
+               style="width:16px;height:16px;cursor:pointer">
+        <label for="cs-cap-toggle" style="font-size:13px;cursor:pointer">Daily earning cap ($)</label>
+        ${inp('cs-cap-amount', cs.dailyCapAmount || '', 'e.g. 15.00', cs.dailyCapEnabled ? '' : 'disabled')}
+      </div>`;
+  } else if (model === 'daily-min') {
+    fields = `
+      <p style="font-size:12px;color:var(--muted);margin-bottom:12px">
+        All chores count equally. Complete the minimum and earn the full day's pay.
+      </p>
+      <div class="field" style="margin-bottom:8px">
+        <label>Chores needed for a full day</label>
+        ${inp('cs-chore-min', cs.choreMinForFullDay || '', 'e.g. 5')}
+      </div>
+      <div class="field" style="margin-bottom:8px">
+        <label>Full day pay ($)</label>
+        ${inp('cs-full-day-pay', cs.fullDayPay || '', 'e.g. 10.00')}
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+        <input type="checkbox" id="cs-cap-toggle" ${cs.dailyCapEnabled ? 'checked' : ''}
+               onchange="document.getElementById('cs-cap-amount').disabled=!this.checked"
+               style="width:16px;height:16px;cursor:pointer">
+        <label for="cs-cap-toggle" style="font-size:13px;cursor:pointer">Daily earning cap ($)</label>
+        ${inp('cs-cap-amount', cs.dailyCapAmount || '', 'e.g. 15.00', cs.dailyCapEnabled ? '' : 'disabled')}
+      </div>`;
+  }
+
+  document.getElementById('settings-comp-model').innerHTML = `
+    <div class="card" style="margin-bottom:0">
+      <div style="display:flex;gap:8px;margin-bottom:16px">
+        ${modelBtn('points', 'A', 'Points')}
+        ${modelBtn('flat',   'B', 'Flat Pay')}
+        ${modelBtn('daily-min', 'C', 'Daily Min')}
+      </div>
+      ${fields}
+      <button class="btn btn-primary btn-sm" onclick="saveCompSettings()">
+        Save Compensation Settings
+      </button>
+    </div>`;
+
+  // Wire up the live formula preview for Model A after the DOM is injected
+  if (model === 'points') {
+    const el = document.getElementById('cs-pts-per-dollar');
+    if (el) {
+      el.addEventListener('input', () => {
+        const v   = parseInt(el.value) || 100;
+        const ex  = (350 / v).toFixed(2);
+        const pre = document.getElementById('cs-pts-formula');
+        if (pre) pre.textContent = `${v} pts = $1.00 · example: 350 pts = $${ex}`;
+      });
+    }
+  }
+}
+
+// Called when a parent taps A / B / C — update the UI only (save happens on button click)
+window.selectCompModel = (model) => {
+  household.compModel = model;   // local state only until saved
+  renderCompModelSettings();
+  updateChoreModalFieldStates(); // grey/ungrey chore card fields if modal is open
+};
+
+// Persist compensation settings to Firestore
+window.saveCompSettings = async () => {
+  const model = household.compModel || 'points';
+  const cs    = {};
+
+  if (model === 'points') {
+    cs.pointsPerDollar  = parseInt(document.getElementById('cs-pts-per-dollar')?.value)  || 100;
+    cs.dailyMinPoints   = parseInt(document.getElementById('cs-daily-min-pts')?.value)   || null;
+    cs.dailyCapEnabled  = document.getElementById('cs-cap-toggle')?.checked || false;
+    cs.dailyCapPoints   = parseInt(document.getElementById('cs-cap-pts')?.value)         || null;
+  } else if (model === 'flat') {
+    cs.dailyCapEnabled  = document.getElementById('cs-cap-toggle')?.checked || false;
+    cs.dailyCapAmount   = parseFloat(document.getElementById('cs-cap-amount')?.value)    || null;
+  } else if (model === 'daily-min') {
+    cs.choreMinForFullDay = parseInt(document.getElementById('cs-chore-min')?.value)     || null;
+    cs.fullDayPay         = parseFloat(document.getElementById('cs-full-day-pay')?.value) || null;
+    cs.dailyCapEnabled    = document.getElementById('cs-cap-toggle')?.checked || false;
+    cs.dailyCapAmount     = parseFloat(document.getElementById('cs-cap-amount')?.value)  || null;
+  }
+
   await updateDoc(doc(db, 'households', currentUser.uid), {
-    pointMultiplier: mult,
-    bonusBudget:     bonus,
+    compModel:      model,
+    compSettings:   cs,
+    // Keep pointMultiplier in sync for backward compat with existing payout math
+    pointMultiplier: cs.pointsPerDollar || household.pointMultiplier || 100,
   });
-  household.pointMultiplier = mult;
-  household.bonusBudget     = bonus;
-  showToast('✅ Points config saved');
-  renderOverview(); // Refresh the payout estimates
+
+  household.compModel    = model;
+  household.compSettings = cs;
+  if (cs.pointsPerDollar) household.pointMultiplier = cs.pointsPerDollar;
+
+  showToast('✅ Compensation settings saved');
+  renderOverview();
 };
 
 // ── Nav ───────────────────────────────────────────────────────
@@ -1250,11 +1707,12 @@ window.signOutUser = async () => {
     // Clear all storage to ensure clean logout
     localStorage.clear();
     sessionStorage.clear();
-    // Redirect to login
-    window.location.href = '../../login.html';
+    // ?signedout=1 tells login.html to skip the auto-redirect
+    // (Firebase's onAuthStateChanged can fire before IndexedDB clears)
+    window.location.href = '../../login.html?signedout=1';
   } catch(e) {
     console.error('Sign out error:', e);
-    window.location.href = '../../login.html';
+    window.location.href = '../../login.html?signedout=1';
   }
 };
 
@@ -1279,22 +1737,49 @@ window.copyKidLink = async () => {
 
   const kidDashboardUrl = `${window.location.origin}/app/pages/kid-dashboard.html?h=${householdId}`;
 
-  try {
-    await navigator.clipboard.writeText(kidDashboardUrl);
-
-    // Show success feedback
-    const btn = event.target;
-    const originalText = btn.textContent;
-    btn.textContent = '✓ Copied!';
-    btn.style.background = 'var(--green)';
-
+  // Helper: flash the button green on success
+  function showCopySuccess() {
+    // querySelector is reliable here; event.target is not when called via onclick=""
+    const btn = document.querySelector('[onclick="copyKidLink()"]');
+    if (!btn) return;
+    const originalText    = btn.textContent;
+    btn.textContent       = '✓ Copied!';
+    btn.style.background  = 'var(--green)';
     setTimeout(() => {
-      btn.textContent = originalText;
+      btn.textContent      = originalText;
       btn.style.background = '';
     }, 2000);
+  }
+
+  // Primary: modern Clipboard API
+  // Requires explicit permission on some Windows browsers — may be denied.
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    try {
+      await navigator.clipboard.writeText(kidDashboardUrl);
+      showCopySuccess();
+      return;
+    } catch(err) {
+      // Permission denied or unavailable — fall through to legacy method
+      console.warn('Clipboard API unavailable, trying fallback:', err);
+    }
+  }
+
+  // Fallback: hidden textarea + execCommand('copy')
+  // Works on Windows Chrome/Edge when Clipboard API is blocked.
+  try {
+    const ta = document.createElement('textarea');
+    ta.value = kidDashboardUrl;
+    ta.style.cssText = 'position:fixed;top:-9999px;left:-9999px;opacity:0';
+    document.body.appendChild(ta);
+    ta.focus();
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    showCopySuccess();
   } catch(err) {
-    console.error('Failed to copy:', err);
-    alert('Failed to copy. Try again.');
+    console.error('Copy fallback also failed:', err);
+    // Last resort: let the user copy it manually from a prompt
+    window.prompt('Copy this link and send it to your kids:', kidDashboardUrl);
   }
 };
 

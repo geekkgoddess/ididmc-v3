@@ -155,9 +155,12 @@ import {
 import { db } from './app/js/firebase.js';
 import { doc, getDoc } from 'https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore.js';
 
-// Check if already logged in
+// If the user just signed out, don't auto-redirect even if Firebase still
+// reports them as authenticated (IndexedDB clears async — race condition).
+const justSignedOut = new URLSearchParams(window.location.search).get('signedout');
+
 onAuthStateChanged(auth, async (user) => {
-  if (user) {
+  if (user && !justSignedOut) {
     try {
       const snap = await getDoc(doc(db, 'households', user.uid));
       if (snap.exists() && snap.data().onboardingComplete) {

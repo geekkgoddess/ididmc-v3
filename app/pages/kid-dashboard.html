@@ -190,6 +190,18 @@
     <p style="margin-top:10px;max-width:240px">No chores today. Rest up.</p>
   </div>
 
+  <!-- Day Off (PTO) -->
+  <div id="screen-dayoff" class="screen"
+       style="align-items:center;justify-content:center;text-align:center">
+    <span style="font-size:72px;display:block;margin-bottom:20px">🏖️</span>
+    <h1>Day Off!</h1>
+    <p id="dayoff-name" style="font-size:18px;font-weight:700;color:var(--gold);margin:8px 0 4px"></p>
+    <p style="margin-top:8px;max-width:240px;color:var(--muted)">
+      Your parent gave you a day off today. Enjoy! 🎉
+    </p>
+    <button class="btn btn-ghost" style="margin-top:24px" onclick="switchKid()">Switch Kid</button>
+  </div>
+
   <!-- Kid select -->
   <div id="screen-select" class="screen">
     <div style="flex:1;display:flex;flex-direction:column;justify-content:center">
@@ -393,8 +405,11 @@ let dailyClaimed     = {};
 let weeklyClaimed    = {};
 let pointsToday      = 0;
 let pointsPeriod     = 0;
+let flatToday        = 0;   // $ earned today  (flat-pay model)
+let flatPeriod       = 0;   // $ earned this period (flat-pay model)
 let dailyDoneCount   = 0;
 let checkedSubTasks  = new Set(); // tracks which sub-tasks are checked
+let kidSubmissionsListener = null; // holds the onSnapshot unsubscribe fn
 
 // ── Boot ──────────────────────────────────────────────────────
 async function boot() {
@@ -415,6 +430,9 @@ async function boot() {
     if (!snap.exists()) throw new Error('Not found');
     household = snap.data();
   } catch(e) {
+    // Log the real error so it's visible in Safari/Chrome DevTools.
+    // Previously this was silently swallowed — masking permission errors as "not found".
+    console.error('Household load failed:', e);
     showScreen('screen-select');
     document.getElementById('kid-buttons').innerHTML =
       `<div class="empty-state"><p>Household not found.</p></div>`;
@@ -488,6 +506,7 @@ async function loadDashboard() {
   await Promise.all([loadClaimedState(), loadPoints()]);
   renderDashboard();
   showScreen('screen-dashboard');
+  setupRealtimeKid(); // keep point totals live after parent approvals
 }
 
 async function loadClaimedState() {
@@ -502,8 +521,10 @@ async function loadClaimedState() {
 }
 
 async function loadPoints() {
-  pointsToday  = 0;
-  pointsPeriod = 0;
+  pointsToday    = 0;
+  pointsPeriod   = 0;
+  flatToday      = 0;
+  flatPeriod     = 0;
   dailyDoneCount = 0;
   const period = getPayPeriod();
 
@@ -516,17 +537,78 @@ async function loadPoints() {
   );
   const snaps = await getDocs(q);
   snaps.forEach(d => {
-    const s = d.data();
-    const pts = (s.points || 0) + (s.bonusPoints || 0);
+    const s    = d.data();
+    const pts  = (s.points || 0) + (s.bonusPoints || 0);
+    const flat = s.flatPayValue || 0;
     pointsPeriod += pts;
+    flatPeriod   += flat;
     if (s.date === getToday()) {
-      pointsToday += pts;
+      pointsToday    += pts;
+      flatToday      += flat;
       dailyDoneCount++;
     }
   });
 }
 
+// ── Realtime submissions listener (kid) ───────────────────────
+// Called after loadDashboard() so point totals update when a parent
+// approves or adds bonus points — without the kid needing to refresh.
+function setupRealtimeKid() {
+  // Tear down the previous listener (e.g. when switching kids)
+  if (kidSubmissionsListener) { kidSubmissionsListener(); kidSubmissionsListener = null; }
+
+  const period = getPayPeriod();
+  const q = query(
+    collection(db, 'submissions'),
+    where('householdId', '==', householdId),
+    where('kidName',     '==', currentKid.name),
+    where('payPeriod',   '==', period),
+    where('status', 'in', ['approved', 'pending'])
+  );
+
+  let firstFire = true; // loadDashboard() already fetched the initial state
+  kidSubmissionsListener = onSnapshot(q, (snaps) => {
+    if (firstFire) { firstFire = false; return; }
+
+    // Recalculate totals from the latest snapshot
+    pointsToday    = 0;
+    pointsPeriod   = 0;
+    flatToday      = 0;
+    flatPeriod     = 0;
+    dailyDoneCount = 0;
+    snaps.forEach(d => {
+      const s    = d.data();
+      const pts  = (s.points || 0) + (s.bonusPoints || 0);
+      const flat = s.flatPayValue || 0;
+      pointsPeriod += pts;
+      flatPeriod   += flat;
+      if (s.date === getToday()) {
+        pointsToday    += pts;
+        flatToday      += flat;
+        dailyDoneCount++;
+      }
+    });
+
+    // Only re-render if the dashboard screen is currently visible
+    // (avoids disrupting chore submission flow)
+    const dashEl = document.getElementById('screen-dashboard');
+    if (dashEl && dashEl.style.display !== 'none') {
+      renderDashboard();
+    }
+  });
+}
+
 function renderDashboard() {
+  // ── PTO / Day Off check ────────────────────────────────────────
+  // If the parent has scheduled a day off for this kid today, skip chores
+  const todayStr = getToday();
+  const ptoDays  = household.ptoSchedule?.[currentKid.name] || [];
+  if (ptoDays.includes(todayStr)) {
+    document.getElementById('dayoff-name').textContent = currentKid.name + '\'s day off';
+    showScreen('screen-dayoff');
+    return;
+  }
+
   // Kid strip
   const strip = document.getElementById('kid-strip');
   strip.innerHTML = `
@@ -571,20 +653,43 @@ function renderDashboard() {
   // completionPct = chores done today / quota * 100
   const pct = Q > 0 ? Math.min(Math.round((dailyDoneCount / Q) * 100), 100) : 0;
 
-  // Update points display
-  document.getElementById('pts-today').textContent     = pointsToday;
-  document.getElementById('pts-period-label').textContent = `pts today`;
-  document.getElementById('period-pts').textContent    = `${pointsPeriod} pts this period`;
-  document.getElementById('quota-label').textContent   =
-    `${dailyDoneCount} of ${Q} chores · ${pct}% towards today's goal`;
+  // ── Earnings widget — model-aware ─────────────────────────────
+  const model = household.compModel || 'points';
+  const cs    = household.compSettings || {};
+  let bigNum, bigLabel, periodText, progressLabel;
+
+  if (model === 'flat') {
+    bigNum        = `$${flatToday.toFixed(2)}`;
+    bigLabel      = 'earned today';
+    periodText    = `$${flatPeriod.toFixed(2)} this period`;
+    progressLabel = `${dailyDoneCount} of ${Q} chores done`;
+  } else if (model === 'daily-min') {
+    const choreMin   = cs.choreMin   || 0;
+    const fullDayPay = cs.fullDayPay || 0;
+    const goalMet    = choreMin > 0 && dailyDoneCount >= choreMin;
+    bigNum        = `${dailyDoneCount}/${choreMin}`;
+    bigLabel      = goalMet ? `✓ $${fullDayPay} earned today` : `chores to earn $${fullDayPay}`;
+    periodText    = goalMet ? 'goal met today!' : `${Math.max(0, choreMin - dailyDoneCount)} more to go`;
+    progressLabel = `${dailyDoneCount} of ${Q} chores · daily goal: ${choreMin}`;
+  } else {
+    // Model A — Points (default for all existing households)
+    bigNum        = pointsToday;
+    bigLabel      = 'pts today';
+    periodText    = `${pointsPeriod} pts this period`;
+    progressLabel = `${dailyDoneCount} of ${Q} chores · ${pct}% towards today's goal`;
+  }
+
+  document.getElementById('pts-today').textContent        = bigNum;
+  document.getElementById('pts-period-label').textContent = bigLabel;
+  document.getElementById('period-pts').textContent       = periodText;
+  document.getElementById('quota-label').textContent      = progressLabel;
 
   // Progress bar
   const bar = document.getElementById('quota-bar');
   bar.style.width = pct + '%';
   if (pct >= 100) bar.classList.add('full');
 
-  // SVG quota ring
-  // Circumference of circle r=26: 2π×26 ≈ 163.4
+  // SVG quota ring  (circumference of r=26 circle: 2π×26 ≈ 163.4)
   const circumference = 163.4;
   const dashOffset    = circumference - (circumference * pct / 100);
   document.getElementById('quota-arc').style.strokeDashoffset = dashOffset;
@@ -596,17 +701,23 @@ function renderDashboard() {
 
 function renderChoreList(type) {
   const isDaily = type === 'daily';
-  const chores  = (household.chores || []).filter(c =>
-    isDaily
-      ? c.freq === 'daily' && (c.assignedTo === 'any' || c.assignedTo === currentKid.name)
-      : c.freq === 'weekly'
-  );
+  // Non-daily freqs (weekly, bi-weekly, monthly, as-needed) all show on the weekly tab.
+  // 'bonus' is a legacy value — treat as weekly too.
+  const chores  = (household.chores || []).filter(c => {
+    const matchesKid = c.assignedTo === 'any' || c.assignedTo === currentKid.name;
+    if (isDaily) return c.freq === 'daily' && matchesKid;
+    return c.freq !== 'daily' && matchesKid; // weekly tab = everything except daily
+  });
   const claimed  = isDaily ? dailyClaimed : weeklyClaimed;
   const listEl   = document.getElementById(`${type}-list`);
   const earnedEl = document.getElementById(`${type}-pts-label`);
 
-  let myPts = 0;
-  let html  = '';
+  // Comp model — determines what value to show per chore item
+  const choreModel = household.compModel || 'points';
+
+  let myPts      = 0;
+  let myFlat     = 0;
+  let html       = '';
 
   for (const chore of chores) {
     const status     = claimed[`${chore.id}_status`];
@@ -616,8 +727,15 @@ function renderChoreList(type) {
     const isPending  = status === 'pending';
 
     if (isMine && (status === 'submitted' || status === 'approved')) {
-      myPts += (chore.pointValue || 0);
+      myPts  += (chore.pointValue  || 0);
+      myFlat += (chore.flatPayValue || 0);
     }
+
+    // Per-chore value label — depends on comp model
+    const chorePtsHtml = choreModel === 'flat'
+      ? `<div class="chore-pts">$${(chore.flatPayValue || 0).toFixed(2)}</div>`
+      : choreModel === 'daily-min' ? ''   // daily min: pay is per-day, not per-chore
+      : `<div class="chore-pts">${chore.pointValue || 0} pts</div>`;
 
     const dotColor = isMine   ? 'var(--green)'
                    : isOther  ? 'var(--muted)'
@@ -658,7 +776,7 @@ function renderChoreList(type) {
           <div style="font-size:11px;color:var(--muted);margin-top:2px">${sub}</div>
         </div>
         ${infoBtn}
-        <div class="chore-pts">${chore.pointValue || 0} pts</div>
+        ${chorePtsHtml}
       </div>`;
   }
 
@@ -667,8 +785,14 @@ function renderChoreList(type) {
       No ${type} chores assigned to you</div>`;
   }
 
-  listEl.innerHTML  = html;
-  earnedEl.textContent = myPts > 0 ? `+${myPts} pts earned` : '';
+  listEl.innerHTML = html;
+  if (choreModel === 'flat') {
+    earnedEl.textContent = myFlat > 0 ? `+$${myFlat.toFixed(2)} earned` : '';
+  } else if (choreModel === 'daily-min') {
+    earnedEl.textContent = ''; // daily min widget handles this above
+  } else {
+    earnedEl.textContent = myPts > 0 ? `+${myPts} pts earned` : '';
+  }
 }
 
 // ── Info modal ────────────────────────────────────────────────
@@ -898,16 +1022,40 @@ window.submitClaim = async () => {
       weeklyClaimed[`${currentChore.id}_claimedBy`] = currentKid.name;
     }
 
-    pointsToday  += currentChore.pointValue || 0;
-    pointsPeriod += currentChore.pointValue || 0;
     dailyDoneCount++;
 
-    document.getElementById('success-pts').textContent =
-      `+${currentChore.pointValue || 0} pts`;
+    // ── Success screen — model-aware ───────────────────────────
+    const successModel = household.compModel || 'points';
+    const successCs    = household.compSettings || {};
+    let earnedLabel, todayLine;
+
+    if (successModel === 'flat') {
+      const flat   = currentChore.flatPayValue || 0;
+      flatToday   += flat;
+      flatPeriod  += flat;
+      earnedLabel  = `+$${flat.toFixed(2)}`;
+      todayLine    = `Today: <strong style="color:var(--gold)">$${flatToday.toFixed(2)}</strong>`;
+    } else if (successModel === 'daily-min') {
+      const min     = successCs.choreMin   || 0;
+      const pay     = successCs.fullDayPay || 0;
+      const goalMet = min > 0 && dailyDoneCount >= min;
+      earnedLabel   = `${dailyDoneCount}/${min} chores`;
+      todayLine     = goalMet
+        ? `<strong style="color:var(--green)">✓ Daily goal met! $${pay} earned</strong>`
+        : `<span style="color:var(--muted)">${min - dailyDoneCount} more chore${min - dailyDoneCount !== 1 ? 's' : ''} to reach $${pay}</span>`;
+    } else {
+      // Points (default)
+      pointsToday  += currentChore.pointValue || 0;
+      pointsPeriod += currentChore.pointValue || 0;
+      earnedLabel   = `+${currentChore.pointValue || 0} pts`;
+      todayLine     = `Today: <strong style="color:var(--gold)">${pointsToday} pts</strong>`;
+    }
+
+    document.getElementById('success-pts').textContent = earnedLabel;
     document.getElementById('success-msg').innerHTML =
       `<strong>${currentChore.name}</strong> logged!<br><br>
        ${status === 'pending' ? 'Waiting for parent approval.' : 'Auto-approved ⚡'}<br><br>
-       Today: <strong style="color:var(--gold)">${pointsToday} pts</strong>`;
+       ${todayLine}`;
 
     showScreen('screen-success');
 
