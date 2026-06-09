@@ -2,14 +2,17 @@
  * ================================================================
  *  I DID MY CHORES — Firebase Cloud Functions
  *  Requires: Firebase Blaze plan (pay-as-you-go)
- *  Install:  npm install firebase-functions firebase-admin nodemailer
+ *  Install:  npm install firebase-functions firebase-admin nodemailer exif-parser
  * ================================================================
  */
 
-const {onSchedule} = require("firebase-functions/v2/scheduler");
-const functions = require("firebase-functions");
-const admin = require("firebase-admin");
-const nodemailer = require("nodemailer");
+const {onSchedule}        = require("firebase-functions/v2/scheduler");
+const {onObjectFinalized} = require("firebase-functions/v2/storage");
+const functions           = require("firebase-functions");
+const admin               = require("firebase-admin");
+const nodemailer          = require("nodemailer");
+const crypto              = require("crypto");       // built-in Node.js — no install needed
+const ExifParser          = require("exif-parser");  // npm install exif-parser
 
 admin.initializeApp();
 const db = admin.firestore();
@@ -284,8 +287,9 @@ exports.sendDailySummary = onSchedule({schedule:"0 22 * * *",timeZone:"America/N
         const household = hDoc.data();
         const hId = hDoc.id;
 
-        // Skip households with no email or no kids
+        // Skip households with no email, no kids, or daily summary disabled
         if (!household.ownerEmail || !household.kids?.length) return;
+        if ((household.emailSettings || {}).dailySummary === false) return;
 
         // Fetch today's approved submissions for this household
         const subsSnap = await db.collection("submissions")
@@ -405,14 +409,25 @@ exports.sendDailySummary = onSchedule({schedule:"0 22 * * *",timeZone:"America/N
 //  e.g. 350 points × ($5.00 / 100 pts) = $17.50 payout
 // ================================================================
 
-exports.sendWeeklyPayday = onSchedule({schedule:"0 18 * * 0",timeZone:"America/New_York"}, async (event) => {
+// Runs daily at 6 PM ET — each household picks its own payday via emailSettings.weeklyDay
+exports.sendWeeklyPayday = onSchedule({schedule:"0 18 * * *",timeZone:"America/New_York"}, async (event) => {
+      // Determine today's day name (lowercase) in Eastern time
+      const weekdays = ["sunday","monday","tuesday","wednesday","thursday","friday","saturday"];
+      const todayDayName = weekdays[new Date().getDay()];
+
       const householdsSnap = await db.collection("households").get();
 
       const emailPromises = householdsSnap.docs.map(async (hDoc) => {
         const household = hDoc.data();
         const hId = hDoc.id;
+        const es  = household.emailSettings || {};
 
         if (!household.ownerEmail || !household.kids?.length) return;
+        // Skip if weekly payday emails are disabled
+        if (es.weeklySummary === false) return;
+        // Skip if today isn't this household's chosen payday (default: friday)
+        const payday = es.weeklyDay || "friday";
+        if (todayDayName !== payday) return;
 
         // pointMultiplier: how many dollars per 100 points
         // e.g. household.pointMultiplier = 5 means 100 pts = $5.00
@@ -521,3 +536,154 @@ function formatDate(str) {
   const d = new Date(str + "T00:00:00");
   return d.toLocaleDateString("en-US", {weekday: "short", month: "short", day: "numeric"});
 }
+
+
+// ================================================================
+//  PHOTO FRAUD DETECTION
+//  Triggered every time a file lands in Firebase Storage.
+//  Runs two checks on every chore photo:
+//
+//  1. EXIF date check
+//     Reads the photo's DateTimeOriginal EXIF field. If the photo
+//     was taken on a PREVIOUS day (not today), it was pre-taken —
+//     reject it. Uses today's date from the storage path so the
+//     check stays accurate regardless of server timezone drift.
+//
+//  2. Duplicate hash check
+//     Computes a SHA-256 fingerprint of the raw file bytes. If the
+//     same fingerprint is already in the `photo_hashes` collection,
+//     the kid uploaded the same image twice — reject it.
+//
+//  On rejection: the submission is marked `rejected_fraud` so the
+//  parent sees it flagged in the Approvals tab, and the photo is
+//  deleted from Storage to free space.
+//  On clean pass: the hash is stored for future dedup checks.
+//
+//  Storage path format:
+//    photos/{householdId}/{kidName}/{choreId}/{YYYY-MM-DD}_{timestamp}.{ext}
+// ================================================================
+
+exports.detectPhotoFraud = onObjectFinalized({ bucket: "i-did-my-chores.firebasestorage.app" }, async (event) => {
+  const object   = event.data;
+  const filePath = object.name; // e.g. "photos/UID/Alex/choreId/2026-06-09_1234567890.jpg"
+
+  // Only process files in the photos/ folder — ignore everything else
+  if (!filePath || !filePath.startsWith("photos/")) return null;
+
+  // ── Parse householdId, kidName, uploadDate from the path ────
+  // Path format: photos/{householdId}/{kidName}/{choreId}/{date}_{timestamp}.{ext}
+  const parts = filePath.split("/");
+  if (parts.length < 5) {
+    console.warn("Unexpected photo path format, skipping fraud check:", filePath);
+    return null;
+  }
+  const householdId = parts[1];
+  const kidName     = parts[2];
+  // Extract the date portion from the filename (format: "YYYY-MM-DD_timestamp.ext")
+  const filename    = parts[4] || "";
+  const uploadDate  = filename.split("_")[0]; // "YYYY-MM-DD"
+
+  if (!uploadDate || !/^\d{4}-\d{2}-\d{2}$/.test(uploadDate)) {
+    console.warn("Could not parse upload date from filename, skipping:", filename);
+    return null;
+  }
+
+  console.log(`Photo fraud check: ${filePath} | uploadDate: ${uploadDate}`);
+
+  // ── Download the file bytes ──────────────────────────────────
+  const bucket   = admin.storage().bucket(object.bucket);
+  const fileRef  = bucket.file(filePath);
+  let fileBuffer;
+  try {
+    const [contents] = await fileRef.download();
+    fileBuffer = contents;
+  } catch (err) {
+    console.error("Could not download file for fraud check:", err);
+    return null;
+  }
+
+  // ── Check 1: EXIF date vs upload date ───────────────────────
+  // Only JPEG files contain EXIF — skip non-JPEG silently
+  let fraudReason = null;
+  const contentType = object.contentType || "";
+  if (contentType.startsWith("image/jpeg") || contentType.startsWith("image/jpg")) {
+    try {
+      const parser    = ExifParser.create(fileBuffer);
+      const exifData  = parser.parse();
+      const dateTime  = exifData.tags?.DateTimeOriginal; // Unix timestamp or undefined
+
+      if (dateTime) {
+        // DateTimeOriginal is a Unix timestamp (seconds)
+        const photoDate = new Date(dateTime * 1000).toISOString().split("T")[0];
+
+        if (photoDate < uploadDate) {
+          // Photo was taken BEFORE today — pre-taken, not a live submission
+          fraudReason = `EXIF date mismatch: photo taken ${photoDate}, submitted on ${uploadDate}`;
+          console.warn(`FRAUD DETECTED (EXIF): ${filePath} — ${fraudReason}`);
+        }
+      }
+      // If no EXIF date found, give the kid the benefit of the doubt — pass
+    } catch (exifErr) {
+      // Corrupted or missing EXIF — not conclusive evidence of fraud, continue
+      console.log("Could not parse EXIF (not necessarily fraud):", exifErr.message);
+    }
+  }
+
+  // ── Check 2: Duplicate hash ──────────────────────────────────
+  // Compute SHA-256 of the raw bytes. Store / check in photo_hashes collection.
+  const hash       = crypto.createHash("sha256").update(fileBuffer).digest("hex");
+  const hashDocRef = db.collection("photo_hashes").doc(hash);
+  const hashSnap   = await hashDocRef.get();
+
+  if (!fraudReason && hashSnap.exists()) {
+    const prior = hashSnap.data();
+    fraudReason = `Duplicate photo: already submitted by ${prior.kidName} on ${prior.uploadDate}`;
+    console.warn(`FRAUD DETECTED (duplicate hash): ${filePath} — ${fraudReason}`);
+  }
+
+  // ── On fraud: flag submission + delete file ──────────────────
+  if (fraudReason) {
+    // Small delay — the client creates the submission doc AFTER the upload completes,
+    // so wait a couple of seconds before querying for it.
+    await new Promise(r => setTimeout(r, 3000));
+
+    // Find the matching submission by storage path
+    const submQuery = await db.collection("submissions")
+      .where("photoStoragePath", "==", filePath)
+      .limit(1)
+      .get();
+
+    if (!submQuery.empty) {
+      const submDoc = submQuery.docs[0];
+      await submDoc.ref.update({
+        status:      "rejected_fraud",
+        fraudReason: fraudReason,
+        flaggedAt:   admin.firestore.FieldValue.serverTimestamp(),
+      });
+      console.log(`Submission ${submDoc.id} marked rejected_fraud`);
+    } else {
+      console.warn("No matching submission found for fraudulent photo:", filePath);
+    }
+
+    // Delete the fraudulent photo from Storage
+    try {
+      await fileRef.delete();
+      console.log("Fraudulent photo deleted:", filePath);
+    } catch (delErr) {
+      console.error("Could not delete fraudulent photo:", delErr);
+    }
+
+    return null;
+  }
+
+  // ── On clean: store hash to catch future duplicates ──────────
+  await hashDocRef.set({
+    filePath:   filePath,
+    householdId: householdId,
+    kidName:    kidName,
+    uploadDate: uploadDate,
+    storedAt:   admin.firestore.FieldValue.serverTimestamp(),
+  });
+  console.log(`Photo passed fraud checks, hash stored: ${hash.slice(0, 12)}…`);
+  return null;
+});

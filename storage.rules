@@ -1,0 +1,14 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Photos: anyone can upload (kids submit without auth), only auth users can read
+    match /photos/{householdId}/{allPaths=**} {
+      allow write: if true;
+      allow read: if request.auth != null && request.auth.uid == householdId;
+    }
+    // Default: deny all
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}
