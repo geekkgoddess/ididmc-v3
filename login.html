@@ -192,6 +192,7 @@ window.submitAuth = async () => {
     } else {
       await signInWithEmailAndPassword(auth, email, password);
     }
+    // Auth successful - the onAuthStateChanged listener will handle the redirect
   } catch(e) {
     showError(friendlyError(e.code));
     btn.disabled = false;
