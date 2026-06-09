@@ -1039,8 +1039,17 @@ window.switchTab = (tab) => {
 };
 
 window.signOutUser = async () => {
-  await signOut(auth);
-  window.location.href = '../../login.html';
+  try {
+    await signOut(auth);
+    // Clear all storage to ensure clean logout
+    localStorage.clear();
+    sessionStorage.clear();
+    // Redirect to login
+    window.location.href = '../../login.html';
+  } catch(e) {
+    console.error('Sign out error:', e);
+    window.location.href = '../../login.html';
+  }
 };
 
 window.copyKidLink = async () => {
