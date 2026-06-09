@@ -137,14 +137,18 @@ exports.getPhotoDownloadUrl = functions.https.onCall(async (data, context) => {
  *   All three steps happen atomically — no race condition possible.
  */
 exports.claimChore = functions.https.onRequest(async (req, res) => {
-  // Enable CORS for all origins
+  // Enable CORS
   res.set('Access-Control-Allow-Origin', '*');
-  res.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.set('Access-Control-Allow-Headers', 'Content-Type');
 
-  // Handle preflight requests
   if (req.method === 'OPTIONS') {
-    res.status(204).send('');
+    res.status(204).send();
+    return;
+  }
+
+  if (req.method !== 'POST') {
+    res.status(405).send('Method not allowed');
     return;
   }
 
