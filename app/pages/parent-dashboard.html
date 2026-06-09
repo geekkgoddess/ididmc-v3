@@ -1618,7 +1618,7 @@ function renderPtoSettings() {
     html += household.kids.map(k => {
       const used      = schedule[k.name] || [];
       const upcoming  = used.filter(d => d >= todayStr).sort();
-      const usedCount = used.filter(d => d < todayStr).length;
+      const usedCount = used.filter(d => d <= todayStr).length;
       const remaining = Math.max(0, ptoPerYear - usedCount);
       return `
         <div style="border-top:1px solid var(--border);padding:12px 0 6px">
