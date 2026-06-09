@@ -232,6 +232,73 @@
       padding: 0 16px; display: none;
     }
     .sacc-body-bare { border-top: 1px solid var(--border); display: none; }
+
+    /* ── Mobile responsiveness (≤ 430px) ── */
+    @media (max-width: 430px) {
+      /* Global tightening */
+      .screen { padding: 20px 16px 80px; }
+
+      /* Overview header — stack on very small screens */
+      #screen-overview > div:first-child {
+        flex-wrap: wrap; gap: 6px;
+      }
+      #hh-name { font-size: 19px; }
+
+      /* Stats row — keep 3 tiles but reduce padding */
+      .stat-tile { padding: 10px 6px; }
+      .stat-tile-num { font-size: 20px; }
+
+      /* Chore admin header — wrap buttons to second line on narrow screens */
+      .chore-admin-header { flex-wrap: wrap; gap: 8px; padding: 12px; }
+      .chore-admin-header > div:last-child {
+        flex-wrap: wrap; gap: 6px;
+      }
+
+      /* Approval photo — shorter on mobile */
+      .approval-photo { height: 160px; }
+
+      /* Bottom nav labels */
+      .bottom-nav { height: 56px; }
+      .nav-item { font-size: 10px; padding: 6px 4px; }
+      .nav-icon { font-size: 18px; }
+
+      /* Modals — full width with small side margins */
+      #modal-add-kid > div,
+      #modal-payday > div,
+      #modal-delete-account > div {
+        max-width: 100% !important;
+        margin: 0 4px;
+        border-radius: 12px;
+      }
+
+      /* Settings accordion body padding */
+      .sacc-body { padding: 0 12px; }
+
+      /* Info modal */
+      .info-modal-content { padding: 20px 16px; border-radius: 12px; }
+
+      /* History bars — smaller label */
+      .history-bar-label { width: 28px; font-size: 11px; }
+      .history-bar-pct { width: 28px; font-size: 11px; }
+
+      /* Kid balance cards */
+      .kid-balance { padding: 12px; }
+
+      /* Add kid PIN row — fit on narrow screen */
+      #add-kid-pin-row { gap: 6px; }
+      #add-kid-pin-row .pin-digit {
+        width: 56px !important; height: 52px !important; font-size: 20px !important;
+      }
+
+      /* Period badge — smaller */
+      #period-badge { font-size: 10px; }
+
+      /* Page label */
+      .page-label { font-size: 10px; }
+
+      /* Chore card action buttons on mobile — icon only for ✕ */
+      .chore-admin-header .btn-sm { padding: 6px 10px; font-size: 12px; }
+    }
   </style>
 </head>
 <body>
@@ -267,7 +334,16 @@
     </div>
 
     <!-- Kid balances / points -->
-    <div class="page-label" style="margin-bottom:10px">This Period</div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+      <div class="page-label" style="margin-bottom:0">This Period</div>
+      <button id="payday-btn" onclick="openPaydayModal()"
+              style="background:linear-gradient(90deg,#f5c842,#fb923c);color:#111;
+                     border:none;border-radius:20px;padding:7px 16px;
+                     font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;
+                     display:none">
+        💰 Pay Out
+      </button>
+    </div>
     <div id="kid-balances"></div>
 
     <!-- Today's activity -->
@@ -594,6 +670,34 @@
     </div>
   </div>
 
+  <!-- Payday Modal -->
+  <div id="modal-payday" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;
+                                  background:rgba(0,0,0,0.8);z-index:3000;
+                                  align-items:center;justify-content:center;padding:20px"
+       onclick="if(event.target===this)closePaydayModal()">
+    <div style="background:var(--bg);border:1px solid var(--border);border-radius:16px;
+                padding:24px;width:100%;max-width:380px;position:relative">
+      <button onclick="closePaydayModal()"
+              style="position:absolute;top:14px;right:14px;background:none;border:none;
+                     color:var(--muted);font-size:22px;line-height:1;cursor:pointer">×</button>
+      <div style="font-size:28px;text-align:center;margin-bottom:8px">💰</div>
+      <h3 style="margin:0 0 4px;font-size:18px;font-weight:700;text-align:center">Pay Day!</h3>
+      <p style="font-size:13px;color:var(--muted);text-align:center;margin:0 0 20px">
+        Review each kid's earnings below, then confirm to close this period.
+      </p>
+      <div id="payday-summary" style="margin-bottom:20px"></div>
+      <button onclick="confirmPayOut()"
+              style="width:100%;padding:14px;background:linear-gradient(90deg,#f5c842,#fb923c);
+                     color:#111;border:none;border-radius:10px;font-weight:700;
+                     font-size:15px;cursor:pointer;font-family:inherit">
+        ✅ Confirm Pay Out &amp; Start New Period
+      </button>
+      <p style="font-size:11px;color:var(--muted);text-align:center;margin:10px 0 0">
+        This will log earnings and advance the pay period.
+      </p>
+    </div>
+  </div>
+
   <!-- Add Kid Modal -->
   <div id="modal-add-kid" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;
                                   background:rgba(0,0,0,0.75);z-index:3000;
@@ -799,7 +903,7 @@ import { auth, db } from '../../app/js/firebase.js';
 import { onAuthStateChanged, signOut, deleteUser } from 'https://www.gstatic.com/firebasejs/10.11.0/firebase-auth.js';
 import {
   doc, getDoc, updateDoc, collection, deleteDoc,
-  query, where, getDocs, onSnapshot, addDoc
+  query, where, getDocs, onSnapshot, addDoc, serverTimestamp
 } from 'https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore.js';
 
 let currentUser      = null;
@@ -967,6 +1071,9 @@ function renderOverview() {
       </div>`;
   }).join('');
 
+  // Show Pay Out button only when there are earnings to pay
+  showPaydayButton();
+
   // Today's activity feed
   const feed = document.getElementById('today-activity');
   const items = submissionsCache
@@ -1001,6 +1108,104 @@ function renderOverview() {
           </div>`}).join('') + `</div>`;
   }
 }
+
+// ── Payday flow ───────────────────────────────────────────────
+function calcPayouts() {
+  const period       = getPayPeriod();
+  const ptsPerDollar = household.pointMultiplier || 100;
+  const cap          = household.capPerKid || 120;
+  return (household.kids || []).map(kid => {
+    const pts = submissionsCache
+      .filter(s => s.kidName === kid.name && s.payPeriod === period && s.status === 'approved')
+      .reduce((sum, s) => sum + (s.points || 0) + (s.bonusPoints || 0), 0);
+    const amount = Math.min(parseFloat((pts / ptsPerDollar).toFixed(2)), cap);
+    return { kid, pts, amount };
+  });
+}
+
+function showPaydayButton() {
+  const payouts = calcPayouts();
+  const hasEarnings = payouts.some(p => p.pts > 0);
+  const btn = document.getElementById('payday-btn');
+  if (btn) btn.style.display = hasEarnings ? 'block' : 'none';
+}
+
+window.openPaydayModal = () => {
+  const payouts = calcPayouts();
+  document.getElementById('payday-summary').innerHTML = payouts.map(({ kid, pts, amount }) => `
+    <div style="display:flex;align-items:center;justify-content:space-between;
+                padding:12px 0;border-bottom:1px solid var(--border)">
+      <div style="display:flex;align-items:center;gap:10px">
+        <div style="width:34px;height:34px;border-radius:50%;
+                    background:${kid.color}22;color:${kid.color};
+                    display:flex;align-items:center;justify-content:center;
+                    font-weight:800;font-size:14px">${kid.name.charAt(0)}</div>
+        <div>
+          <div style="font-size:14px;font-weight:600">${kid.name}</div>
+          <div style="font-size:11px;color:var(--muted)">${pts} pts this period</div>
+        </div>
+      </div>
+      <div style="text-align:right">
+        <div style="font-family:'DM Mono',monospace;font-size:18px;
+                    color:var(--gold);font-weight:700">$${amount.toFixed(2)}</div>
+      </div>
+    </div>`).join('');
+  document.getElementById('modal-payday').style.display = 'flex';
+};
+
+window.closePaydayModal = () => {
+  document.getElementById('modal-payday').style.display = 'none';
+};
+
+window.confirmPayOut = async () => {
+  const period   = getPayPeriod();
+  const payouts  = calcPayouts();
+  const freq     = household.payFrequency ||
+                   (household.payPeriodDays === 14 ? 'biweekly' :
+                    household.payPeriodDays === 30 ? 'monthly' : 'weekly');
+  const today    = getToday();
+
+  // Calculate next period start date
+  function nextPeriodStart(currentStart) {
+    const d = new Date(currentStart + 'T00:00:00');
+    if (freq === 'weekly')      { d.setDate(d.getDate() + 7); }
+    else if (freq === 'biweekly') { d.setDate(d.getDate() + 14); }
+    else if (freq === 'monthly') { d.setMonth(d.getMonth() + 1); }
+    else if (freq === 'semimonthly') {
+      d.getDate() === 1 ? d.setDate(16) : (d.setDate(1), d.setMonth(d.getMonth() + 1));
+    } else {
+      // asneeded — advance to today, parent sets end later
+      return today;
+    }
+    return d.toISOString().split('T')[0];
+  }
+
+  const newStart = nextPeriodStart(period);
+
+  // Log payout records to Firestore subcollection (collection/addDoc/serverTimestamp imported at top)
+  const payoutPromises = payouts
+    .filter(p => p.amount > 0)
+    .map(({ kid, pts, amount }) =>
+      addDoc(collection(db, 'households', currentUser.uid, 'payouts'), {
+        kidName:   kid.name,
+        period,
+        pts,
+        amount,
+        paidAt:    today,
+        timestamp: serverTimestamp()
+      })
+    );
+  await Promise.all(payoutPromises);
+
+  // Advance the pay period start date in Firestore
+  await updateDoc(doc(db, 'households', currentUser.uid), {
+    payPeriodStart: newStart,
+    ...(freq === 'asneeded' ? { currentPeriodStart: newStart, currentPeriodEnd: '' } : {})
+  });
+
+  closePaydayModal();
+  showToast('💰 Pay out recorded! New period started.');
+};
 
 function updatePendingAlert() {
   const count = submissionsCache.filter(s => s.status === 'pending').length;
@@ -1374,11 +1579,14 @@ window.saveChore = async () => {
 };
 
 window.deleteChore = async (choreId) => {
+  const chore = (household.chores || []).find(c => c.id === choreId);
+  if (!chore) return;
+  if (!confirm(`Delete "${chore.name}"? This can't be undone.`)) return;
   const updatedChores = household.chores.filter(c => c.id !== choreId);
   await updateDoc(doc(db, 'households', currentUser.uid), { chores: updatedChores });
   household.chores = updatedChores;
   renderChoresAdmin();
-  showToast('Chore deleted');
+  showToast(`"${chore.name}" deleted`);
 };
 
 // ── History ───────────────────────────────────────────────────
@@ -1503,7 +1711,7 @@ function renderSettings() {
       </div>
     </div>`;
 
-  // Kids with reset PIN
+  // Kids with reset PIN + remove
   document.getElementById('settings-kids').innerHTML =
     household.kids.map((k, i) => `
       <div style="display:flex;align-items:center;justify-content:space-between;
@@ -1518,12 +1726,21 @@ function renderSettings() {
             <div style="font-size:11px;color:var(--muted)">PIN: ${k.pin}</div>
           </div>
         </div>
-        <button onclick="resetPinPrompt(${i})"
-                style="background:none;border:1px solid var(--border);
-                       border-radius:6px;padding:5px 10px;color:var(--muted);
-                       font-family:inherit;font-size:11px;cursor:pointer">
-          Reset PIN
-        </button>
+        <div style="display:flex;gap:6px">
+          <button onclick="resetPinPrompt(${i})"
+                  style="background:none;border:1px solid var(--border);
+                         border-radius:6px;padding:5px 10px;color:var(--muted);
+                         font-family:inherit;font-size:11px;cursor:pointer">
+            Reset PIN
+          </button>
+          <button onclick="removeKidConfirm(${i})"
+                  style="background:none;border:1px solid #ef444433;
+                         border-radius:6px;padding:5px 10px;color:#ef4444;
+                         font-family:inherit;font-size:11px;cursor:pointer"
+                  title="Remove ${k.name}">
+            Remove
+          </button>
+        </div>
       </div>`).join('') +
     `<div style="padding:12px 0;text-align:center">
        <button class="btn btn-ghost btn-sm" onclick="openAddKidModal()">
@@ -1644,6 +1861,26 @@ window.resetPinPrompt = async (idx) => {
   await updateDoc(doc(db, 'households', currentUser.uid), { kids: household.kids });
   renderSettings();
   showToast('✅ PIN updated');
+};
+
+window.removeKidConfirm = async (idx) => {
+  const kid = household.kids[idx];
+  if (!kid) return;
+  const confirmed = confirm(
+    `Remove ${kid.name} from your household?\n\nTheir past submissions will be kept in history, but they won't appear on the dashboard going forward.`
+  );
+  if (!confirmed) return;
+  // Soft-archive: flag as archived rather than hard-delete, preserving submission history
+  household.kids[idx] = { ...kid, archived: true };
+  // Filter out archived kids from the active kids array in Firestore
+  const activeKids   = household.kids.filter(k => !k.archived);
+  const archivedKids = household.kids.filter(k => k.archived);
+  await updateDoc(doc(db, 'households', currentUser.uid), {
+    kids:         activeKids,
+    archivedKids: archivedKids
+  });
+  showToast(`${kid.name} removed`);
+  // renderSettings fires automatically via onSnapshot
 };
 
 // ── Add Kid Modal ──────────────────────────────────────────────────

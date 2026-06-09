@@ -170,6 +170,35 @@
       font-family: 'DM Mono', monospace;
       font-size: 52px; font-weight: 500; color: var(--gold);
     }
+
+    /* ── Mobile responsiveness (≤ 430px) ── */
+    @media (max-width: 430px) {
+      .screen { padding: 20px 16px 80px; }
+
+      /* Points card */
+      .points-card { padding: 14px; }
+
+      /* PIN pad — ensure digits are tap-friendly */
+      .pin-row { justify-content: center; }
+      .pin-digit { width: 52px !important; height: 52px !important; font-size: 20px !important; }
+
+      /* Chore list items — more breathing room for thumbs */
+      .chore-item,
+      .list-item { padding: 12px 14px; min-height: 52px; }
+
+      /* Success points number */
+      .success-pts { font-size: 40px; }
+
+      /* Bottom nav */
+      .nav-item { font-size: 10px; }
+      .nav-icon  { font-size: 18px; }
+
+      /* Upload area — full width */
+      .upload-zone { padding: 20px 14px; }
+
+      /* Period badge */
+      #period-badge { font-size: 10px; }
+    }
   </style>
 </head>
 <body>

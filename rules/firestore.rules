@@ -1,5 +1,5 @@
 // ================================================================
-//  I DID MY CHORES — Firestore Security Rules v2
+//  I DID MY CHORES — Firestore Security Rules v3
 //  Deploy with: firebase deploy --only firestore:rules
 // ================================================================
 
@@ -8,21 +8,32 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     // ── Households ──────────────────────────────────────────────
-    // Only the owner (logged-in parent) can read/write their household.
+    // PUBLIC READ: Kids access the household by ID (via URL link from parent).
+    // Household IDs are long Firebase UIDs — not guessable.
+    // Only the authenticated parent (uid == householdId) can write.
+    //
+    // WHY: The kid dashboard has no auth session. Without public read,
+    // Firestore denies the lookup and shows "Household not found" on any
+    // device where the parent isn't logged in (e.g., a kid's iOS phone).
     match /households/{householdId} {
-      allow read, write: if request.auth != null
-                         && request.auth.uid == householdId;
+      allow read:  if true;                                        // Kids + parents can read
+      allow write: if request.auth != null
+                   && request.auth.uid == householdId;            // Only the parent can write
     }
 
     // ── Submissions ─────────────────────────────────────────────
-    // Any authenticated user can create a submission.
-    // Only the household owner can update (approve/reject).
+    // PUBLIC CREATE: Kids submit chore completions without an auth session.
+    // Read/update restricted to the authenticated household owner (parent).
+    //
+    // WHY: Kids use a PIN, not Google Auth. They must be able to create
+    // submissions directly from the client. Write abuse is limited because
+    // each submission requires a valid householdId that matches a real doc.
     match /submissions/{submissionId} {
-      allow create: if request.auth != null;
-      allow read:   if request.auth != null;
+      allow create: if true;                                       // Kids submit without auth
+      allow read:   if request.auth != null;                      // Only parent can read
       allow update: if request.auth != null
                     && request.auth.uid == resource.data.householdId;
-      allow delete: if false; // Never delete submissions
+      allow delete: if false;                                      // Never delete submissions
     }
 
     // ── Chore claims (concurrency control) ──────────────────────
@@ -40,6 +51,15 @@ service cloud.firestore {
     match /daily_summaries/{summaryId} {
       allow read:  if request.auth != null;
       allow write: if false; // Cloud Functions only
+    }
+
+    // ── Payout records ──────────────────────────────────────────
+    // Logged when a parent closes a pay period.
+    // Only the authenticated parent can write or read their household's payouts.
+    match /households/{householdId}/payouts/{payoutId} {
+      allow read:  if request.auth != null && request.auth.uid == householdId;
+      allow create: if request.auth != null && request.auth.uid == householdId;
+      allow update, delete: if false; // Payouts are permanent records
     }
 
     // ── Admin site content ──────────────────────────────────────

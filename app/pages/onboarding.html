@@ -162,6 +162,17 @@
       cursor: pointer; flex-shrink: 0;
     }
     .swatch.sel { border-color: #fff; }
+
+    /* ── Mobile responsiveness ── */
+    @media (max-width: 430px) {
+      .screen { padding: 24px 16px 40px; }
+      .step-bar { margin-bottom: 24px; }
+      .pin-row { justify-content: center; gap: 8px; }
+      .pin-digit {
+        width: 56px; height: 56px; font-size: 22px;
+        text-align: center;
+      }
+    }
   </style>
 </head>
 <body>
