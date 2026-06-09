@@ -1009,13 +1009,16 @@ function renderSettings() {
   // Approval mode
   document.getElementById('settings-approval').innerHTML = `
     <div style="padding:14px 0">
-      <div style="font-size:14px;font-weight:600">
-        ${household.approvalMode === 'manual' ? '✋ Manual Approval' : '⚡ Auto Approve'}
-      </div>
-      <div style="font-size:12px;color:var(--muted);margin-top:2px">
-        ${household.approvalMode === 'manual'
-          ? 'You review every photo before it counts'
-          : 'Submissions approved automatically on submit'}
+      <div style="font-size:14px;font-weight:600;margin-bottom:12px">Approval Mode</div>
+      <div style="display:flex;gap:8px;flex-direction:column">
+        <button onclick="setApprovalMode('manual')" style="padding:10px 14px;border:2px solid ${household.approvalMode === 'manual' ? 'var(--gold)' : 'var(--border)'};border-radius:8px;background:${household.approvalMode === 'manual' ? 'var(--gold-dim)' : 'transparent'};color:var(--text);font-weight:600;cursor:pointer;text-align:left">
+          ✋ Manual Approval
+          <div style="font-size:12px;font-weight:400;color:var(--muted);margin-top:4px">You review every photo before it counts</div>
+        </button>
+        <button onclick="setApprovalMode('automatic')" style="padding:10px 14px;border:2px solid ${household.approvalMode === 'automatic' ? 'var(--gold)' : 'var(--border)'};border-radius:8px;background:${household.approvalMode === 'automatic' ? 'var(--gold-dim)' : 'transparent'};color:var(--text);font-weight:600;cursor:pointer;text-align:left">
+          ⚡ Auto Approve
+          <div style="font-size:12px;font-weight:400;color:var(--muted);margin-top:4px">Submissions approved automatically on submit</div>
+        </button>
       </div>
     </div>`;
 
@@ -1104,6 +1107,18 @@ window.signOutUser = async () => {
   } catch(e) {
     console.error('Sign out error:', e);
     window.location.href = '../../login.html';
+  }
+};
+
+window.setApprovalMode = async (mode) => {
+  try {
+    await updateDoc(doc(db, 'households', currentUser.uid), { approvalMode: mode });
+    household.approvalMode = mode;
+    renderSettings(); // Re-render settings to show updated UI
+    showToast(`✅ Approval mode set to ${mode === 'manual' ? 'Manual' : 'Automatic'}`);
+  } catch(err) {
+    console.error('Error updating approval mode:', err);
+    showToast('❌ Failed to update approval mode');
   }
 };
 
