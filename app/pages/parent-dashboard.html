@@ -48,6 +48,64 @@
       border-top: 1px solid var(--border);
     }
     .chore-admin-card.expanded .chore-admin-body { display: block; }
+
+    /* ── Info icons & tooltips ── */
+    .info-icon {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 20px; height: 20px; border-radius: 50%;
+      background: var(--gold); color: var(--bg); font-size: 12px;
+      font-weight: bold; cursor: help; margin-left: 6px;
+      position: relative; flex-shrink: 0;
+    }
+    .info-icon:hover { background: var(--gold-bright, #ffd700); }
+
+    /* Tooltip on hover */
+    .info-icon::after {
+      content: attr(data-tooltip);
+      position: absolute; bottom: 130%; left: 50%; transform: translateX(-50%);
+      background: rgba(0,0,0,0.9); color: white; padding: 8px 12px;
+      border-radius: 6px; font-size: 12px; white-space: nowrap;
+      pointer-events: none; opacity: 0; transition: opacity 0.2s;
+      z-index: 1000; box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    }
+    .info-icon:hover::after { opacity: 1; }
+
+    /* Arrow for tooltip */
+    .info-icon::before {
+      content: '';
+      position: absolute; bottom: 125%; left: 50%; transform: translateX(-50%);
+      border: 6px solid transparent; border-top-color: rgba(0,0,0,0.9);
+      opacity: 0; transition: opacity 0.2s; z-index: 1000;
+      pointer-events: none;
+    }
+    .info-icon:hover::before { opacity: 1; }
+
+    /* Info modal */
+    .info-modal {
+      display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.7); z-index: 2000; align-items: center;
+      justify-content: center; padding: 24px;
+    }
+    .info-modal.active { display: flex; }
+    .info-modal-content {
+      background: var(--bg); border: 1px solid var(--border);
+      border-radius: 16px; padding: 28px; max-width: 500px; width: 100%;
+      max-height: 80vh; overflow-y: auto;
+    }
+    .info-modal-close {
+      position: absolute; top: 16px; right: 16px;
+      background: none; border: none; font-size: 28px; cursor: pointer;
+      color: var(--muted); padding: 0; width: 40px; height: 40px;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .info-modal-close:hover { color: var(--text); }
+    .info-modal h3 {
+      margin: 0 0 12px; font-size: 18px; font-weight: 600; color: var(--gold);
+    }
+    .info-modal p {
+      margin: 0 0 12px; font-size: 14px; line-height: 1.6; color: var(--text);
+    }
+    .info-modal p:last-child { margin-bottom: 0; }
     .chore-admin-card.expanded .chore-expand-icon { transform: rotate(180deg); }
     .chore-expand-icon { transition: transform 0.2s; color: var(--muted); }
 
@@ -198,7 +256,7 @@
   <!-- ══════════ APPROVALS TAB ══════════ -->
   <div id="screen-approvals" class="screen">
     <div style="margin-bottom:20px">
-      <div class="page-label">Review Submissions</div>
+      <div class="page-label">Review Submissions <span class="info-icon" onclick="openInfoModal('approvals')" data-tooltip="Review submitted chores">ⓘ</span></div>
       <h1 style="font-size:22px">Approvals</h1>
     </div>
     <div id="approvals-list">
@@ -240,7 +298,7 @@
     </div>
 
     <!-- Points config -->
-    <div class="page-label" style="margin-bottom:10px">Points & Payout</div>
+    <div class="page-label" style="margin-bottom:10px">Points & Payout <span class="info-icon" onclick="openInfoModal('points-payout')" data-tooltip="Configure payment settings">ⓘ</span></div>
     <div class="card" style="margin-bottom:16px">
       <div class="field" style="margin-bottom:0">
         <label>Points per $1.00 Payout</label>
@@ -265,15 +323,15 @@
     </div>
 
     <!-- Approval mode -->
-    <div class="page-label" style="margin-bottom:10px">Approval Mode</div>
+    <div class="page-label" style="margin-bottom:10px">Approval Mode <span class="info-icon" onclick="openInfoModal('approval-mode')" data-tooltip="Choose approval workflow">ⓘ</span></div>
     <div class="card" style="padding:4px 16px;margin-bottom:16px" id="settings-approval"></div>
 
     <!-- Kids -->
-    <div class="page-label" style="margin-bottom:10px">Kids</div>
+    <div class="page-label" style="margin-bottom:10px">Kids <span class="info-icon" onclick="openInfoModal('kids')" data-tooltip="Manage children & PINs">ⓘ</span></div>
     <div class="card" style="padding:4px 16px;margin-bottom:16px" id="settings-kids"></div>
 
     <!-- Kids Dashboard Link -->
-    <div class="page-label" style="margin-bottom:10px">Share with Kids</div>
+    <div class="page-label" style="margin-bottom:10px">Share with Kids <span class="info-icon" onclick="openInfoModal('share-kids')" data-tooltip="Generate kid dashboard link">ⓘ</span></div>
     <div class="card" style="padding:16px;margin-bottom:16px">
       <div style="margin-bottom:12px">
         <label style="font-size:12px;color:var(--muted);display:block;margin-bottom:6px">Household ID</label>
@@ -355,6 +413,96 @@
           Delete Everything
         </button>
       </div>
+    </div>
+  </div>
+
+  <!-- Info Modals -->
+
+  <!-- Approvals Info Modal -->
+  <div id="info-modal-approvals" class="info-modal" onclick="if(event.target === this) closeInfoModal('approvals')">
+    <div class="info-modal-content">
+      <button class="info-modal-close" onclick="closeInfoModal('approvals')">×</button>
+      <h3>Approvals</h3>
+      <p><strong>What is this?</strong></p>
+      <p>The Approvals section shows all chore submissions from your kids that are waiting for your review.</p>
+      <p><strong>What should I see?</strong></p>
+      <p>Each submission displays:</p>
+      <p style="font-size: 13px; margin: 8px 0;">
+        • Child's name<br>
+        • Chore completed<br>
+        • Photo evidence (if required)<br>
+        • Buttons to approve or reject<br>
+        • Timestamp when submitted
+      </p>
+      <p><strong>What happens next?</strong></p>
+      <p>Click "Approve" to award the points to the child. Click "Reject" to send it back if it doesn't meet your standards.</p>
+    </div>
+  </div>
+
+  <!-- Points & Payout Info Modal -->
+  <div id="info-modal-points-payout" class="info-modal" onclick="if(event.target === this) closeInfoModal('points-payout')">
+    <div class="info-modal-content">
+      <button class="info-modal-close" onclick="closeInfoModal('points-payout')">×</button>
+      <h3>Points & Payout</h3>
+      <p><strong>What does this control?</strong></p>
+      <p>This is where you set the exchange rate for how many chore points equal real money.</p>
+      <p><strong>Points per $1.00 Payout</strong></p>
+      <p>How many points a child needs to earn to get $1.00. For example: 100 points = $1.00 means kids get $0.50 for 50 points.</p>
+      <p><strong>Bonus Budget</strong></p>
+      <p>Optional: Set a weekly spending cap to control how much the kids can earn through bonuses or extra chores.</p>
+      <p><strong>Example:</strong> If you set 100 pts = $1 and a kid earns 350 points, they get $3.50.</p>
+    </div>
+  </div>
+
+  <!-- Approval Mode Info Modal -->
+  <div id="info-modal-approval-mode" class="info-modal" onclick="if(event.target === this) closeInfoModal('approval-mode')">
+    <div class="info-modal-content">
+      <button class="info-modal-close" onclick="closeInfoModal('approval-mode')">×</button>
+      <h3>Approval Mode</h3>
+      <p><strong>What does this control?</strong></p>
+      <p>How chore submissions are handled when kids complete their work.</p>
+      <p><strong>Manual Approval</strong></p>
+      <p>You review every submission and its photo before the kid gets credit. This gives you full control and ensures quality work.</p>
+      <p><strong>Auto Approve</strong></p>
+      <p>Submissions are automatically approved when submitted. Kids get credit immediately. Use this for chores you trust are done correctly.</p>
+      <p><strong>Tip:</strong> Use Manual Approval for important chores and Auto Approve for routine ones to save time.</p>
+    </div>
+  </div>
+
+  <!-- Kids Info Modal -->
+  <div id="info-modal-kids" class="info-modal" onclick="if(event.target === this) closeInfoModal('kids')">
+    <div class="info-modal-content">
+      <button class="info-modal-close" onclick="closeInfoModal('kids')">×</button>
+      <h3>Kids</h3>
+      <p><strong>What is this?</strong></p>
+      <p>Manage your children and their login credentials for the app.</p>
+      <p><strong>What can I do here?</strong></p>
+      <p style="font-size: 13px; margin: 8px 0;">
+        • See each child's name and PIN<br>
+        • Add new children to your household<br>
+        • Reset a child's PIN if they forget it<br>
+      </p>
+      <p><strong>How do kids log in?</strong></p>
+      <p>Kids use their PIN (4 digits) to log into the kid dashboard. They don't need passwords or email addresses.</p>
+    </div>
+  </div>
+
+  <!-- Share with Kids Info Modal -->
+  <div id="info-modal-share-kids" class="info-modal" onclick="if(event.target === this) closeInfoModal('share-kids')">
+    <div class="info-modal-content">
+      <button class="info-modal-close" onclick="closeInfoModal('share-kids')">×</button>
+      <h3>Share with Kids</h3>
+      <p><strong>What is this?</strong></p>
+      <p>Generate and share your household's kid dashboard link so your children can access it.</p>
+      <p><strong>How to use it:</strong></p>
+      <p style="font-size: 13px; margin: 8px 0;">
+        • Click "Copy Kid Dashboard Link"<br>
+        • Paste the link in a text, email, or chat<br>
+        • Kids can open it in any browser<br>
+        • They'll need their PIN to log in
+      </p>
+      <p><strong>Where's the Household ID?</strong></p>
+      <p>The Household ID is embedded in the dashboard link. You don't need to share it separately—just share the full link.</p>
     </div>
   </div>
 
@@ -1210,6 +1358,24 @@ window.openLightbox = (url) => {
   document.getElementById('lightbox-img').src = url;
   document.getElementById('lightbox').style.display = 'flex';
 };
+
+// Info modal functions
+window.openInfoModal = (id) => {
+  const modal = document.getElementById('info-modal-' + id);
+  if (modal) modal.classList.add('active');
+};
+
+window.closeInfoModal = (id) => {
+  const modal = document.getElementById('info-modal-' + id);
+  if (modal) modal.classList.remove('active');
+};
+
+// Close info modal when clicking outside
+document.addEventListener('click', (e) => {
+  if (e.target.classList.contains('info-modal')) {
+    e.target.classList.remove('active');
+  }
+});
 
 // ── Helpers ───────────────────────────────────────────────────
 function getToday()  { return new Date().toISOString().split('T')[0]; }
