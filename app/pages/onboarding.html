@@ -7,6 +7,9 @@
   <title>Setup — I Did My Chores</title>
   <link rel="stylesheet" href="../css/app.css">
   <style>
+    /* Onboarding container */
+    .screen { max-width: 500px; margin: 0 auto; }
+
     /* Step progress */
     .step-bar {
       display: flex; gap: 6px; margin-bottom: 32px;
@@ -18,6 +21,84 @@
     }
     .step-pip.done  { background: var(--green); }
     .step-pip.active { background: var(--gold); }
+
+    /* Form fields */
+    .field {
+      margin-bottom: 20px;
+    }
+    .field label {
+      display: block; font-size: 13px; font-weight: 600;
+      color: var(--text); margin-bottom: 8px;
+    }
+    .field input,
+    .field select,
+    .field textarea {
+      width: 100%;
+      padding: 12px 14px;
+      background: var(--card2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      color: var(--text);
+      font-family: inherit;
+      font-size: 14px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .field input:focus,
+    .field select:focus,
+    .field textarea:focus {
+      border-color: var(--gold);
+    }
+    .field input::placeholder {
+      color: var(--muted2);
+    }
+    .field select {
+      cursor: pointer;
+    }
+    .field select option {
+      background: var(--card);
+      color: var(--text);
+    }
+
+    /* Buttons */
+    .btn {
+      width: 100%;
+      padding: 14px 16px;
+      border: none;
+      border-radius: 10px;
+      font-family: inherit;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+    .btn-primary {
+      background: var(--gold);
+      color: #000;
+    }
+    .btn-primary:hover {
+      background: #e6b82f;
+    }
+    .btn-primary:disabled {
+      background: var(--muted2);
+      cursor: not-allowed;
+      color: var(--muted);
+    }
+    .btn-ghost {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text);
+    }
+    .btn-ghost:hover {
+      border-color: var(--gold);
+      color: var(--gold);
+    }
+    .mt-8 { margin-top: 8px !important; }
+    .mt-16 { margin-top: 16px !important; }
 
     /* Kid card in list */
     .kid-card {
