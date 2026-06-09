@@ -323,26 +323,26 @@ exports.sendDailySummary = onSchedule({schedule:"0 22 * * *",timeZone:"America/N
 
         // ── Build email HTML ─────────────────────────────────────
         const kidRows = Object.entries(kidStats).map(([name, stats]) => {
-        // completionPct = (chores done / individual quota) * 100
           const pct = Q > 0 ? Math.min(Math.round((stats.completed / Q) * 100), 100) : 0;
-          const barWidth = pct;
+          const choreLine = stats.chores.length ? stats.chores.join(", ") : "No chores completed today";
           return `
           <tr>
-            <td style="padding:12px;border-bottom:1px solid #eee">
-              <strong>${name}</strong><br>
-              <small>${stats.chores.join(", ") || "No chores completed"}</small>
+            <td style="padding:14px;border-bottom:1px solid #f0f0f0;vertical-align:top">
+              <div style="font-weight:700;font-size:15px;color:#111111">${name}</div>
+              <div style="font-size:12px;color:#888888;margin-top:3px">${choreLine}</div>
             </td>
-            <td style="padding:12px;border-bottom:1px solid #eee;text-align:center">
-              ${stats.completed} / ${Q}
+            <td style="padding:14px;border-bottom:1px solid #f0f0f0;text-align:center;vertical-align:middle">
+              <span style="font-size:15px;font-weight:700;color:#111111">${stats.completed}</span>
+              <span style="color:#aaaaaa;font-weight:400"> / ${Q}</span>
             </td>
-            <td style="padding:12px;border-bottom:1px solid #eee;text-align:center">
-              <strong style="color:#2B7A78">${stats.points} pts</strong>
+            <td style="padding:14px;border-bottom:1px solid #f0f0f0;text-align:center;vertical-align:middle">
+              <span style="background:#fef9e7;color:#b38600;font-weight:700;font-size:13px;padding:4px 10px;border-radius:6px">${stats.points} pts</span>
             </td>
-            <td style="padding:12px;border-bottom:1px solid #eee">
-              <div style="background:#eee;border-radius:4px;height:10px;width:100%">
-                <div style="background:#2B7A78;height:10px;border-radius:4px;width:${barWidth}%"></div>
+            <td style="padding:14px;border-bottom:1px solid #f0f0f0;vertical-align:middle;min-width:90px">
+              <div style="background:#eeeeee;border-radius:999px;height:8px;width:100%">
+                <div style="background:linear-gradient(90deg,#f5c842,#fb923c);height:8px;border-radius:999px;width:${pct}%"></div>
               </div>
-              <small>${pct}% of daily goal</small>
+              <div style="font-size:11px;color:#aaaaaa;margin-top:4px">${pct}%</div>
             </td>
           </tr>`;
         }).join("");
@@ -350,33 +350,92 @@ exports.sendDailySummary = onSchedule({schedule:"0 22 * * *",timeZone:"America/N
         const totalCompleted = Object.values(kidStats).reduce((s, k) => s + k.completed, 0);
         const totalAvailable = T;
 
-        const html = `
-        <div style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:24px">
-          <h2 style="color:#2B7A78">🧹 I Did My Chores — Daily Summary</h2>
-          <p style="color:#666">${household.name} · ${formatDate(today)}</p>
+        const html = `<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f0ede8;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif">
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#f0ede8;padding:32px 16px">
+<tr><td align="center">
+<table cellpadding="0" cellspacing="0" style="width:100%;max-width:600px">
 
-          <div style="background:#f9f7f4;padding:16px;border-radius:8px;margin:20px 0">
-            <strong>Household Total:</strong>
-            ${totalCompleted} of ${totalAvailable} chores completed today
-            (${totalAvailable > 0 ? Math.round((totalCompleted/totalAvailable)*100) : 0}%)
-          </div>
+  <!-- Header -->
+  <tr>
+    <td style="background:#111111;border-radius:14px 14px 0 0;padding:32px 32px 24px;text-align:center">
+      <div style="font-size:36px;line-height:1">🧹</div>
+      <div style="color:#f5c842;font-size:22px;font-weight:800;letter-spacing:-0.3px;margin-top:10px">I Did My Chores</div>
+      <div style="color:#666666;font-size:11px;margin-top:6px;text-transform:uppercase;letter-spacing:2px">Daily Summary</div>
+    </td>
+  </tr>
 
-          <table style="width:100%;border-collapse:collapse">
-            <thead>
-              <tr style="background:#2B7A78;color:white">
-                <th style="padding:12px;text-align:left">Kid</th>
-                <th style="padding:12px">Done / Goal</th>
-                <th style="padding:12px">Points</th>
-                <th style="padding:12px;text-align:left">Progress</th>
-              </tr>
-            </thead>
-            <tbody>${kidRows}</tbody>
-          </table>
+  <!-- Body -->
+  <tr>
+    <td style="background:#ffffff;padding:28px 32px">
 
-          <p style="color:#999;font-size:12px;margin-top:24px">
-            — I Did My Chores · A She Got Sheets product by Joanna Hodge
-          </p>
-        </div>`;
+      <p style="margin:0 0 22px;font-size:16px;color:#333333">
+        <strong style="color:#111111">${household.name}</strong>
+        &nbsp;&nbsp;<span style="color:#dddddd">|</span>&nbsp;&nbsp;
+        <span style="color:#888888">${formatDate(today)}</span>
+      </p>
+
+      <!-- Household total banner -->
+      <table width="100%" cellpadding="0" cellspacing="0" style="border-left:4px solid #f5c842;background:#fffdf5;border-radius:0 8px 8px 0;margin-bottom:24px">
+        <tr>
+          <td style="padding:16px 20px">
+            <div style="font-size:11px;color:#aaaaaa;margin-bottom:4px;text-transform:uppercase;letter-spacing:.8px">Household Total</div>
+            <div style="font-size:28px;font-weight:800;color:#111111;line-height:1">
+              ${totalCompleted}<span style="font-size:15px;color:#aaaaaa;font-weight:400"> of ${totalAvailable} chores completed</span>
+            </div>
+            <div style="margin-top:10px;background:#e5e5e5;border-radius:999px;height:8px">
+              <div style="background:linear-gradient(90deg,#f5c842,#fb923c);height:8px;border-radius:999px;width:${totalAvailable > 0 ? Math.round((totalCompleted/totalAvailable)*100) : 0}%"></div>
+            </div>
+            <div style="font-size:12px;color:#aaaaaa;margin-top:5px">${totalAvailable > 0 ? Math.round((totalCompleted/totalAvailable)*100) : 0}% complete</div>
+          </td>
+        </tr>
+      </table>
+
+      <!-- Per-kid table -->
+      <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse">
+        <thead>
+          <tr style="background:#111111">
+            <th style="padding:10px 14px;text-align:left;color:#f5c842;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px">Kid</th>
+            <th style="padding:10px 14px;text-align:center;color:#f5c842;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px">Done</th>
+            <th style="padding:10px 14px;text-align:center;color:#f5c842;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px">Points</th>
+            <th style="padding:10px 14px;text-align:left;color:#f5c842;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px">Progress</th>
+          </tr>
+        </thead>
+        <tbody>${kidRows}</tbody>
+      </table>
+
+      <!-- CTA -->
+      <table width="100%" cellpadding="0" cellspacing="0" style="margin-top:28px">
+        <tr>
+          <td align="center">
+            <a href="https://ididmc.com/app/pages/parent-dashboard.html"
+               style="background:#f5c842;color:#111111;text-decoration:none;font-weight:700;font-size:14px;padding:13px 30px;border-radius:10px;display:inline-block;letter-spacing:.2px">
+              Open Dashboard &#8594;
+            </a>
+          </td>
+        </tr>
+      </table>
+
+    </td>
+  </tr>
+
+  <!-- Footer -->
+  <tr>
+    <td style="background:#f9f9f9;border-top:1px solid #eeeeee;border-radius:0 0 14px 14px;padding:20px 32px;text-align:center">
+      <p style="margin:0;font-size:12px;color:#bbbbbb;line-height:1.8">
+        I Did My Chores &nbsp;&middot;&nbsp; A She Got Sheets product by Joanna Hodge<br>
+        <a href="https://ididmc.com" style="color:#f5c842;text-decoration:none">ididmc.com</a>
+      </p>
+    </td>
+  </tr>
+
+</table>
+</td></tr>
+</table>
+</body>
+</html>`;
 
         await transporter.sendMail({
           from: `"I Did My Chores" <${process.env.GMAIL_EMAIL}>`,
@@ -469,44 +528,112 @@ exports.sendWeeklyPayday = onSchedule({schedule:"0 18 * * *",timeZone:"America/N
         // FORMULA: payout = (totalPoints / 100) * multiplier
         const kidPayRows = Object.entries(weeklyTotals).map(([name, data]) => {
           const payout = ((data.totalPoints / 100) * multiplier).toFixed(2);
-          const dailyBreakdown = data.dailyLogs.map((log) =>
-            `<tr style="font-size:13px">
-            <td style="padding:6px 12px;color:#888">${formatDate(log.date)}</td>
-            <td style="padding:6px 12px;text-align:center">${log.completed} chores</td>
-            <td style="padding:6px 12px;text-align:center">${log.points} pts</td>
-          </tr>`,
-          ).join("");
+          const dailyBreakdown = data.dailyLogs.length
+            ? data.dailyLogs.map((log) =>
+                `<tr>
+                  <td style="padding:8px 14px;font-size:13px;color:#666666;border-bottom:1px solid #f5f5f5">${formatDate(log.date)}</td>
+                  <td style="padding:8px 14px;font-size:13px;color:#666666;text-align:center;border-bottom:1px solid #f5f5f5">${log.completed} chores</td>
+                  <td style="padding:8px 14px;font-size:13px;color:#888888;text-align:center;border-bottom:1px solid #f5f5f5">${log.points} pts</td>
+                </tr>`
+              ).join("")
+            : `<tr><td colspan="3" style="padding:14px;font-size:13px;color:#bbbbbb;text-align:center">No activity this week</td></tr>`;
 
           return `
-          <div style="background:#f9f7f4;border-radius:12px;padding:20px;margin-bottom:20px">
-            <h3 style="margin:0 0 4px;color:#2C2C2C">${name}</h3>
-            <p style="margin:0 0 12px;color:#666">Weekly total: <strong>${data.totalPoints} points</strong></p>
-            <div style="background:#2B7A78;color:white;padding:12px 16px;border-radius:8px;display:inline-block;margin-bottom:16px">
-              💰 Payout: <strong>$${payout}</strong>
-              <small style="opacity:.8;margin-left:8px">(${data.totalPoints} pts ÷ 100 × $${multiplier})</small>
-            </div>
-            <table style="width:100%;border-collapse:collapse">
-              <thead><tr style="color:#999;font-size:12px">
-                <th style="padding:6px 12px;text-align:left">Date</th>
-                <th style="padding:6px 12px">Chores</th>
-                <th style="padding:6px 12px">Points</th>
-              </tr></thead>
-              <tbody>${dailyBreakdown || "<tr><td colspan='3' style='padding:12px;color:#999;text-align:center'>No activity this week</td></tr>"}</tbody>
-            </table>
-          </div>`;
+          <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:20px;border:1px solid #eeeeee;border-radius:10px;overflow:hidden">
+            <tr>
+              <td style="background:#fffdf5;padding:16px 20px;border-bottom:1px solid #eeeeee;vertical-align:middle">
+                <div style="font-size:17px;font-weight:800;color:#111111">${name}</div>
+                <div style="font-size:13px;color:#888888;margin-top:3px">${data.totalPoints} points this week</div>
+              </td>
+              <td style="background:#fffdf5;padding:16px 20px;text-align:right;border-bottom:1px solid #eeeeee;vertical-align:middle;white-space:nowrap">
+                <div style="background:#f5c842;color:#111111;font-weight:800;font-size:22px;padding:8px 18px;border-radius:8px;display:inline-block">
+                  $${payout}
+                </div>
+                <div style="font-size:11px;color:#aaaaaa;margin-top:5px">${data.totalPoints} pts &divide; 100 &times; $${multiplier}</div>
+              </td>
+            </tr>
+            <tr>
+              <td colspan="2" style="padding:0">
+                <table width="100%" cellpadding="0" cellspacing="0">
+                  <thead>
+                    <tr style="background:#fafafa">
+                      <th style="padding:8px 14px;text-align:left;font-size:11px;color:#aaaaaa;text-transform:uppercase;letter-spacing:.5px;font-weight:600;border-bottom:1px solid #f0f0f0">Date</th>
+                      <th style="padding:8px 14px;text-align:center;font-size:11px;color:#aaaaaa;text-transform:uppercase;letter-spacing:.5px;font-weight:600;border-bottom:1px solid #f0f0f0">Chores</th>
+                      <th style="padding:8px 14px;text-align:center;font-size:11px;color:#aaaaaa;text-transform:uppercase;letter-spacing:.5px;font-weight:600;border-bottom:1px solid #f0f0f0">Points</th>
+                    </tr>
+                  </thead>
+                  <tbody>${dailyBreakdown}</tbody>
+                </table>
+              </td>
+            </tr>
+          </table>`;
         }).join("");
 
-        const html = `
-        <div style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:24px">
-          <h2 style="color:#2B7A78">💰 Weekly Payday Summary</h2>
-          <p style="color:#666">${household.name} · Week ending ${formatDate(new Date().toISOString().split("T")[0])}</p>
-          <p style="color:#888;font-size:13px">Point rate: 100 points = $${multiplier}.00</p>
-          ${kidPayRows}
-          <p style="color:#999;font-size:12px;margin-top:24px">
-            Log in to your parent dashboard to approve payouts.<br>
-            — I Did My Chores · A She Got Sheets product
-          </p>
-        </div>`;
+        const weekEndStr  = new Date().toISOString().split("T")[0];
+        const _weekStart  = new Date(); _weekStart.setDate(_weekStart.getDate() - 6);
+        const weekStartStr = _weekStart.toISOString().split("T")[0];
+
+        const html = `<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f0ede8;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif">
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#f0ede8;padding:32px 16px">
+<tr><td align="center">
+<table cellpadding="0" cellspacing="0" style="width:100%;max-width:600px">
+
+  <!-- Header -->
+  <tr>
+    <td style="background:#111111;border-radius:14px 14px 0 0;padding:32px 32px 24px;text-align:center">
+      <div style="font-size:36px;line-height:1">💰</div>
+      <div style="color:#f5c842;font-size:22px;font-weight:800;letter-spacing:-0.3px;margin-top:10px">I Did My Chores</div>
+      <div style="color:#666666;font-size:11px;margin-top:6px;text-transform:uppercase;letter-spacing:2px">Payday Summary</div>
+    </td>
+  </tr>
+
+  <!-- Body -->
+  <tr>
+    <td style="background:#ffffff;padding:28px 32px">
+
+      <p style="margin:0 0 4px;font-size:16px;color:#333333">
+        <strong style="color:#111111">${household.name}</strong>
+      </p>
+      <p style="margin:0 0 24px;font-size:13px;color:#999999">
+        ${formatDate(weekStartStr)} &ndash; ${formatDate(weekEndStr)}
+        &nbsp;&middot;&nbsp; 100 pts = $${multiplier}.00
+      </p>
+
+      ${kidPayRows}
+
+      <!-- CTA -->
+      <table width="100%" cellpadding="0" cellspacing="0" style="margin-top:8px">
+        <tr>
+          <td align="center">
+            <a href="https://ididmc.com/app/pages/parent-dashboard.html"
+               style="background:#f5c842;color:#111111;text-decoration:none;font-weight:700;font-size:14px;padding:13px 30px;border-radius:10px;display:inline-block;letter-spacing:.2px">
+              Review &amp; Approve Payouts &#8594;
+            </a>
+          </td>
+        </tr>
+      </table>
+
+    </td>
+  </tr>
+
+  <!-- Footer -->
+  <tr>
+    <td style="background:#f9f9f9;border-top:1px solid #eeeeee;border-radius:0 0 14px 14px;padding:20px 32px;text-align:center">
+      <p style="margin:0;font-size:12px;color:#bbbbbb;line-height:1.8">
+        I Did My Chores &nbsp;&middot;&nbsp; A She Got Sheets product by Joanna Hodge<br>
+        <a href="https://ididmc.com" style="color:#f5c842;text-decoration:none">ididmc.com</a>
+      </p>
+    </td>
+  </tr>
+
+</table>
+</td></tr>
+</table>
+</body>
+</html>`;
 
         await transporter.sendMail({
           from: `"I Did My Chores" <${process.env.GMAIL_EMAIL}>`,
@@ -687,3 +814,299 @@ exports.detectPhotoFraud = onObjectFinalized({ bucket: "i-did-my-chores.firebase
   console.log(`Photo passed fraud checks, hash stored: ${hash.slice(0, 12)}…`);
   return null;
 });
+
+
+// ================================================================
+//  EMAIL #7 — WELCOME EMAIL
+//  Triggered: call sendWelcomeEmail({ email, householdName }) from
+//  your onboarding Cloud Function or via a Firestore onCreate trigger
+//  on the households collection.
+// ================================================================
+async function sendWelcomeEmail({ email, householdName }) {
+  const year = new Date().getFullYear();
+  const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Welcome to I Did My Chores!</title>
+</head>
+<body style="margin:0;padding:0;background:#111111;font-family:'Helvetica Neue',Arial,sans-serif">
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#111111">
+  <tr>
+    <td align="center" style="padding:32px 16px 0">
+
+      <!-- Card -->
+      <table width="600" cellpadding="0" cellspacing="0" border="0"
+             style="max-width:600px;background:#1a1a1a;border-radius:16px;overflow:hidden">
+
+        <!-- Header gradient bar -->
+        <tr>
+          <td height="5" style="background:linear-gradient(90deg,#f5c842,#fb923c);font-size:0;line-height:0">&nbsp;</td>
+        </tr>
+
+        <!-- Hero -->
+        <tr>
+          <td align="center" style="padding:40px 40px 32px;background:#1a1a1a">
+            <div style="font-size:36px;margin-bottom:8px">🧹</div>
+            <h1 style="margin:0 0 8px;font-size:26px;font-weight:800;color:#f0ede8;letter-spacing:-0.3px">
+              Welcome to I Did My Chores!
+            </h1>
+            <p style="margin:0;font-size:15px;color:#9ca3af;line-height:1.5">
+              You're all set, ${householdName || 'your household'} — let's make chore day pay day.
+            </p>
+          </td>
+        </tr>
+
+        <!-- Divider -->
+        <tr><td style="padding:0 40px"><div style="height:1px;background:#2a2a2a"></div></td></tr>
+
+        <!-- Three steps -->
+        <tr>
+          <td style="padding:32px 40px">
+            <p style="margin:0 0 20px;font-size:13px;font-weight:700;color:#f5c842;
+                       letter-spacing:0.08em;text-transform:uppercase">Get started in 3 steps</p>
+
+            <!-- Step 1 -->
+            <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:20px">
+              <tr>
+                <td width="40" valign="top" style="padding-top:2px">
+                  <div style="width:32px;height:32px;border-radius:50%;
+                               background:linear-gradient(135deg,#f5c842,#fb923c);
+                               color:#000;font-size:14px;font-weight:800;
+                               text-align:center;line-height:32px">1</div>
+                </td>
+                <td style="padding-left:12px">
+                  <div style="font-size:14px;font-weight:700;color:#f0ede8;margin-bottom:4px">Add your kids</div>
+                  <div style="font-size:13px;color:#9ca3af;line-height:1.5">
+                    Each kid gets a name, a color, and a 4-digit PIN so they can log in from any device.
+                  </div>
+                </td>
+              </tr>
+            </table>
+
+            <!-- Step 2 -->
+            <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:20px">
+              <tr>
+                <td width="40" valign="top" style="padding-top:2px">
+                  <div style="width:32px;height:32px;border-radius:50%;
+                               background:linear-gradient(135deg,#f5c842,#fb923c);
+                               color:#000;font-size:14px;font-weight:800;
+                               text-align:center;line-height:32px">2</div>
+                </td>
+                <td style="padding-left:12px">
+                  <div style="font-size:14px;font-weight:700;color:#f0ede8;margin-bottom:4px">Create chores</div>
+                  <div style="font-size:13px;color:#9ca3af;line-height:1.5">
+                    Assign point values or flat pay — mix and match however works for your family.
+                  </div>
+                </td>
+              </tr>
+            </table>
+
+            <!-- Step 3 -->
+            <table width="100%" cellpadding="0" cellspacing="0" border="0">
+              <tr>
+                <td width="40" valign="top" style="padding-top:2px">
+                  <div style="width:32px;height:32px;border-radius:50%;
+                               background:linear-gradient(135deg,#f5c842,#fb923c);
+                               color:#000;font-size:14px;font-weight:800;
+                               text-align:center;line-height:32px">3</div>
+                </td>
+                <td style="padding-left:12px">
+                  <div style="font-size:14px;font-weight:700;color:#f0ede8;margin-bottom:4px">Share the kid link</div>
+                  <div style="font-size:13px;color:#9ca3af;line-height:1.5">
+                    Send your kids the household link from Settings → Share with Kids. They log in with their PIN and start earning.
+                  </div>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+
+        <!-- CTA -->
+        <tr>
+          <td align="center" style="padding:0 40px 40px">
+            <a href="https://ididmc.com/app/pages/parent-dashboard.html"
+               style="display:inline-block;background:linear-gradient(90deg,#f5c842,#fb923c);
+                      color:#000;font-size:15px;font-weight:800;text-decoration:none;
+                      padding:14px 32px;border-radius:10px;letter-spacing:-0.2px">
+              Open My Dashboard →
+            </a>
+          </td>
+        </tr>
+
+        <!-- Footer gradient bar -->
+        <tr>
+          <td height="4" style="background:linear-gradient(90deg,#f5c842,#fb923c);font-size:0;line-height:0">&nbsp;</td>
+        </tr>
+
+        <!-- Footer text -->
+        <tr>
+          <td align="center" style="padding:24px 40px;background:#111111">
+            <p style="margin:0 0 6px;font-size:12px;color:#6b7280">
+              You're receiving this because you created an account at
+              <a href="https://ididmc.com" style="color:#f5c842;text-decoration:none">ididmc.com</a>.
+            </p>
+            <p style="margin:0;font-size:12px;color:#6b7280">
+              © ${year} I Did My Chores. All rights reserved.
+            </p>
+          </td>
+        </tr>
+
+      </table>
+    </td>
+  </tr>
+</table>
+</body>
+</html>`;
+
+  await transporter.sendMail({
+    from:    `"I Did My Chores" <${process.env.GMAIL_EMAIL}>`,
+    to:      email,
+    subject: "Welcome to I Did My Chores! 🧹",
+    html,
+  });
+  console.log(`Welcome email sent to ${email}`);
+}
+
+exports.sendWelcomeEmail = sendWelcomeEmail;   // export so other functions can call it
+
+
+// ================================================================
+//  EMAIL #8 — SUBSCRIBER / NEWSLETTER EMAIL
+//  Call: sendSubscriberEmail({ email, firstName })
+//  Trigger from a Firestore onCreate on a "subscribers" collection,
+//  or from your marketing sign-up form handler.
+// ================================================================
+async function sendSubscriberEmail({ email, firstName }) {
+  const year = new Date().getFullYear();
+  const greeting = firstName ? `Hey ${firstName}!` : "Hey there!";
+  const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>You're on the list!</title>
+</head>
+<body style="margin:0;padding:0;background:#111111;font-family:'Helvetica Neue',Arial,sans-serif">
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#111111">
+  <tr>
+    <td align="center" style="padding:32px 16px 0">
+
+      <!-- Card -->
+      <table width="600" cellpadding="0" cellspacing="0" border="0"
+             style="max-width:600px;background:#1a1a1a;border-radius:16px;overflow:hidden">
+
+        <!-- Header gradient bar -->
+        <tr>
+          <td height="5" style="background:linear-gradient(90deg,#f5c842,#fb923c);font-size:0;line-height:0">&nbsp;</td>
+        </tr>
+
+        <!-- Hero -->
+        <tr>
+          <td align="center" style="padding:40px 40px 28px;background:#1a1a1a">
+            <div style="font-size:36px;margin-bottom:8px">✉️</div>
+            <h1 style="margin:0 0 8px;font-size:26px;font-weight:800;color:#f0ede8;letter-spacing:-0.3px">
+              You're on the list!
+            </h1>
+            <p style="margin:0;font-size:15px;color:#9ca3af;line-height:1.5">
+              ${greeting} Thanks for subscribing to I Did My Chores updates.
+            </p>
+          </td>
+        </tr>
+
+        <!-- Divider -->
+        <tr><td style="padding:0 40px"><div style="height:1px;background:#2a2a2a"></div></td></tr>
+
+        <!-- What to expect -->
+        <tr>
+          <td style="padding:32px 40px">
+            <p style="margin:0 0 16px;font-size:13px;font-weight:700;color:#f5c842;
+                       letter-spacing:0.08em;text-transform:uppercase">What you'll get</p>
+
+            <table width="100%" cellpadding="0" cellspacing="0" border="0">
+              <!-- Row 1 -->
+              <tr>
+                <td width="36" valign="top" align="center" style="padding-bottom:16px">
+                  <span style="font-size:20px">🚀</span>
+                </td>
+                <td style="padding-left:12px;padding-bottom:16px">
+                  <div style="font-size:14px;font-weight:700;color:#f0ede8;margin-bottom:2px">Early access to new features</div>
+                  <div style="font-size:13px;color:#9ca3af">Be the first to try new chore types, reward systems, and automations.</div>
+                </td>
+              </tr>
+              <!-- Row 2 -->
+              <tr>
+                <td width="36" valign="top" align="center" style="padding-bottom:16px">
+                  <span style="font-size:20px">💡</span>
+                </td>
+                <td style="padding-left:12px;padding-bottom:16px">
+                  <div style="font-size:14px;font-weight:700;color:#f0ede8;margin-bottom:2px">Tips for busy families</div>
+                  <div style="font-size:13px;color:#9ca3af">Practical ideas for building chore habits that actually stick.</div>
+                </td>
+              </tr>
+              <!-- Row 3 -->
+              <tr>
+                <td width="36" valign="top" align="center">
+                  <span style="font-size:20px">🎉</span>
+                </td>
+                <td style="padding-left:12px">
+                  <div style="font-size:14px;font-weight:700;color:#f0ede8;margin-bottom:2px">No spam — ever</div>
+                  <div style="font-size:13px;color:#9ca3af">We only send emails worth reading. Unsubscribe any time, no questions asked.</div>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+
+        <!-- CTA -->
+        <tr>
+          <td align="center" style="padding:0 40px 40px">
+            <p style="margin:0 0 20px;font-size:14px;color:#9ca3af;line-height:1.6;text-align:center">
+              Ready to put chores on autopilot? Create a free account and your kids can start earning today.
+            </p>
+            <a href="https://ididmc.com/login.html?signup=true"
+               style="display:inline-block;background:linear-gradient(90deg,#f5c842,#fb923c);
+                      color:#000;font-size:15px;font-weight:800;text-decoration:none;
+                      padding:14px 32px;border-radius:10px;letter-spacing:-0.2px">
+              Create Free Account →
+            </a>
+          </td>
+        </tr>
+
+        <!-- Footer gradient bar -->
+        <tr>
+          <td height="4" style="background:linear-gradient(90deg,#f5c842,#fb923c);font-size:0;line-height:0">&nbsp;</td>
+        </tr>
+
+        <!-- Footer text -->
+        <tr>
+          <td align="center" style="padding:24px 40px;background:#111111">
+            <p style="margin:0 0 6px;font-size:12px;color:#6b7280">
+              You subscribed at
+              <a href="https://ididmc.com" style="color:#f5c842;text-decoration:none">ididmc.com</a>.
+            </p>
+            <p style="margin:0;font-size:12px;color:#6b7280">
+              © ${year} I Did My Chores ·
+              <a href="https://ididmc.com/unsubscribe" style="color:#6b7280;text-decoration:underline">Unsubscribe</a>
+            </p>
+          </td>
+        </tr>
+
+      </table>
+    </td>
+  </tr>
+</table>
+</body>
+</html>`;
+
+  await transporter.sendMail({
+    from:    `"I Did My Chores" <${process.env.GMAIL_EMAIL}>`,
+    to:      email,
+    subject: "You're on the list! ✉️",
+    html,
+  });
+  console.log(`Subscriber email sent to ${email}`);
+}
+
+exports.sendSubscriberEmail = sendSubscriberEmail;

@@ -303,16 +303,19 @@ function renderStep0(el) {
              value="${household.name}" maxlength="40">
     </div>
     <div class="field">
-      <label>Pay Period Start Date</label>
-      <input type="date" id="s0-date" value="${household.payPeriodStart}">
-    </div>
-    <div class="field">
-      <label>Pay Period Length</label>
-      <select id="s0-days">
-        <option value="14" ${household.payPeriodDays==14?'selected':''}>Every 2 weeks (Biweekly)</option>
-        <option value="7"  ${household.payPeriodDays==7?'selected':''}>Weekly</option>
-        <option value="30" ${household.payPeriodDays==30?'selected':''}>Monthly</option>
+      <label>Pay Frequency</label>
+      <select id="s0-freq" onchange="toggleOnboardingAnchor(this.value)">
+        <option value="weekly"      ${household.payFrequency==='weekly'      ?'selected':''}>Weekly</option>
+        <option value="biweekly"    ${(household.payFrequency==='biweekly'||((!household.payFrequency)&&household.payPeriodDays==14))?'selected':''}>Every 2 weeks (Bi-weekly)</option>
+        <option value="semimonthly" ${household.payFrequency==='semimonthly' ?'selected':''}>Twice a month (Semi-monthly)</option>
+        <option value="monthly"     ${(household.payFrequency==='monthly'||((!household.payFrequency)&&household.payPeriodDays==30))?'selected':''}>Monthly</option>
+        <option value="asneeded"    ${household.payFrequency==='asneeded'    ?'selected':''}>As Needed (you set dates manually)</option>
       </select>
+    </div>
+    <div class="field" id="s0-anchor-field" style="display:${(household.payFrequency==='weekly'||household.payFrequency==='biweekly'||!household.payFrequency)?'block':'none'}">
+      <label>Anchor Start Date</label>
+      <input type="date" id="s0-date" value="${household.payPeriodStart}">
+      <p style="font-size:11px;color:var(--muted);margin:4px 0 0">First day of your first pay period — future periods roll from here.</p>
     </div>
     <div class="field">
       <label>Max Earnings Per Kid Per Period ($)</label>
@@ -328,19 +331,28 @@ function renderStep0(el) {
 
 window.saveStep0 = () => {
   const name  = document.getElementById('s0-name').value.trim();
-  const date  = document.getElementById('s0-date').value;
-  const days  = parseInt(document.getElementById('s0-days').value);
+  const freq  = document.getElementById('s0-freq').value;
+  const date  = document.getElementById('s0-date')?.value;
   const cap   = parseFloat(document.getElementById('s0-cap').value);
+  const needsAnchor = freq === 'weekly' || freq === 'biweekly';
   if (!name)  { showToast('Please enter a household name'); return; }
-  if (!date)  { showToast('Please select a pay period start date'); return; }
+  if (needsAnchor && !date) { showToast('Please select an anchor start date'); return; }
   if (!cap || cap < 1) { showToast('Please enter a valid cap amount'); return; }
-  household.name = name;
-  household.payPeriodStart = date;
-  household.payPeriodDays  = days;
+  household.name         = name;
+  household.payFrequency = freq;
+  // Keep payPeriodStart for backward compat; set to today for fixed-date freqs
+  household.payPeriodStart = date || new Date().toISOString().split('T')[0];
+  // Legacy field — kept so old getPayPeriod() fallbacks still work
+  household.payPeriodDays  = freq === 'biweekly' ? 14 : freq === 'monthly' ? 30 : 7;
   household.capPerKid      = cap;
   household.bonusBudget    = parseFloat(document.getElementById('s0-bonus').value) || 0;
   currentStep = 1;
   renderStep();
+};
+
+window.toggleOnboardingAnchor = (freq) => {
+  const field = document.getElementById('s0-anchor-field');
+  if (field) field.style.display = (freq === 'weekly' || freq === 'biweekly') ? 'block' : 'none';
 };
 
 // ── Step 1: Add kids ──────────────────────────────────

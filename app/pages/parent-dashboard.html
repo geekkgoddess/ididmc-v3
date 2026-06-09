@@ -301,6 +301,10 @@
     <div class="page-label" style="margin-bottom:10px">Compensation Model <span class="info-icon" onclick="openInfoModal('comp-model')" data-tooltip="How kids earn money">ⓘ</span></div>
     <div id="settings-comp-model" style="margin-bottom:16px"></div>
 
+    <!-- Pay Cycle -->
+    <div class="page-label" style="margin-bottom:10px">Pay Cycle <span class="info-icon" onclick="openInfoModal('pay-cycle')" data-tooltip="Set pay frequency and dates">ⓘ</span></div>
+    <div class="card" style="padding:4px 16px;margin-bottom:16px" id="settings-pay-cycle"></div>
+
     <!-- Approval mode -->
     <div class="page-label" style="margin-bottom:10px">Approval Mode <span class="info-icon" onclick="openInfoModal('approval-mode')" data-tooltip="Choose approval workflow">ⓘ</span></div>
     <div class="card" style="padding:4px 16px;margin-bottom:16px" id="settings-approval"></div>
@@ -672,15 +676,34 @@ async function loadHousehold() {
 }
 
 function renderPeriodBadge() {
-  const start = new Date(household.payPeriodStart + 'T00:00:00');
-  const today = new Date(); today.setHours(0,0,0,0);
-  const diff  = Math.floor((today - start) / 86400000);
-  const num   = Math.floor(Math.max(diff,0) / household.payPeriodDays);
-  const ps    = new Date(start); ps.setDate(start.getDate() + num * household.payPeriodDays);
-  const pe    = new Date(ps);    pe.setDate(ps.getDate() + household.payPeriodDays - 1);
-  const fmt   = d => `${d.getMonth()+1}/${d.getDate()}`;
-  document.getElementById('period-badge').innerHTML =
-    `Pay Period<br>${fmt(ps)} – ${fmt(pe)}`;
+  if (!household) return;
+  // Determine frequency — fall back to legacy payPeriodDays if payFrequency not set
+  const freq = household.payFrequency ||
+               (household.payPeriodDays === 14 ? 'biweekly' :
+                household.payPeriodDays === 30 ? 'monthly'  : 'weekly');
+  const psStr = getPayPeriod();
+  const ps    = new Date(psStr + 'T00:00:00');
+  let pe;
+  if (freq === 'monthly') {
+    // Last day of the current month
+    pe = new Date(ps.getFullYear(), ps.getMonth() + 1, 0);
+  } else if (freq === 'semimonthly') {
+    // Period 1: 1st–15th | Period 2: 16th–last
+    pe = ps.getDate() === 1
+      ? new Date(ps.getFullYear(), ps.getMonth(), 15)
+      : new Date(ps.getFullYear(), ps.getMonth() + 1, 0);
+  } else if (freq === 'asneeded') {
+    pe = household.currentPeriodEnd
+      ? new Date(household.currentPeriodEnd + 'T00:00:00')
+      : ps;
+  } else {
+    // weekly (7) or biweekly (14)
+    const days = freq === 'biweekly' ? 14 : 7;
+    pe = new Date(ps);
+    pe.setDate(ps.getDate() + days - 1);
+  }
+  const fmt = d => `${d.getMonth()+1}/${d.getDate()}`;
+  document.getElementById('period-badge').innerHTML = `Pay Period<br>${fmt(ps)} – ${fmt(pe)}`;
 }
 
 // ── Realtime listeners ────────────────────────────────────────
@@ -1273,6 +1296,9 @@ function renderSettings() {
   // ── Compensation Model ────────────────────────────────────────
   renderCompModelSettings();
 
+  // Pay Cycle
+  renderPayCycleSettings();
+
   // PTO / Days Off
   renderPtoSettings();
 
@@ -1323,6 +1349,108 @@ function renderSettings() {
        </button>
      </div>`;
 }
+
+// ── Pay Cycle Settings ─────────────────────────────────────────
+function renderPayCycleSettings() {
+  if (!household) return;
+  const freq     = household.payFrequency ||
+                   (household.payPeriodDays === 14 ? 'biweekly' :
+                    household.payPeriodDays === 30 ? 'monthly'  : 'weekly');
+  const start    = household.payPeriodStart     || '';
+  const curStart = household.currentPeriodStart || '';
+  const curEnd   = household.currentPeriodEnd   || '';
+  const showAnchor = freq === 'weekly' || freq === 'biweekly';
+  const showManual = freq === 'asneeded';
+
+  document.getElementById('settings-pay-cycle').innerHTML = `
+    <div style="padding:14px 0">
+      <div style="font-size:14px;font-weight:600;margin-bottom:12px">Pay Frequency</div>
+      <select id="pc-freq" onchange="updatePayCycleFields(this.value)"
+              style="width:100%;background:var(--card2);border:1px solid var(--border);
+                     border-radius:8px;padding:10px 12px;color:var(--text);
+                     font-family:inherit;font-size:14px;margin-bottom:14px;box-sizing:border-box">
+        <option value="weekly"      ${freq==='weekly'      ?'selected':''}>Weekly</option>
+        <option value="biweekly"    ${freq==='biweekly'    ?'selected':''}>Every 2 weeks (Bi-weekly)</option>
+        <option value="semimonthly" ${freq==='semimonthly' ?'selected':''}>Twice a month (Semi-monthly)</option>
+        <option value="monthly"     ${freq==='monthly'     ?'selected':''}>Monthly</option>
+        <option value="asneeded"    ${freq==='asneeded'    ?'selected':''}>As Needed (set manually)</option>
+      </select>
+
+      <div id="pc-anchor-row" style="display:${showAnchor?'block':'none'}">
+        <div style="font-size:14px;font-weight:600;margin-bottom:6px">Anchor Start Date</div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:10px">
+          The first day of your very first pay period — future periods roll forward from this date.
+        </div>
+        <input type="date" id="pc-start" value="${start}"
+               style="width:100%;background:var(--card2);border:1px solid var(--border);
+                      border-radius:8px;padding:10px 12px;color:var(--text);
+                      font-family:inherit;font-size:14px;box-sizing:border-box;margin-bottom:14px">
+      </div>
+
+      <div id="pc-manual-row" style="display:${showManual?'block':'none'}">
+        <div style="font-size:14px;font-weight:600;margin-bottom:8px">Current Period Dates</div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:10px">
+          You control the start and end of each pay period — update whenever you start a new one.
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
+          <div>
+            <div style="font-size:12px;color:var(--muted);margin-bottom:6px">Start</div>
+            <input type="date" id="pc-cur-start" value="${curStart}"
+                   style="width:100%;background:var(--card2);border:1px solid var(--border);
+                          border-radius:8px;padding:10px 12px;color:var(--text);
+                          font-family:inherit;font-size:13px;box-sizing:border-box">
+          </div>
+          <div>
+            <div style="font-size:12px;color:var(--muted);margin-bottom:6px">End</div>
+            <input type="date" id="pc-cur-end" value="${curEnd}"
+                   style="width:100%;background:var(--card2);border:1px solid var(--border);
+                          border-radius:8px;padding:10px 12px;color:var(--text);
+                          font-family:inherit;font-size:13px;box-sizing:border-box">
+          </div>
+        </div>
+      </div>
+
+      <button onclick="savePayCycleSettings()"
+              style="background:var(--gold);border:none;border-radius:8px;
+                     color:#000;font-size:13px;font-weight:700;
+                     padding:10px 18px;cursor:pointer;width:100%">
+        Save Pay Cycle
+      </button>
+    </div>`;
+}
+
+// Show/hide sub-fields when the frequency dropdown changes (without re-rendering)
+window.updatePayCycleFields = (freq) => {
+  const anchor = document.getElementById('pc-anchor-row');
+  const manual = document.getElementById('pc-manual-row');
+  if (anchor) anchor.style.display = (freq === 'weekly' || freq === 'biweekly') ? 'block' : 'none';
+  if (manual) manual.style.display = freq === 'asneeded' ? 'block' : 'none';
+};
+
+window.savePayCycleSettings = async () => {
+  const freq     = document.getElementById('pc-freq')?.value || 'weekly';
+  const start    = document.getElementById('pc-start')?.value;
+  const curStart = document.getElementById('pc-cur-start')?.value;
+  const curEnd   = document.getElementById('pc-cur-end')?.value;
+
+  if ((freq === 'weekly' || freq === 'biweekly') && !start) {
+    showToast('Please set an anchor start date'); return;
+  }
+  if (freq === 'asneeded' && (!curStart || !curEnd)) {
+    showToast('Please set the current period start and end dates'); return;
+  }
+
+  const updates = { payFrequency: freq };
+  if (start)    updates.payPeriodStart = start;
+  if (freq === 'asneeded') {
+    updates.currentPeriodStart = curStart;
+    updates.currentPeriodEnd   = curEnd;
+  }
+
+  await updateDoc(doc(db, 'households', currentUser.uid), updates);
+  showToast('✅ Pay cycle saved');
+  // renderPeriodBadge() fires automatically via the household onSnapshot listener
+};
 
 window.resetPinPrompt = async (idx) => {
   const pin = prompt(`New 4-digit PIN for ${household.kids[idx].name}:`);
@@ -1866,12 +1994,34 @@ document.addEventListener('click', (e) => {
 function getToday()  { return new Date().toISOString().split('T')[0]; }
 function getPayPeriod() {
   if (!household) return '';
-  const start = new Date(household.payPeriodStart + 'T00:00:00');
+  const freq  = household.payFrequency ||
+                (household.payPeriodDays === 14 ? 'biweekly' :
+                 household.payPeriodDays === 30 ? 'monthly'  : 'weekly');
   const today = new Date(); today.setHours(0,0,0,0);
+  const pad   = n => String(n).padStart(2, '0');
+
+  if (freq === 'monthly') {
+    // Period always starts on the 1st of the current month
+    return `${today.getFullYear()}-${pad(today.getMonth()+1)}-01`;
+  }
+  if (freq === 'semimonthly') {
+    // Period 1: 1st–15th → starts on 1st | Period 2: 16th–end → starts on 16th
+    const startDay = today.getDate() <= 15 ? '01' : '16';
+    return `${today.getFullYear()}-${pad(today.getMonth()+1)}-${startDay}`;
+  }
+  if (freq === 'asneeded') {
+    // Parent sets dates manually; use stored currentPeriodStart
+    return household.currentPeriodStart ||
+           household.payPeriodStart     ||
+           today.toISOString().split('T')[0];
+  }
+  // weekly (7 days) or biweekly (14 days) — anchor-date rolling window
+  const days  = freq === 'biweekly' ? 14 : 7;
+  const start = new Date((household.payPeriodStart || today.toISOString().split('T')[0]) + 'T00:00:00');
   const diff  = Math.floor((today - start) / 86400000);
-  const num   = Math.floor(Math.max(diff,0) / household.payPeriodDays);
+  const num   = Math.floor(Math.max(diff, 0) / days);
   const ps    = new Date(start);
-  ps.setDate(start.getDate() + num * household.payPeriodDays);
+  ps.setDate(start.getDate() + num * days);
   return ps.toISOString().split('T')[0];
 }
 function formatDate(str) {

@@ -1128,12 +1128,31 @@ function getWeekStart() {
 }
 function getPayPeriod() {
   if (!household) return '';
-  const start = new Date(household.payPeriodStart + 'T00:00:00');
+  const freq  = household.payFrequency ||
+                (household.payPeriodDays === 14 ? 'biweekly' :
+                 household.payPeriodDays === 30 ? 'monthly'  : 'weekly');
   const today = new Date(); today.setHours(0,0,0,0);
+  const pad   = n => String(n).padStart(2, '0');
+
+  if (freq === 'monthly') {
+    return `${today.getFullYear()}-${pad(today.getMonth()+1)}-01`;
+  }
+  if (freq === 'semimonthly') {
+    const startDay = today.getDate() <= 15 ? '01' : '16';
+    return `${today.getFullYear()}-${pad(today.getMonth()+1)}-${startDay}`;
+  }
+  if (freq === 'asneeded') {
+    return household.currentPeriodStart ||
+           household.payPeriodStart     ||
+           today.toISOString().split('T')[0];
+  }
+  // weekly (7 days) or biweekly (14 days)
+  const days  = freq === 'biweekly' ? 14 : 7;
+  const start = new Date((household.payPeriodStart || today.toISOString().split('T')[0]) + 'T00:00:00');
   const diff  = Math.floor((today - start) / 86400000);
-  const num   = Math.floor(Math.max(diff, 0) / household.payPeriodDays);
+  const num   = Math.floor(Math.max(diff, 0) / days);
   const ps    = new Date(start);
-  ps.setDate(start.getDate() + num * household.payPeriodDays);
+  ps.setDate(start.getDate() + num * days);
   return ps.toISOString().split('T')[0];
 }
 
