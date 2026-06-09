@@ -547,6 +547,89 @@
         </a>
       </div>
     </div>
+
+    <!-- Help accordion -->
+    <div class="sacc">
+      <div class="sacc-hdr" onclick="toggleSAcc('help')">
+        <span class="sacc-title">❓ Help &amp; FAQ</span>
+        <span class="sacc-chevron" id="sacc-chev-help">›</span>
+      </div>
+      <div class="sacc-body" id="settings-help" style="display:none;padding:16px 0">
+
+        <!-- How does earning work? -->
+        <div style="padding:12px 16px;border-bottom:1px solid var(--border)">
+          <p style="font-size:13px;font-weight:700;color:var(--gold);margin-bottom:6px">💰 How does earning work?</p>
+          <p style="font-size:13px;color:var(--text);line-height:1.6">
+            Each approved chore earns points. Points convert to dollars based on your
+            <strong>Compensation Model</strong> setting (e.g. 100 pts = $1.00). You can also set a
+            per-period cap so no one earns more than a set amount.
+          </p>
+        </div>
+
+        <!-- What is a Pay Period? -->
+        <div style="padding:12px 16px;border-bottom:1px solid var(--border)">
+          <p style="font-size:13px;font-weight:700;color:var(--gold);margin-bottom:6px">📅 What is a Pay Period?</p>
+          <p style="font-size:13px;color:var(--text);line-height:1.6">
+            A pay period is the window of time points are tracked in. At the end of the period, hit
+            <strong>💰 Pay Out</strong> in Overview to record payments and start a fresh period.
+            Set the frequency in <strong>Settings → Pay Cycle</strong>: Weekly, Bi-Weekly,
+            Semi-Monthly, Monthly, or As Needed.
+          </p>
+        </div>
+
+        <!-- How do I approve a chore? -->
+        <div style="padding:12px 16px;border-bottom:1px solid var(--border)">
+          <p style="font-size:13px;font-weight:700;color:var(--gold);margin-bottom:6px">✅ How do I approve a chore?</p>
+          <p style="font-size:13px;color:var(--text);line-height:1.6">
+            When a kid marks a chore done, it appears in the <strong>Approvals</strong> tab with a
+            photo (if required). Tap <strong>Approve</strong> to award the points, or
+            <strong>Reject</strong> to send it back. You can add bonus points before approving.
+          </p>
+        </div>
+
+        <!-- What is a PTO day? -->
+        <div style="padding:12px 16px;border-bottom:1px solid var(--border)">
+          <p style="font-size:13px;font-weight:700;color:var(--gold);margin-bottom:6px">🏖️ What is a PTO / Day Off?</p>
+          <p style="font-size:13px;color:var(--text);line-height:1.6">
+            PTO days are pre-scheduled days off — vacations, sick days, etc. Set them in
+            <strong>Settings → PTO Schedule</strong>. On a PTO day the kid's dashboard shows a
+            day-off screen and their History shows a 🏖️ badge instead of a completion bar.
+            PTO days don't count against their completion rate.
+          </p>
+        </div>
+
+        <!-- How does the kid log in? -->
+        <div style="padding:12px 16px;border-bottom:1px solid var(--border)">
+          <p style="font-size:13px;font-weight:700;color:var(--gold);margin-bottom:6px">👧 How does my kid log in?</p>
+          <p style="font-size:13px;color:var(--text);line-height:1.6">
+            Share your unique kid link from <strong>Settings → Share Kid Link</strong>. They open it
+            on their device and enter their 4-digit PIN. No email or account needed.
+          </p>
+        </div>
+
+        <!-- Adding / removing kids -->
+        <div style="padding:12px 16px;border-bottom:1px solid var(--border)">
+          <p style="font-size:13px;font-weight:700;color:var(--gold);margin-bottom:6px">➕ Adding or removing a kid</p>
+          <p style="font-size:13px;color:var(--text);line-height:1.6">
+            Go to <strong>Settings → Kids</strong>. Tap <strong>+ Add a Kid</strong> to add a new
+            child. To remove one, tap <strong>Remove</strong> next to their name. Their submission
+            history is kept — only their active profile is removed.
+          </p>
+        </div>
+
+        <!-- Tester callout -->
+        <div style="padding:14px 16px;background:rgba(245,200,66,0.08);border-radius:0 0 12px 12px">
+          <p style="font-size:12px;color:var(--muted);line-height:1.6">
+            🧪 <strong style="color:var(--text)">Testing this app?</strong> Thank you!
+            If something looks broken or confusing, email
+            <a href="mailto:jmhodgefl@gmail.com" style="color:var(--gold)">jmhodgefl@gmail.com</a>
+            with what you saw and what you expected to happen. Screenshots are super helpful.
+          </p>
+        </div>
+
+      </div>
+    </div>
+
   </div>
 
   <!-- Delete Account Modal -->
@@ -1591,46 +1674,114 @@ window.deleteChore = async (choreId) => {
 
 // ── History ───────────────────────────────────────────────────
 function renderHistory() {
-  const today = new Date();
-  const histEl = document.getElementById('history-content');
-  const days   = [];
+  const histEl  = document.getElementById('history-content');
+  const kids    = household?.kids || [];
+  const ptoSched = household?.ptoSchedule || {};
 
-  // Build last 7 days array
+  // Build last 7 days (oldest → newest)
+  const days = [];
+  const now  = new Date();
   for (let i = 6; i >= 0; i--) {
-    const d = new Date(today);
-    d.setDate(today.getDate() - i);
+    const d = new Date(now);
+    d.setDate(now.getDate() - i);
     days.push(d.toISOString().split('T')[0]);
   }
 
-  // T and Q
+  // Individual daily quota per kid
   const T = (household?.chores || []).filter(c => c.freq === 'daily').length;
-  const K = household?.kids?.length || 1;
-  const Q = Math.ceil(T / K) * K; // total household daily target
+  const K = kids.length || 1;
+  const Q = Math.ceil(T / K);  // per-kid daily target
 
+  // ── Legend ──
+  const legend = kids.length ? `
+    <div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:14px">
+      ${kids.map(k => `
+        <div style="display:flex;align-items:center;gap:5px">
+          <div style="width:10px;height:10px;border-radius:50%;background:${k.color}"></div>
+          <span style="font-size:11px;color:var(--muted)">${k.name}</span>
+        </div>`).join('')}
+      <div style="display:flex;align-items:center;gap:5px">
+        <span style="font-size:12px">🏖️</span>
+        <span style="font-size:11px;color:var(--muted)">PTO</span>
+      </div>
+    </div>` : '';
+
+  // ── Day rows ──
   const rows = days.map(date => {
-    const dayApproved = submissionsCache.filter(
-      s => s.date === date && s.status === 'approved'
-    ).length;
-    const pct = Q > 0 ? Math.min(Math.round((dayApproved / Q) * 100), 100) : 0;
-    const d   = new Date(date + 'T00:00:00');
-    const label = d.toLocaleDateString('en-US', { weekday:'short', month:'numeric', day:'numeric' });
+    const d       = new Date(date + 'T00:00:00');
+    const dayLabel = d.toLocaleDateString('en-US', { weekday:'short' });
+    const dateLabel = `${d.getMonth()+1}/${d.getDate()}`;
+    const isToday  = date === getToday();
+
+    // Per-kid bars
+    const kidBars = kids.map(kid => {
+      const hasPto = (ptoSched[kid.name] || []).includes(date);
+      const done   = submissionsCache.filter(
+        s => s.kidName === kid.name && s.date === date && s.status === 'approved'
+      ).length;
+      const pct    = Q > 0 ? Math.min(Math.round((done / Q) * 100), 100) : 0;
+
+      if (hasPto) {
+        // PTO day — show beach badge instead of bar
+        return `
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:5px">
+            <div style="width:20px;height:20px;border-radius:50%;flex-shrink:0;
+                        background:${kid.color}22;color:${kid.color};
+                        font-size:10px;font-weight:800;
+                        display:flex;align-items:center;justify-content:center">
+              ${kid.name.charAt(0)}
+            </div>
+            <div style="flex:1;height:14px;background:var(--border);border-radius:4px;
+                        overflow:hidden;position:relative">
+              <div style="position:absolute;inset:0;display:flex;align-items:center;
+                          justify-content:center;font-size:10px">🏖️ PTO</div>
+            </div>
+            <span style="font-size:10px;color:var(--muted);width:28px;text-align:right">—</span>
+          </div>`;
+      }
+
+      return `
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:5px">
+          <div style="width:20px;height:20px;border-radius:50%;flex-shrink:0;
+                      background:${kid.color}22;color:${kid.color};
+                      font-size:10px;font-weight:800;
+                      display:flex;align-items:center;justify-content:center">
+            ${kid.name.charAt(0)}
+          </div>
+          <div style="flex:1;height:14px;background:var(--border);border-radius:4px;overflow:hidden">
+            <div style="height:100%;width:${pct}%;background:${kid.color};
+                        border-radius:4px;transition:width 0.5s ease;
+                        opacity:${pct === 0 ? 0.2 : 1}"></div>
+          </div>
+          <span style="font-size:10px;color:var(--muted);width:28px;text-align:right">${pct}%</span>
+        </div>`;
+    }).join('');
 
     return `
-      <div class="history-bar-row">
-        <span class="history-bar-label">${label.split(',')[0]}</span>
-        <div class="history-bar-track">
-          <div class="history-bar-fill" style="width:${pct}%"></div>
+      <div style="margin-bottom:14px;padding-bottom:14px;
+                  border-bottom:1px solid var(--border)">
+        <div style="display:flex;align-items:center;justify-content:space-between;
+                    margin-bottom:8px">
+          <span style="font-size:12px;font-weight:700;
+                       color:${isToday ? 'var(--gold)' : 'var(--text)'}">
+            ${dayLabel}
+            <span style="font-weight:400;color:var(--muted);margin-left:4px">${dateLabel}</span>
+          </span>
+          ${isToday ? '<span style="font-size:10px;background:var(--gold-dim);color:var(--gold);padding:2px 7px;border-radius:99px">today</span>' : ''}
         </div>
-        <span class="history-bar-pct">${pct}%</span>
+        ${kidBars || '<span style="font-size:12px;color:var(--muted)">No kids set up yet</span>'}
       </div>`;
   }).join('');
 
   histEl.innerHTML = `
-    <div class="page-label" style="margin-bottom:12px">
-      Completion Rate — Last 7 Days
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+      <div class="page-label" style="margin-bottom:0">Completion — Last 7 Days</div>
     </div>
-    ${rows}
-    <div class="card" style="margin-top:16px">
+    ${legend}
+    <div class="card" style="padding:16px 16px 2px">
+      ${rows}
+    </div>
+    <div class="card" style="margin-top:12px">
       <div class="page-label" style="margin-bottom:6px">Payday Formula</div>
       <p style="font-size:13px;color:var(--muted);margin:0;line-height:1.7">
         ${(() => {
@@ -1645,14 +1796,14 @@ function renderHistory() {
           }
         })()}<br>
         Period cap: $${household?.capPerKid || 120} per kid<br>
-        Weekly approval handled from your Approvals tab
+        Approve submissions from the Approvals tab
       </p>
     </div>`;
 }
 
 // ── Settings accordion ────────────────────────────────────────
 // IDs of all accordion sections (matches sacc-chev-{id} and settings-{id})
-const SACC_IDS = ['comp-model','pay-cycle','approval','kids','pto','email','share-kids','account','legal'];
+const SACC_IDS = ['comp-model','pay-cycle','approval','kids','pto','email','share-kids','account','legal','help'];
 
 // Persist which sections the parent left open
 const _saccOpen = new Set(JSON.parse(localStorage.getItem('saccOpen') || '[]'));
