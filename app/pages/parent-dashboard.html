@@ -272,6 +272,26 @@
     <div class="page-label" style="margin-bottom:10px">Kids</div>
     <div class="card" style="padding:4px 16px;margin-bottom:16px" id="settings-kids"></div>
 
+    <!-- Kids Dashboard Link -->
+    <div class="page-label" style="margin-bottom:10px">Share with Kids</div>
+    <div class="card" style="padding:16px;margin-bottom:16px">
+      <div style="margin-bottom:12px">
+        <label style="font-size:12px;color:var(--muted);display:block;margin-bottom:6px">Household ID</label>
+        <div style="background:var(--card2);border:1px solid var(--border);border-radius:8px;
+                    padding:11px 14px;color:var(--text);font-family:monospace;font-size:13px;
+                    word-break:break-all;margin-bottom:12px" id="household-id-display">
+          Loading...
+        </div>
+      </div>
+      <button class="btn btn-primary" style="width:100%;justify-content:center;margin-bottom:8px"
+              onclick="copyKidLink()">
+        📋 Copy Kid Dashboard Link
+      </button>
+      <p style="font-size:12px;color:var(--muted);margin:0;text-align:center">
+        Share this link with your kids to let them log in and complete chores
+      </p>
+    </div>
+
     <!-- Sign out -->
     <div class="page-label" style="margin-bottom:10px">Account</div>
     <div class="card" style="padding:4px 16px;margin-bottom:32px">
@@ -1012,12 +1032,53 @@ window.switchTab = (tab) => {
     document.getElementById(`screen-${t}`).classList.toggle('active', t === tab);
     document.getElementById(`nav-${t}`).classList.toggle('active', t === tab);
   });
+  // Display household ID when settings tab is opened
+  if (tab === 'settings') {
+    setTimeout(() => displayHouseholdId(), 100);
+  }
 };
 
 window.signOutUser = async () => {
   await signOut(auth);
   window.location.href = '../../login.html';
 };
+
+window.copyKidLink = async () => {
+  const householdId = auth.currentUser?.uid;
+  if (!householdId) {
+    alert('Unable to generate link. Please refresh and try again.');
+    return;
+  }
+
+  const kidDashboardUrl = `${window.location.origin}/app/pages/kid-dashboard.html?h=${householdId}`;
+
+  try {
+    await navigator.clipboard.writeText(kidDashboardUrl);
+
+    // Show success feedback
+    const btn = event.target;
+    const originalText = btn.textContent;
+    btn.textContent = '✓ Copied!';
+    btn.style.background = 'var(--green)';
+
+    setTimeout(() => {
+      btn.textContent = originalText;
+      btn.style.background = '';
+    }, 2000);
+  } catch(err) {
+    console.error('Failed to copy:', err);
+    alert('Failed to copy. Try again.');
+  }
+};
+
+window.displayHouseholdId = () => {
+  const householdId = auth.currentUser?.uid;
+  const el = document.getElementById('household-id-display');
+  if (el && householdId) {
+    el.textContent = householdId;
+  }
+};
+
 window.closeModal = (id) => document.getElementById(id).classList.remove('active');
 window.openLightbox = (url) => {
   document.getElementById('lightbox-img').src = url;
