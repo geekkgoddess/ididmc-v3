@@ -136,8 +136,19 @@ exports.getPhotoDownloadUrl = functions.https.onCall(async (data, context) => {
  *   3. If already "pending"/"submitted"/"approved", throw an error
  *   All three steps happen atomically — no race condition possible.
  */
-exports.claimChore = functions.https.onCall(async (data, context) => {
-  const {householdId, choreId, choreType, kidName} = data;
+exports.claimChore = functions.https.onRequest(async (req, res) => {
+  // Enable CORS for all origins
+  res.set('Access-Control-Allow-Origin', '*');
+  res.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.set('Access-Control-Allow-Headers', 'Content-Type');
+
+  // Handle preflight requests
+  if (req.method === 'OPTIONS') {
+    res.status(204).send('');
+    return;
+  }
+
+  const {householdId, choreId, choreType, kidName} = req.body;
 
   // Build the document path based on whether it's a daily or weekly chore
   const today = new Date().toISOString().split("T")[0];
@@ -181,16 +192,14 @@ exports.claimChore = functions.https.onCall(async (data, context) => {
       return {success: true, claimedBy: kidName};
     });
 
-    return result;
+    res.json(result);
   } catch (err) {
     if (err.message.startsWith("CLAIMED_BY:")) {
       const claimedBy = err.message.replace("CLAIMED_BY:", "");
-      throw new functions.https.HttpsError(
-          "already-exists",
-          `This chore was just claimed by ${claimedBy}.`,
-      );
+      res.status(409).json({error: "already-exists", message: `This chore was just claimed by ${claimedBy}.`});
+    } else {
+      res.status(500).json({error: "internal", message: err.message});
     }
-    throw new functions.https.HttpsError("internal", err.message);
   }
 });
 
