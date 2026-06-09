@@ -74,7 +74,10 @@
       <input type="email" id="auth-email" placeholder="you@email.com" autocomplete="email">
     </div>
     <div class="form-field">
-      <label>Password</label>
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <label>Password</label>
+        <a href="#" onclick="openForgotPassword(); return false;" style="font-size:12px;color:var(--gold)">Forgot?</a>
+      </div>
       <input type="password" id="auth-password" placeholder="••••••••" autocomplete="current-password">
     </div>
     <div id="signup-extras" style="display:none">
@@ -109,6 +112,24 @@
       <a href="/" style="color:var(--gold)">← Back to home</a>
     </p>
   </div>
+
+  <!-- Password Reset Modal -->
+  <div id="reset-modal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:2000;display:flex;align-items:center;justify-content:center">
+    <div style="background:var(--bg);border-radius:16px;padding:32px;max-width:400px;width:90%;box-shadow:0 10px 40px rgba(0,0,0,0.3)">
+      <h2 style="margin-bottom:8px">Reset Password</h2>
+      <p style="font-size:13px;color:var(--muted);margin-bottom:20px">Enter your email address and we'll send you a link to reset your password.</p>
+
+      <div id="reset-error-msg" class="error-msg"></div>
+
+      <div class="form-field">
+        <label>Email</label>
+        <input type="email" id="reset-email" placeholder="you@email.com" autocomplete="email">
+      </div>
+
+      <button class="btn btn-primary" style="width:100%;justify-content:center;margin-bottom:8px" onclick="sendResetEmail()">Send Reset Link</button>
+      <button class="btn btn-secondary" style="width:100%;justify-content:center" onclick="closeForgotPassword()">Back to Login</button>
+    </div>
+  </div>
 </div>
 
 <script src="js/site.js"></script>
@@ -118,7 +139,8 @@ import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   signInWithPopup,
-  onAuthStateChanged
+  onAuthStateChanged,
+  sendPasswordResetEmail
 } from 'https://www.gstatic.com/firebasejs/10.11.0/firebase-auth.js';
 import { db } from './app/js/firebase.js';
 import { doc, getDoc } from 'https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore.js';
@@ -176,11 +198,58 @@ window.signInGoogle = async () => {
   catch(e) { showError(friendlyError(e.code)); }
 };
 
+window.openForgotPassword = () => {
+  hideError();
+  document.getElementById('reset-modal').style.display = 'flex';
+  document.getElementById('reset-email').value = document.getElementById('auth-email').value;
+  document.getElementById('reset-email').focus();
+};
+
+window.closeForgotPassword = () => {
+  document.getElementById('reset-modal').style.display = 'none';
+  document.getElementById('reset-email').value = '';
+  hideResetError();
+};
+
+window.sendResetEmail = async () => {
+  const email = document.getElementById('reset-email').value.trim();
+  const btn = document.querySelector('#reset-modal .btn-primary');
+  if (!email) { showResetError('Please enter your email address.'); return; }
+
+  btn.disabled = true;
+  btn.textContent = 'Sending…';
+  hideResetError();
+  try {
+    await sendPasswordResetEmail(auth, email);
+    showResetError('Reset link sent! Check your email for instructions.');
+    setTimeout(() => closeForgotPassword(), 2000);
+  } catch(e) {
+    showResetError(friendlyResetError(e.code));
+    btn.disabled = false;
+    btn.textContent = 'Send Reset Link';
+  }
+};
+
 function showError(msg) {
   const el = document.getElementById('error-msg');
   el.textContent = msg; el.classList.add('show');
 }
 function hideError() { document.getElementById('error-msg').classList.remove('show'); }
+
+function showResetError(msg) {
+  const el = document.getElementById('reset-error-msg');
+  el.textContent = msg; el.classList.add('show');
+}
+function hideResetError() { document.getElementById('reset-error-msg').classList.remove('show'); }
+
+function friendlyResetError(code) {
+  const map = {
+    'auth/user-not-found': 'No account found with that email.',
+    'auth/invalid-email': 'Please enter a valid email address.',
+    'auth/network-request-failed': 'Network error — check your connection.',
+  };
+  return map[code] || 'Unable to send reset email. Please try again.';
+}
 
 function friendlyError(code) {
   const map = {
