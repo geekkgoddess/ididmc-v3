@@ -508,6 +508,11 @@
         <span class="sacc-chevron" id="sacc-chev-account">›</span>
       </div>
       <div class="sacc-body" id="settings-account" style="display:none">
+
+        <!-- Plan card — rendered by renderPlanCard() -->
+        <div id="plan-card" style="margin-bottom:4px"></div>
+
+        <div style="border-top:1px solid var(--border)"></div>
         <div style="display:flex;align-items:center;justify-content:space-between;
                     padding:15px 0;cursor:pointer" onclick="signOutUser()">
           <span style="font-size:14px;font-weight:600;color:var(--text)">Sign Out</span>
@@ -556,54 +561,87 @@
       </div>
       <div class="sacc-body" id="settings-help" style="display:none;padding:16px 0">
 
-        <!-- How does earning work? -->
+        <!-- Earning & Points -->
         <div style="padding:12px 16px;border-bottom:1px solid var(--border)">
           <p style="font-size:13px;font-weight:700;color:var(--gold);margin-bottom:6px">💰 How does earning work?</p>
           <p style="font-size:13px;color:var(--text);line-height:1.6">
-            Each approved chore earns points. Points convert to dollars based on your
-            <strong>Compensation Model</strong> setting (e.g. 100 pts = $1.00). You can also set a
-            per-period cap so no one earns more than a set amount.
+            Every approved chore earns points. Points convert to real dollars using your
+            <strong>Compensation Model</strong> rate (e.g. 100 pts = $1.00). You can also set a
+            per-period earnings cap per kid. Configure both in <strong>Settings → Compensation Model</strong>.
           </p>
         </div>
 
-        <!-- What is a Pay Period? -->
+        <!-- Chores -->
         <div style="padding:12px 16px;border-bottom:1px solid var(--border)">
-          <p style="font-size:13px;font-weight:700;color:var(--gold);margin-bottom:6px">📅 What is a Pay Period?</p>
+          <p style="font-size:13px;font-weight:700;color:var(--gold);margin-bottom:6px">🧹 Setting up chores</p>
           <p style="font-size:13px;color:var(--text);line-height:1.6">
-            A pay period is the window of time points are tracked in. At the end of the period, hit
-            <strong>💰 Pay Out</strong> in Overview to record payments and start a fresh period.
-            Set the frequency in <strong>Settings → Pay Cycle</strong>: Weekly, Bi-Weekly,
-            Semi-Monthly, Monthly, or As Needed.
+            Add chores in the <strong>Chores</strong> tab. Each chore has a name, point value, and
+            frequency (Daily, Weekly, As Needed). You can optionally require a photo as proof of
+            completion and add a <em>standards description</em> — a note telling the kid exactly
+            what "done" looks like.
           </p>
         </div>
 
-        <!-- How do I approve a chore? -->
+        <!-- Photo proof -->
         <div style="padding:12px 16px;border-bottom:1px solid var(--border)">
-          <p style="font-size:13px;font-weight:700;color:var(--gold);margin-bottom:6px">✅ How do I approve a chore?</p>
+          <p style="font-size:13px;font-weight:700;color:var(--gold);margin-bottom:6px">📸 Photo proof</p>
           <p style="font-size:13px;color:var(--text);line-height:1.6">
-            When a kid marks a chore done, it appears in the <strong>Approvals</strong> tab with a
-            photo (if required). Tap <strong>Approve</strong> to award the points, or
-            <strong>Reject</strong> to send it back. You can add bonus points before approving.
+            When a chore requires a photo, the kid must take a picture before submitting. Photos are
+            checked for recency (no old images from the camera roll) and duplicate submissions are
+            blocked. You review the photo in the <strong>Approvals</strong> tab.
           </p>
         </div>
 
-        <!-- What is a PTO day? -->
+        <!-- Approvals & Bonus Points -->
         <div style="padding:12px 16px;border-bottom:1px solid var(--border)">
-          <p style="font-size:13px;font-weight:700;color:var(--gold);margin-bottom:6px">🏖️ What is a PTO / Day Off?</p>
+          <p style="font-size:13px;font-weight:700;color:var(--gold);margin-bottom:6px">✅ Approvals &amp; Bonus Points</p>
           <p style="font-size:13px;color:var(--text);line-height:1.6">
-            PTO days are pre-scheduled days off — vacations, sick days, etc. Set them in
-            <strong>Settings → PTO Schedule</strong>. On a PTO day the kid's dashboard shows a
-            day-off screen and their History shows a 🏖️ badge instead of a completion bar.
-            PTO days don't count against their completion rate.
+            Pending submissions show in the <strong>Approvals</strong> tab. Tap <strong>Approve</strong>
+            to award points or <strong>Reject</strong> to send it back. Before approving, you can add
+            <strong>bonus points</strong> for exceptional work — or mark it
+            <strong>Exceeded Expectations ⭐</strong> on a scale of 1–3 stars. The kid sees the
+            stars on their dashboard.
           </p>
         </div>
 
-        <!-- How does the kid log in? -->
+        <!-- Pay Period -->
+        <div style="padding:12px 16px;border-bottom:1px solid var(--border)">
+          <p style="font-size:13px;font-weight:700;color:var(--gold);margin-bottom:6px">📅 Pay Periods</p>
+          <p style="font-size:13px;color:var(--text);line-height:1.6">
+            A pay period is the window points accumulate in. Set the frequency in
+            <strong>Settings → Pay Cycle</strong>: Weekly, Bi-Weekly, Semi-Monthly, Monthly, or
+            As Needed. When the period ends, tap <strong>💰 Pay Out</strong> in Overview — it
+            records what each kid earned and automatically starts the next period.
+          </p>
+        </div>
+
+        <!-- History -->
+        <div style="padding:12px 16px;border-bottom:1px solid var(--border)">
+          <p style="font-size:13px;font-weight:700;color:var(--gold);margin-bottom:6px">📊 History &amp; completion tracking</p>
+          <p style="font-size:13px;color:var(--text);line-height:1.6">
+            The <strong>History</strong> tab shows the last 7 days with a per-kid color-coded
+            completion bar. Each bar shows what percentage of that kid's daily chores were approved.
+            PTO days show a 🏖️ badge instead of a bar and don't count against the completion rate.
+          </p>
+        </div>
+
+        <!-- PTO -->
+        <div style="padding:12px 16px;border-bottom:1px solid var(--border)">
+          <p style="font-size:13px;font-weight:700;color:var(--gold);margin-bottom:6px">🏖️ PTO / Days Off</p>
+          <p style="font-size:13px;color:var(--text);line-height:1.6">
+            Schedule days off per kid in <strong>Settings → PTO Schedule</strong>. On a PTO day the
+            kid's dashboard shows a rest screen (no chores listed). PTO days are tracked in History
+            but excluded from completion rate calculations.
+          </p>
+        </div>
+
+        <!-- Kid login -->
         <div style="padding:12px 16px;border-bottom:1px solid var(--border)">
           <p style="font-size:13px;font-weight:700;color:var(--gold);margin-bottom:6px">👧 How does my kid log in?</p>
           <p style="font-size:13px;color:var(--text);line-height:1.6">
-            Share your unique kid link from <strong>Settings → Share Kid Link</strong>. They open it
-            on their device and enter their 4-digit PIN. No email or account needed.
+            Share your household link via <strong>Settings → Share Kid Link</strong>. They open it
+            on any device and enter their 4-digit PIN. No email, account, or app download needed.
+            Each kid has their own PIN set when you add them.
           </p>
         </div>
 
@@ -611,9 +649,9 @@
         <div style="padding:12px 16px;border-bottom:1px solid var(--border)">
           <p style="font-size:13px;font-weight:700;color:var(--gold);margin-bottom:6px">➕ Adding or removing a kid</p>
           <p style="font-size:13px;color:var(--text);line-height:1.6">
-            Go to <strong>Settings → Kids</strong>. Tap <strong>+ Add a Kid</strong> to add a new
-            child. To remove one, tap <strong>Remove</strong> next to their name. Their submission
-            history is kept — only their active profile is removed.
+            Go to <strong>Settings → Kids</strong>. Tap <strong>+ Add Kid</strong> to set up a new
+            child with a name, PIN, and color. To remove someone, tap <strong>Remove</strong> next
+            to their name. Their submission history is preserved — only the active profile is removed.
           </p>
         </div>
 
@@ -621,9 +659,9 @@
         <div style="padding:14px 16px;background:rgba(245,200,66,0.08);border-radius:0 0 12px 12px">
           <p style="font-size:12px;color:var(--muted);line-height:1.6">
             🧪 <strong style="color:var(--text)">Testing this app?</strong> Thank you!
-            If something looks broken or confusing, email
+            If something looks off, email
             <a href="mailto:jmhodgefl@gmail.com" style="color:var(--gold)">jmhodgefl@gmail.com</a>
-            with what you saw and what you expected to happen. Screenshots are super helpful.
+            with what you saw and what you expected. Screenshots are super helpful.
           </p>
         </div>
 
@@ -1899,9 +1937,92 @@ function renderSettings() {
        </button>
      </div>`;
 
+  // Plan tier card in Account section
+  renderPlanCard();
+
   // Restore open/closed state after content is populated
   restoreSAccState();
 }
+
+// ── Plan / Tier Card ───────────────────────────────────────────
+function renderPlanCard() {
+  const el = document.getElementById('plan-card');
+  if (!el) return;
+
+  // plan field on household doc: 'free' | 'family' | 'household_plus'
+  const plan = (household?.plan || 'free').toLowerCase();
+
+  const PLANS = {
+    free: {
+      label:    'Free',
+      price:    '$0 / mo',
+      color:    'var(--muted)',
+      bg:       'transparent',
+      border:   'var(--border)',
+      features: ['Up to 2 kids', 'Up to 5 chores', 'Photo proof', 'Basic approvals', 'Pay period tracking'],
+      upgrade:  { label: '⬆️ Upgrade to Family — $2.99/mo', plan: 'family' },
+      downgrade: null,
+    },
+    family: {
+      label:    'Family',
+      price:    '$2.99 / mo',
+      color:    'var(--gold)',
+      bg:       'var(--gold-dim)',
+      border:   'var(--gold)',
+      features: ['Up to 4 kids', 'Unlimited chores', 'Exceeded Expectations + stars', 'Bonus budget', 'Chore standards', 'Full payout history'],
+      upgrade:  { label: '⬆️ Upgrade to Household+ — $4.99/mo', plan: 'household_plus' },
+      downgrade:{ label: 'Downgrade to Free', plan: 'free' },
+    },
+    household_plus: {
+      label:    'Household+',
+      price:    '$4.99 / mo',
+      color:    '#a78bfa',
+      bg:       'rgba(167,139,250,0.08)',
+      border:   '#a78bfa',
+      features: ['Unlimited kids', 'Priority support', 'New features first', 'Custom reporting'],
+      upgrade:  null,
+      downgrade:{ label: 'Downgrade to Family', plan: 'family' },
+    },
+  };
+
+  const p = PLANS[plan] || PLANS.free;
+
+  el.innerHTML = `
+    <div style="padding:14px 0 10px">
+      <div style="font-size:11px;font-weight:700;letter-spacing:.08em;color:var(--muted);text-transform:uppercase;margin-bottom:10px">Your Plan</div>
+      <div style="border:1.5px solid ${p.border};border-radius:12px;background:${p.bg};padding:14px 16px;margin-bottom:12px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+          <div>
+            <span style="font-size:16px;font-weight:800;color:${p.color}">${p.label}</span>
+            ${plan === 'family' ? '<span style="font-size:10px;font-weight:700;background:var(--gold);color:#111;border-radius:99px;padding:2px 8px;margin-left:8px">MOST POPULAR</span>' : ''}
+          </div>
+          <span style="font-size:13px;font-weight:600;color:var(--muted)">${p.price}</span>
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px">
+          ${p.features.map(f => `<span style="font-size:11px;color:var(--text2);background:var(--bg2);border:1px solid var(--border);border-radius:99px;padding:3px 9px">✓ ${f}</span>`).join('')}
+        </div>
+      </div>
+      ${p.upgrade ? `
+      <button onclick="changePlan('${p.upgrade.plan}')"
+              style="width:100%;padding:11px;border:none;border-radius:10px;
+                     background:linear-gradient(90deg,#f5c842,#fb923c);
+                     color:#111;font-weight:700;font-size:13px;cursor:pointer;margin-bottom:8px">
+        ${p.upgrade.label}
+      </button>` : ''}
+      ${p.downgrade ? `
+      <button onclick="changePlan('${p.downgrade.plan}')"
+              style="width:100%;padding:9px;border:1px solid var(--border);border-radius:10px;
+                     background:transparent;color:var(--muted);font-size:12px;cursor:pointer">
+        ${p.downgrade.label}
+      </button>` : ''}
+    </div>`;
+}
+
+// Stub: swap to real Stripe/payment flow when billing is wired up
+window.changePlan = (targetPlan) => {
+  const labels = { free: 'Free', family: 'Family ($2.99/mo)', household_plus: 'Household+ ($4.99/mo)' };
+  showToast(`💳 Billing coming soon — ${labels[targetPlan] || targetPlan}`);
+};
 
 // ── Pay Cycle Settings ─────────────────────────────────────────
 function renderPayCycleSettings() {

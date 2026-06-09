@@ -58,9 +58,159 @@
         </a>
       </div>
 
+      <!-- ── FAQ ─────────────────────────────────────────────── -->
+      <div style="margin-top:72px">
+        <div class="section-label" style="margin-bottom:12px">FAQ</div>
+        <h2 style="font-size:clamp(26px,4vw,36px);font-weight:800;letter-spacing:-0.5px;margin-bottom:8px">
+          How it works
+        </h2>
+        <p style="font-size:15px;color:var(--text2);margin-bottom:40px">
+          Everything you need to know before you sign up.
+        </p>
+
+        <!-- FAQ items -->
+        <div id="faq-list" style="display:flex;flex-direction:column;gap:0;border:1px solid var(--border);border-radius:16px;overflow:hidden">
+
+          <!-- Q1 -->
+          <div class="faq-item" onclick="toggleFaq(this)" style="cursor:pointer;border-bottom:1px solid var(--border)">
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:18px 22px">
+              <span style="font-size:15px;font-weight:700">💰 How does earning work?</span>
+              <span class="faq-icon" style="font-size:18px;color:var(--muted);transition:transform 0.2s">+</span>
+            </div>
+            <div class="faq-body" style="display:none;padding:0 22px 18px;font-size:14px;color:var(--text2);line-height:1.8">
+              Every approved chore earns points. Points convert to real dollars at the rate you set — for example, 100 pts = $1.00. You control the rate and can cap how much each kid earns per pay period. All of it is configurable in <strong style="color:var(--text)">Settings → Compensation Model</strong>.
+            </div>
+          </div>
+
+          <!-- Q2 -->
+          <div class="faq-item" onclick="toggleFaq(this)" style="cursor:pointer;border-bottom:1px solid var(--border)">
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:18px 22px">
+              <span style="font-size:15px;font-weight:700">🧹 How do I set up chores?</span>
+              <span class="faq-icon" style="font-size:18px;color:var(--muted);transition:transform 0.2s">+</span>
+            </div>
+            <div class="faq-body" style="display:none;padding:0 22px 18px;font-size:14px;color:var(--text2);line-height:1.8">
+              In the <strong style="color:var(--text)">Chores</strong> tab, tap <strong style="color:var(--text)">+ Add Chore</strong>. Give it a name, point value, and frequency (Daily, Weekly, or As Needed). You can require a photo as proof of completion and add a <em>standards description</em> — a note that tells the kid exactly what "done" looks like before they submit.
+            </div>
+          </div>
+
+          <!-- Q3 -->
+          <div class="faq-item" onclick="toggleFaq(this)" style="cursor:pointer;border-bottom:1px solid var(--border)">
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:18px 22px">
+              <span style="font-size:15px;font-weight:700">📸 What is photo proof — and can you fake it?</span>
+              <span class="faq-icon" style="font-size:18px;color:var(--muted);transition:transform 0.2s">+</span>
+            </div>
+            <div class="faq-body" style="display:none;padding:0 22px 18px;font-size:14px;color:var(--text2);line-height:1.8">
+              When a chore requires a photo, the kid must take a picture at submission time — not upload one from their camera roll. Photos are checked for recency using EXIF metadata, and duplicate images are blocked. You review every photo before it counts.
+            </div>
+          </div>
+
+          <!-- Q4 -->
+          <div class="faq-item" onclick="toggleFaq(this)" style="cursor:pointer;border-bottom:1px solid var(--border)">
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:18px 22px">
+              <span style="font-size:15px;font-weight:700">⭐ What is "Exceeded Expectations"?</span>
+              <span class="faq-icon" style="font-size:18px;color:var(--muted);transition:transform 0.2s">+</span>
+            </div>
+            <div class="faq-body" style="display:none;padding:0 22px 18px;font-size:14px;color:var(--text2);line-height:1.8">
+              When approving a chore, you can rate the quality 1–3 stars and add bonus points for exceptional work. The stars show up on the kid's dashboard so they know you noticed. It's a way to reward going above and beyond — not just getting it done.
+            </div>
+          </div>
+
+          <!-- Q5 -->
+          <div class="faq-item" onclick="toggleFaq(this)" style="cursor:pointer;border-bottom:1px solid var(--border)">
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:18px 22px">
+              <span style="font-size:15px;font-weight:700">📅 What is a Pay Period?</span>
+              <span class="faq-icon" style="font-size:18px;color:var(--muted);transition:transform 0.2s">+</span>
+            </div>
+            <div class="faq-body" style="display:none;padding:0 22px 18px;font-size:14px;color:var(--text2);line-height:1.8">
+              A pay period is the window of time points accumulate in — just like a real job's pay cycle. You can set it to Weekly, Bi-Weekly, Semi-Monthly, Monthly, or As Needed. At the end of each period, you tap <strong style="color:var(--text)">💰 Pay Out</strong> to record the payouts and kick off a fresh period automatically.
+            </div>
+          </div>
+
+          <!-- Q6 -->
+          <div class="faq-item" onclick="toggleFaq(this)" style="cursor:pointer;border-bottom:1px solid var(--border)">
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:18px 22px">
+              <span style="font-size:15px;font-weight:700">🏖️ What is a PTO day?</span>
+              <span class="faq-icon" style="font-size:18px;color:var(--muted);transition:transform 0.2s">+</span>
+            </div>
+            <div class="faq-body" style="display:none;padding:0 22px 18px;font-size:14px;color:var(--text2);line-height:1.8">
+              PTO days are pre-scheduled days off — vacations, sick days, whatever you choose. Set them per kid in Settings. On a PTO day, the kid's dashboard shows a rest screen instead of chores. PTO days appear in History with a 🏖️ badge and are excluded from the kid's completion rate.
+            </div>
+          </div>
+
+          <!-- Q7 -->
+          <div class="faq-item" onclick="toggleFaq(this)" style="cursor:pointer;border-bottom:1px solid var(--border)">
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:18px 22px">
+              <span style="font-size:15px;font-weight:700">📊 What does History show?</span>
+              <span class="faq-icon" style="font-size:18px;color:var(--muted);transition:transform 0.2s">+</span>
+            </div>
+            <div class="faq-body" style="display:none;padding:0 22px 18px;font-size:14px;color:var(--text2);line-height:1.8">
+              History shows the last 7 days with a color-coded breakdown per kid. Each kid has their own color, and each day shows a bar representing how many of their chores were approved. At a glance you can see who's been consistent — and who hasn't.
+            </div>
+          </div>
+
+          <!-- Q8 -->
+          <div class="faq-item" onclick="toggleFaq(this)" style="cursor:pointer;border-bottom:1px solid var(--border)">
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:18px 22px">
+              <span style="font-size:15px;font-weight:700">👧 How does my kid access the app?</span>
+              <span class="faq-icon" style="font-size:18px;color:var(--muted);transition:transform 0.2s">+</span>
+            </div>
+            <div class="faq-body" style="display:none;padding:0 22px 18px;font-size:14px;color:var(--text2);line-height:1.8">
+              You share a household link with your kids. They open it on any device — phone, tablet, or browser — and enter their 4-digit PIN. No email address, no account creation, no app download required. Simple enough for young kids to do on their own.
+            </div>
+          </div>
+
+          <!-- Q9 -->
+          <div class="faq-item" onclick="toggleFaq(this)" style="cursor:pointer;border-bottom:1px solid var(--border)">
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:18px 22px">
+              <span style="font-size:15px;font-weight:700">💳 What's the difference between the plans?</span>
+              <span class="faq-icon" style="font-size:18px;color:var(--muted);transition:transform 0.2s">+</span>
+            </div>
+            <div class="faq-body" style="display:none;padding:0 22px 18px;font-size:14px;color:var(--text2);line-height:1.8">
+              <strong style="color:var(--text)">Free</strong> — up to 2 kids, 5 chores, photo proof, basic approvals, pay period tracking.<br><br>
+              <strong style="color:var(--gold)">Family ($2.99/mo)</strong> — up to 4 kids, unlimited chores, Exceeded Expectations stars, bonus budget, chore standards descriptions, full payout history.<br><br>
+              <strong style="color:#a78bfa">Household+ ($4.99/mo)</strong> — unlimited kids, priority support, new features first, custom reporting.<br><br>
+              All prices are introductory — early members lock in their rate forever.
+            </div>
+          </div>
+
+          <!-- Q10 -->
+          <div class="faq-item" onclick="toggleFaq(this)" style="cursor:pointer">
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:18px 22px">
+              <span style="font-size:15px;font-weight:700">🔒 Is my data private?</span>
+              <span class="faq-icon" style="font-size:18px;color:var(--muted);transition:transform 0.2s">+</span>
+            </div>
+            <div class="faq-body" style="display:none;padding:0 22px 18px;font-size:14px;color:var(--text2);line-height:1.8">
+              Your household data is stored in Google Firebase and is only accessible to you (the authenticated parent). Kid profiles use PINs — no names, emails, or personal info stored for children. See our <a href="/pages/privacy.html" style="color:var(--gold)">Privacy Policy</a> for full details.
+            </div>
+          </div>
+
+        </div>
+
+        <!-- CTA -->
+        <div style="text-align:center;margin-top:48px;padding:40px 32px;border:1px solid var(--border);border-radius:16px;background:var(--gold-dim2)">
+          <div style="font-size:28px;margin-bottom:12px">🏠</div>
+          <h3 style="font-size:22px;font-weight:800;margin-bottom:8px">Ready to run your household like an operation?</h3>
+          <p style="font-size:14px;color:var(--text2);margin-bottom:24px">Free to start. No credit card needed.</p>
+          <a href="/login.html" class="btn btn-primary" style="display:inline-block">Get Started Free</a>
+        </div>
+
+      </div>
+      <!-- end FAQ -->
+
     </div>
   </div>
 </div>
+
+<script>
+function toggleFaq(el) {
+  const body = el.querySelector('.faq-body');
+  const icon = el.querySelector('.faq-icon');
+  const isOpen = body.style.display !== 'none';
+  body.style.display = isOpen ? 'none' : 'block';
+  icon.textContent = isOpen ? '+' : '−';
+  icon.style.transform = isOpen ? 'rotate(0deg)' : 'rotate(45deg)';
+}
+</script>
 <script src="../js/site.js"></script>
 </body>
 </html>
