@@ -124,7 +124,7 @@
   </div>
 
   <!-- Password Reset Modal -->
-  <div id="reset-modal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:2000;display:flex;align-items:center;justify-content:center">
+  <div id="reset-modal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:2000;align-items:center;justify-content:center">
     <div style="background:var(--bg);border-radius:16px;padding:32px;max-width:400px;width:90%;box-shadow:0 10px 40px rgba(0,0,0,0.3)">
       <h2 style="margin-bottom:8px">Reset Password</h2>
       <p style="font-size:13px;color:var(--muted);margin-bottom:20px">Enter your email address and we'll send you a link to reset your password.</p>
@@ -240,7 +240,10 @@ window.signInGoogleNewAccount = async () => {
 
 window.openForgotPassword = () => {
   hideError();
-  document.getElementById('reset-modal').style.display = 'flex';
+  const modal = document.getElementById('reset-modal');
+  modal.style.display = 'flex';
+  modal.style.alignItems = 'center';
+  modal.style.justifyContent = 'center';
   document.getElementById('reset-email').value = document.getElementById('auth-email').value;
   document.getElementById('reset-email').focus();
 };
