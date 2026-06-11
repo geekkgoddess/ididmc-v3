@@ -5,7 +5,6 @@ import { initializeApp }          from 'https://www.gstatic.com/firebasejs/10.11
 import { getAuth, GoogleAuthProvider }
                                   from 'https://www.gstatic.com/firebasejs/10.11.0/firebase-auth.js';
 import { getFirestore }           from 'https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore.js';
-import { getMessaging }           from 'https://www.gstatic.com/firebasejs/10.11.0/firebase-messaging.js';
 
 const firebaseConfig = {
   apiKey:            "AIzaSyDN0k7B09CatV2cDziBoNpXC5VHTj8TkpI",
@@ -21,7 +20,3 @@ export const auth      = getAuth(app);
 export const db        = getFirestore(app);
 export const googleProvider = new GoogleAuthProvider();
 
-// Messaging only works in supported browsers
-let messaging = null;
-try { messaging = getMessaging(app); } catch(e) {}
-export { messaging };

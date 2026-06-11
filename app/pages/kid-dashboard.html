@@ -532,7 +532,19 @@ function checkPin() {
 // ── Dashboard ─────────────────────────────────────────────────
 async function loadDashboard() {
   showScreen('screen-loading');
-  await Promise.all([loadClaimedState(), loadPoints()]);
+  try {
+    await Promise.all([loadClaimedState(), loadPoints()]);
+  } catch(e) {
+    console.error('Dashboard load failed:', e);
+    // Show a friendly error instead of hanging on the loading screen forever
+    showScreen('screen-select');
+    document.getElementById('kid-buttons').innerHTML =
+      `<div class="empty-state" style="padding:20px;text-align:center">
+         <p style="margin-bottom:16px">Couldn't load the dashboard. Check your connection and try again.</p>
+         <button class="btn btn-primary" onclick="location.reload()">Reload</button>
+       </div>`;
+    return;
+  }
   renderDashboard();
   showScreen('screen-dashboard');
   setupRealtimeKid(); // keep point totals live after parent approvals
