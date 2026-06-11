@@ -796,6 +796,14 @@ exports.getKidLiteDashboard = functions.https.onRequest(async (req, res) => {
         0,
         (household.ptoDaysPerYear || 0) - ((household.ptoSchedule || {})[kidName] || []).length
       ),
+      // Birthday: compare today's MM-DD to kid.dob (stored as MM-DD, repeats every year)
+      birthdayToday: (() => {
+        const kidData = (household.kids || []).find(k => k.name === kidName);
+        if (!kidData || !kidData.dob) return false;
+        const todayDate = new Date();
+        const mmdd = `${String(todayDate.getMonth()+1).padStart(2,'0')}-${String(todayDate.getDate()).padStart(2,'0')}`;
+        return kidData.dob === mmdd;
+      })(),
       chores: visibleChores,
       dailyClaimed,
       weeklyClaimed,

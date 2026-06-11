@@ -215,6 +215,15 @@
       <p>Your parent gave you a day off today.</p>
     </div>
 
+    <div id="birthday-card" style="display:none;text-align:center;margin-bottom:16px;
+         background:var(--gold-dim);border:1px solid rgba(245,200,66,0.25);
+         border-radius:16px;padding:24px 20px">
+      <div style="font-size:56px;margin-bottom:10px">🎂</div>
+      <div style="font-size:20px;font-weight:800;color:var(--gold);margin-bottom:6px">Happy Birthday!</div>
+      <div style="font-size:14px;color:var(--muted);margin-bottom:4px">No chores today — it's your special day!</div>
+      <div style="font-size:20px;letter-spacing:4px;margin-top:10px">🎈🎊🎁🎊🎈</div>
+    </div>
+
     <div class="model-card" id="model-explain"></div>
 
     <div class="summary-grid">
@@ -431,7 +440,10 @@ function renderDashboard() {
   document.getElementById('dash-avatar').style.color = currentKid.color;
   document.getElementById('dash-name').textContent = currentKid.name;
   document.getElementById('dash-date').textContent = formatDate(household.today);
-  document.getElementById('dayoff-card').style.display = household.ptoToday ? 'block' : 'none';
+  var isDayOff    = household.ptoToday || false;
+  var isBirthday  = household.birthdayToday || false;
+  document.getElementById('dayoff-card').style.display    = isDayOff    ? 'block' : 'none';
+  document.getElementById('birthday-card').style.display  = isBirthday  ? 'block' : 'none';
   document.getElementById('model-explain').innerHTML = getModelExplanation();
 
   var stats = household.stats || {};
@@ -500,7 +512,7 @@ function renderChoreList(type) {
     var sub = done ? 'Submitted' : locked ? 'Claimed by ' + claimedBy : 'Tap to submit';
     var value = household.compModel === 'flat' ? '$' + Number(chore.flatPayValue || 0).toFixed(2) : (chore.pointValue || 0) + ' pts';
     return '<button class="chore-row ' + (locked || done ? 'locked' : '') + '" ' +
-      (locked || done || household.ptoToday ? '' : 'onclick="openClaim(\'' + escapeJs(chore.id) + '\',\'' + type + '\')"') + '>' +
+      (locked || done || household.ptoToday || household.birthdayToday ? '' : 'onclick="openClaim(\'' + escapeJs(chore.id) + '\',\'' + type + '\')"') + '>' +
       '<span class="dot" style="background:' + (done ? 'var(--green)' : currentKid.color) + '"></span>' +
       '<span class="chore-main"><span class="chore-name">' + escapeHtml(chore.name) + '</span>' +
       '<span class="chore-sub">' + escapeHtml(sub) + '</span></span>' +

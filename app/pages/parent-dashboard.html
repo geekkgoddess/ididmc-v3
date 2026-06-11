@@ -946,6 +946,15 @@
         </div>
       </div>
 
+      <div style="margin-bottom:14px">
+        <label style="font-size:12px;color:var(--muted);display:block;margin-bottom:6px">Birthday (optional — MM-DD)</label>
+        <input id="add-kid-dob" type="text" placeholder="e.g. 07-04"
+               maxlength="5"
+               style="width:100%;box-sizing:border-box;background:var(--card2);
+                      border:1px solid var(--border);border-radius:8px;
+                      padding:10px 12px;color:var(--text);font-family:inherit;font-size:14px">
+      </div>
+
       <div style="margin-bottom:22px">
         <label style="font-size:12px;color:var(--muted);display:block;margin-bottom:8px">Color</label>
         <div id="add-kid-color-picker" style="display:flex;gap:8px;flex-wrap:wrap"></div>
@@ -2055,35 +2064,27 @@ function renderSettings() {
       </div>
     </div>`;
 
-  // Kids with reset PIN + remove
+  // Kids with edit name, birthday, reset PIN + remove
   document.getElementById('settings-kids').innerHTML =
-    household.kids.map((k, i) => `
-      <div style="display:flex;align-items:center;justify-content:space-between;
-                  padding:13px 0;border-bottom:1px solid var(--border)">
-        <div style="display:flex;align-items:center;gap:10px">
-          <div style="width:32px;height:32px;border-radius:50%;
-                      background:${k.color}22;color:${k.color};
-                      display:flex;align-items:center;justify-content:center;
-                      font-weight:800;font-size:13px">${k.name.charAt(0)}</div>
-          <div>
-            <div style="font-size:14px;font-weight:600">${k.name}</div>
-            <div style="font-size:11px;color:var(--muted)">PIN: ${k.pin}</div>
-            <div style="font-size:11px;color:var(--muted)">Phone: ${k.phone || 'Not set'}</div>
+    household.kids.map((k, i) => {
+      const dobLabel = k.dob
+        ? (() => { const [m,d] = k.dob.split('-'); return new Date(2000, m-1, d).toLocaleDateString('en-US', {month:'short',day:'numeric'}); })()
+        : 'No birthday set';
+      const isBirthdayToday = k.dob && k.dob === (() => { const n=new Date(); return `${String(n.getMonth()+1).padStart(2,'0')}-${String(n.getDate()).padStart(2,'0')}`; })();
+      return `
+      <div style="padding:13px 0;border-bottom:1px solid var(--border)">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+          <div style="display:flex;align-items:center;gap:10px">
+            <div style="width:32px;height:32px;border-radius:50%;
+                        background:${k.color}22;color:${k.color};
+                        display:flex;align-items:center;justify-content:center;
+                        font-weight:800;font-size:13px">${k.name.charAt(0)}</div>
+            <div>
+              <div style="font-size:14px;font-weight:600">${k.name}</div>
+              <div style="font-size:11px;color:var(--muted)">PIN: ${k.pin} · Phone: ${k.phone || 'Not set'}</div>
+              <div style="font-size:11px;color:var(--muted)">🎂 ${dobLabel}${isBirthdayToday ? ' 🎉 Today!' : ''}</div>
+            </div>
           </div>
-        </div>
-        <div style="display:flex;gap:6px">
-          <button onclick="setKidPhonePrompt(${i})"
-                  style="background:none;border:1px solid var(--border);
-                         border-radius:6px;padding:5px 10px;color:var(--muted);
-                         font-family:inherit;font-size:11px;cursor:pointer">
-            Phone
-          </button>
-          <button onclick="resetPinPrompt(${i})"
-                  style="background:none;border:1px solid var(--border);
-                         border-radius:6px;padding:5px 10px;color:var(--muted);
-                         font-family:inherit;font-size:11px;cursor:pointer">
-            Reset PIN
-          </button>
           <button onclick="removeKidConfirm(${i})"
                   style="background:none;border:1px solid #ef444433;
                          border-radius:6px;padding:5px 10px;color:#ef4444;
@@ -2092,7 +2093,34 @@ function renderSettings() {
             Remove
           </button>
         </div>
-      </div>`).join('') +
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+          <button onclick="editKidNamePrompt(${i})"
+                  style="background:none;border:1px solid var(--border);
+                         border-radius:6px;padding:5px 10px;color:var(--muted);
+                         font-family:inherit;font-size:11px;cursor:pointer">
+            ✏️ Edit Name
+          </button>
+          <button onclick="setKidBirthdayPrompt(${i})"
+                  style="background:none;border:1px solid var(--border);
+                         border-radius:6px;padding:5px 10px;color:var(--muted);
+                         font-family:inherit;font-size:11px;cursor:pointer">
+            🎂 Birthday
+          </button>
+          <button onclick="setKidPhonePrompt(${i})"
+                  style="background:none;border:1px solid var(--border);
+                         border-radius:6px;padding:5px 10px;color:var(--muted);
+                         font-family:inherit;font-size:11px;cursor:pointer">
+            📱 Phone
+          </button>
+          <button onclick="resetPinPrompt(${i})"
+                  style="background:none;border:1px solid var(--border);
+                         border-radius:6px;padding:5px 10px;color:var(--muted);
+                         font-family:inherit;font-size:11px;cursor:pointer">
+            🔑 Reset PIN
+          </button>
+        </div>
+      </div>`;
+    }).join('') +
     `<div style="padding:12px 0;text-align:center">
        <button class="btn btn-ghost btn-sm" onclick="openAddKidModal()">
          + Add Kid
@@ -2449,6 +2477,63 @@ window.setKidPhonePrompt = async (idx) => {
   showToast('✅ Kid phone saved');
 };
 
+window.editKidNamePrompt = async (idx) => {
+  const kid = household.kids[idx];
+  if (!kid) return;
+  const newName = prompt(`Rename "${kid.name}" to:`, kid.name);
+  if (!newName || newName.trim() === '' || newName.trim() === kid.name) return;
+  const trimmed = newName.trim();
+  if ((household.kids || []).find((k, i) => i !== idx && k.name.toLowerCase() === trimmed.toLowerCase())) {
+    showToast('A kid with that name already exists'); return;
+  }
+  const oldName = kid.name;
+  // Update kid name
+  household.kids[idx] = { ...kid, name: trimmed };
+  // Migrate ptoSchedule key from old name to new name
+  const ptoSched = household.ptoSchedule || {};
+  if (ptoSched[oldName]) {
+    ptoSched[trimmed] = ptoSched[oldName];
+    delete ptoSched[oldName];
+  }
+  await updateDoc(doc(db, 'households', currentUser.uid), {
+    kids:        household.kids,
+    ptoSchedule: ptoSched,
+  });
+  showToast(`✅ Renamed to ${trimmed}`);
+  // renderSettings fires via onSnapshot
+};
+
+window.setKidBirthdayPrompt = async (idx) => {
+  const kid = household.kids[idx];
+  if (!kid) return;
+  // Show a date input via a small inline prompt
+  // We store as MM-DD (no year) so it auto-triggers every year
+  const current = kid.dob
+    ? `2000-${kid.dob}` // convert MM-DD → YYYY-MM-DD for the input default
+    : '';
+  const raw = prompt(
+    `Birthday for ${kid.name}\n\nEnter as MM-DD (e.g. 07-04 for July 4th).\nLeave blank to clear.`,
+    kid.dob || ''
+  );
+  if (raw === null) return; // cancelled
+  const trimmed = raw.trim();
+  if (trimmed === '') {
+    // Clear the birthday
+    household.kids[idx] = { ...kid, dob: '' };
+    await updateDoc(doc(db, 'households', currentUser.uid), { kids: household.kids });
+    showToast('Birthday cleared');
+    return;
+  }
+  // Validate MM-DD format
+  if (!/^\d{2}-\d{2}$/.test(trimmed)) { showToast('Format must be MM-DD, e.g. 07-04'); return; }
+  const [m, d] = trimmed.split('-').map(Number);
+  if (m < 1 || m > 12 || d < 1 || d > 31) { showToast('Invalid date — check month and day'); return; }
+  household.kids[idx] = { ...kid, dob: trimmed };
+  await updateDoc(doc(db, 'households', currentUser.uid), { kids: household.kids });
+  const label = new Date(2000, m-1, d).toLocaleDateString('en-US', {month:'long', day:'numeric'});
+  showToast(`🎂 Birthday set: ${label}`);
+};
+
 window.removeKidConfirm = async (idx) => {
   const kid = household.kids[idx];
   if (!kid) return;
@@ -2479,6 +2564,7 @@ window.openAddKidModal = () => {
   // Clear inputs
   document.getElementById('add-kid-name').value = '';
   document.getElementById('add-kid-phone').value = '';
+  document.getElementById('add-kid-dob').value = '';
   document.querySelectorAll('#add-kid-pin-row .pin-digit').forEach(d => d.value = '');
 
   // Build color picker — auto-select first color not already used by a kid
@@ -2518,6 +2604,7 @@ window.addKidSelectColor = (el) => {
 window.saveNewKid = async () => {
   const name    = document.getElementById('add-kid-name').value.trim();
   const phone   = document.getElementById('add-kid-phone').value.trim();
+  const dobRaw  = document.getElementById('add-kid-dob').value.trim();
   const pins    = [...document.querySelectorAll('#add-kid-pin-row .pin-digit')].map(d => d.value);
   const pin     = pins.join('');
   const colorEl = document.querySelector('#add-kid-color-picker .sel');
@@ -2528,8 +2615,16 @@ window.saveNewKid = async () => {
   if ((household.kids || []).find(k => k.name.toLowerCase() === name.toLowerCase())) {
     showToast('A kid with that name already exists'); return;
   }
+  // Validate optional birthday
+  let dob = '';
+  if (dobRaw) {
+    if (!/^\d{2}-\d{2}$/.test(dobRaw)) { showToast('Birthday must be MM-DD, e.g. 07-04'); return; }
+    const [m, d] = dobRaw.split('-').map(Number);
+    if (m < 1 || m > 12 || d < 1 || d > 31) { showToast('Invalid birthday date'); return; }
+    dob = dobRaw;
+  }
 
-  const newKid     = { name, pin, color, phone, id: Date.now().toString() };
+  const newKid     = { name, pin, color, phone, dob, id: Date.now().toString() };
   const updatedKids = [...(household.kids || []), newKid];
 
   await updateDoc(doc(db, 'households', currentUser.uid), { kids: updatedKids });
