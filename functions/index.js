@@ -281,7 +281,7 @@ exports.releaseExpiredClaims = onSchedule("every 20 minutes", async (event) => {
  *   pointsEarned   = sum of pointValue for each approved submission today
  *   dailyTarget    = totalChores / numberOfKids  (the Q formula)
  */
-exports.sendDailySummary = onSchedule({schedule:"0 22 * * *",timeZone:"America/New_York"}, async (event) => {
+exports.sendDailySummary = onSchedule({schedule:"0 22 * * *",timeZone:"America/New_York",secrets:["GMAIL_EMAIL","GMAIL_PASSWORD"]}, async (event) => {
       const today = new Date().toISOString().split("T")[0];
 
       // Fetch all households
@@ -474,7 +474,7 @@ exports.sendDailySummary = onSchedule({schedule:"0 22 * * *",timeZone:"America/N
 // ================================================================
 
 // Runs daily at 6 PM ET — each household picks its own payday via emailSettings.weeklyDay
-exports.sendWeeklyPayday = onSchedule({schedule:"0 18 * * *",timeZone:"America/New_York"}, async (event) => {
+exports.sendWeeklyPayday = onSchedule({schedule:"0 18 * * *",timeZone:"America/New_York",secrets:["GMAIL_EMAIL","GMAIL_PASSWORD"]}, async (event) => {
       // Determine today's day name (lowercase) in Eastern time
       const weekdays = ["sunday","monday","tuesday","wednesday","thursday","friday","saturday"];
       const todayDayName = weekdays[new Date().getDay()];
