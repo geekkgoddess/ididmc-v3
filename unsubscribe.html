@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Unsubscribe — I Did My Chores</title>
+  <link rel="stylesheet" href="/css/site.css">
+</head>
+<body>
+<div class="page-top">
+  <div class="page-content">
+    <div style="max-width:540px;margin:0 auto;padding:64px 0 100px;text-align:center">
+
+      <!-- Default state -->
+      <div id="view-default">
+        <div style="font-size:48px;margin-bottom:16px">✉️</div>
+        <div class="section-label" style="margin-bottom:12px">Email Preferences</div>
+        <h1 style="font-size:clamp(24px,4vw,36px);font-weight:800;letter-spacing:-0.6px;margin-bottom:12px">
+          Unsubscribe from emails
+        </h1>
+        <p style="font-size:16px;color:var(--muted);margin-bottom:36px;line-height:1.7">
+          We'll remove you from our newsletter list. You'll still receive account emails
+          like daily summaries if you have a household set up.
+        </p>
+
+        <div class="form-field" style="text-align:left;margin-bottom:24px">
+          <label>Email address</label>
+          <input type="email" id="email-input" placeholder="you@email.com" required
+                 style="width:100%;box-sizing:border-box">
+        </div>
+
+        <div id="error-msg" style="display:none;background:var(--red-dim,rgba(239,68,68,0.12));
+             border:1px solid rgba(239,68,68,0.3);border-radius:10px;padding:14px 18px;
+             margin-bottom:20px;font-size:14px;color:#ef4444;text-align:left"></div>
+
+        <button id="unsub-btn" class="btn btn-primary"
+                style="width:100%;justify-content:center"
+                onclick="handleUnsubscribe()">
+          Confirm Unsubscribe
+        </button>
+
+        <p style="font-size:13px;color:var(--muted);margin-top:20px">
+          Changed your mind? <a href="/" style="color:var(--accent)">Go back home</a>
+        </p>
+      </div>
+
+      <!-- Success state -->
+      <div id="view-success" style="display:none">
+        <div style="font-size:56px;margin-bottom:20px">👋</div>
+        <h1 style="font-size:clamp(24px,4vw,36px);font-weight:800;letter-spacing:-0.6px;margin-bottom:12px">
+          You've been unsubscribed
+        </h1>
+        <p style="font-size:16px;color:var(--muted);line-height:1.7;margin-bottom:32px">
+          We've removed <strong id="confirmed-email" style="color:var(--text)"></strong>
+          from our mailing list. Sorry to see you go!
+        </p>
+        <a href="/" class="btn btn-secondary" style="display:inline-flex">Back to Home</a>
+      </div>
+
+      <!-- Already-removed state -->
+      <div id="view-not-found" style="display:none">
+        <div style="font-size:56px;margin-bottom:20px">🤷</div>
+        <h1 style="font-size:clamp(24px,4vw,36px);font-weight:800;letter-spacing:-0.6px;margin-bottom:12px">
+          Not found
+        </h1>
+        <p style="font-size:16px;color:var(--muted);line-height:1.7;margin-bottom:32px">
+          That email isn't on our list — you may have already unsubscribed.
+        </p>
+        <a href="/" class="btn btn-secondary" style="display:inline-flex">Back to Home</a>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+  // Pre-fill the email field from the ?email= query param
+  // (set automatically when the unsubscribe link is clicked in an email)
+  const params = new URLSearchParams(window.location.search);
+  const preEmail = params.get("email") || "";
+  if (preEmail) {
+    document.getElementById("email-input").value = preEmail;
+  }
+
+  async function handleUnsubscribe() {
+    const email = document.getElementById("email-input").value.trim();
+    const btn   = document.getElementById("unsub-btn");
+    const errEl = document.getElementById("error-msg");
+
+    // Basic client-side validation
+    if (!email || !email.includes("@")) {
+      errEl.textContent = "Please enter a valid email address.";
+      errEl.style.display = "block";
+      return;
+    }
+
+    errEl.style.display = "none";
+    btn.disabled = true;
+    btn.textContent = "Removing…";
+
+    try {
+      const res = await fetch(
+        "https://us-central1-i-did-my-chores.cloudfunctions.net/unsubscribeEmail",
+        {
+          method: "POST",
+          headers: {"Content-Type": "application/json"},
+          body: JSON.stringify({email}),
+        }
+      );
+
+      const data = await res.json();
+
+      if (res.ok) {
+        // Success
+        document.getElementById("confirmed-email").textContent = email;
+        document.getElementById("view-default").style.display  = "none";
+        document.getElementById("view-success").style.display  = "block";
+      } else if (res.status === 404) {
+        // Email not found — already unsubscribed or never subscribed
+        document.getElementById("view-default").style.display   = "none";
+        document.getElementById("view-not-found").style.display = "block";
+      } else {
+        errEl.textContent = data.error || "Something went wrong. Please try again.";
+        errEl.style.display = "block";
+        btn.disabled = false;
+        btn.textContent = "Confirm Unsubscribe";
+      }
+    } catch (err) {
+      errEl.textContent = "Network error. Please check your connection and try again.";
+      errEl.style.display = "block";
+      btn.disabled = false;
+      btn.textContent = "Confirm Unsubscribe";
+    }
+  }
+
+  // Allow pressing Enter in the email field to submit
+  document.getElementById("email-input").addEventListener("keydown", (e) => {
+    if (e.key === "Enter") handleUnsubscribe();
+  });
+</script>
+</body>
+</html>

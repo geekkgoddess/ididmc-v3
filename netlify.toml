@@ -12,6 +12,12 @@
   to   = "/app/pages/parent-dashboard.html"
   status = 302
 
+# Unsubscribe page (must come before the catch-all)
+[[redirects]]
+  from = "/unsubscribe"
+  to   = "/unsubscribe.html"
+  status = 200
+
 # Keep everything else working
 [[redirects]]
   from = "/*"
