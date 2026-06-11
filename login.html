@@ -68,28 +68,30 @@
       <button id="tab-signup" onclick="setTab('signup')">Sign Up</button>
     </div>
 
-    <div id="error-msg" class="error-msg"></div>
+    <form id="auth-form">
+      <div id="error-msg" class="error-msg"></div>
 
-    <div class="form-field">
-      <label>Email</label>
-      <input type="email" id="auth-email" placeholder="you@email.com" autocomplete="email">
-    </div>
-    <div class="form-field">
-      <div style="display:flex;justify-content:space-between;align-items:center">
-        <label>Password</label>
-        <a href="#" onclick="openForgotPassword(); return false;" style="font-size:12px;color:var(--gold)">Forgot?</a>
-      </div>
-      <input type="password" id="auth-password" placeholder="••••••••" autocomplete="current-password">
-    </div>
-    <div id="signup-extras" style="display:none">
       <div class="form-field">
-        <label>Confirm Password</label>
-        <input type="password" id="auth-password2" placeholder="••••••••">
+        <label for="auth-email">Email</label>
+        <input type="email" id="auth-email" placeholder="you@email.com" autocomplete="email">
       </div>
-    </div>
+      <div class="form-field">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <label for="auth-password">Password</label>
+          <a href="#" onclick="openForgotPassword(); return false;" style="font-size:12px;color:var(--gold)">Forgot?</a>
+        </div>
+        <input type="password" id="auth-password" placeholder="••••••••" autocomplete="current-password">
+      </div>
+      <div id="signup-extras" style="display:none">
+        <div class="form-field">
+          <label for="auth-password2">Confirm Password</label>
+          <input type="password" id="auth-password2" placeholder="••••••••" autocomplete="new-password">
+        </div>
+      </div>
 
-    <button class="btn btn-primary" style="width:100%;justify-content:center;margin-top:4px"
-            id="auth-btn" onclick="submitAuth()">Log In</button>
+      <button type="submit" class="btn btn-primary" style="width:100%;justify-content:center;margin-top:4px"
+              id="auth-btn">Log In</button>
+    </form>
 
     <div class="divider">or</div>
 
@@ -189,6 +191,11 @@ window.setTab = (tab) => {
 // Pre-fill signup tab if ?signup=true
 const params = new URLSearchParams(window.location.search);
 if (params.get('signup') === 'true') setTab('signup');
+
+document.getElementById('auth-form').addEventListener('submit', (event) => {
+  event.preventDefault();
+  submitAuth();
+});
 
 window.submitAuth = async () => {
   const email    = document.getElementById('auth-email').value.trim();
