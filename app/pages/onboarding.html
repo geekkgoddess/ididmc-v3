@@ -235,7 +235,13 @@
       cursor: pointer;
     }
     .add-btn:hover { border-color: var(--gold); color: var(--gold); }
-    .modal-sheet { max-height: 86vh; overflow-y: auto; }
+    .modal-overlay.active { align-items: center; justify-content: center; }
+    .modal-sheet {
+      width: min(100%, 390px);
+      max-height: min(86vh, 720px);
+      overflow-y: auto;
+      border-radius: 18px;
+    }
     .pin-row { display: flex; gap: 8px; }
     .pin-digit {
       width: 56px;
@@ -358,13 +364,12 @@ import { auth, db } from '../js/firebase.js';
 import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.11.0/firebase-auth.js';
 import { doc, setDoc, getDoc } from 'https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore.js';
 
-const TOTAL_STEPS = 9;
+const TOTAL_STEPS = 8;
 const AVATAR_COLORS = ['#f472b6','#60a5fa','#34d399','#fb923c','#a78bfa','#f87171','#facc15','#4ade80'];
 const STEP_LABELS = [
   'Welcome',
   'Email check',
-  'Family details',
-  'Children',
+  'Family & children',
   'Compensation',
   'Pay cycle',
   'Approvals',
@@ -453,7 +458,6 @@ function renderStep() {
     renderWelcome,
     renderVerify,
     renderFamily,
-    renderKids,
     renderCompensation,
     renderPayCycle,
     renderApproval,
@@ -507,7 +511,7 @@ function renderVerify(el) {
 function renderFamily(el) {
   el.innerHTML = card(`
     <h1>Family details</h1>
-    <p>Add the parent contact name, name the household, and set the maximum each child can earn in one pay period.</p>
+    <p>Add the parent contact name, name the household, and add at least one child. Compensation choices come next.</p>
     <div class="field">
       <label>Parent Name</label>
       <input type="text" id="parent-name" value="${escapeAttr(household.parentName || '')}" placeholder="Your name" maxlength="60">
@@ -516,24 +520,7 @@ function renderFamily(el) {
       <label>Household Name</label>
       <input type="text" id="family-name" value="${escapeAttr(household.name)}" placeholder='e.g. "The Hodge House"' maxlength="40">
     </div>
-    <div class="field-row">
-      <div class="field">
-        <label>Max Earnings Per Kid</label>
-        <input type="number" id="family-cap" value="${household.capPerKid || 120}" min="1" max="999">
-      </div>
-      <div class="field">
-        <label>Bonus Budget</label>
-        <input type="number" id="family-bonus" value="${household.bonusBudget || ''}" min="0" max="999" placeholder="Optional">
-      </div>
-    </div>
-    ${navButtons()}
-  `);
-}
-
-function renderKids(el) {
-  el.innerHTML = card(`
-    <h1>Add children</h1>
-    <p>Each child gets their own 4-digit PIN for the kid dashboard. You can add more later in Settings.</p>
+    <div class="note-box">Each child gets their own 4-digit PIN for the kid dashboard. You can add more later in Settings.</div>
     <div id="kids-list"></div>
     <button class="add-btn" onclick="openAddKid()">+ Add Child</button>
     ${navButtons({ disabled: kids.length === 0 })}
@@ -639,6 +626,10 @@ function renderCompFields() {
   if (household.compModel === 'flat') {
     el.innerHTML = `
       <div class="field">
+        <label>Period Earning Cap Per Kid ($)</label>
+        <input type="number" id="comp-period-cap" value="${household.capPerKid || ''}" placeholder="Optional" min="0" max="999" step="0.01">
+      </div>
+      <div class="field">
         <label>Daily Earning Cap ($)</label>
         <input type="number" id="comp-cap-amount" value="${cs.dailyCapAmount || ''}" placeholder="Optional" min="0" step="0.01">
       </div>`;
@@ -653,6 +644,10 @@ function renderCompFields() {
           <label>Full Day Pay ($)</label>
           <input type="number" id="comp-full-day-pay" value="${cs.fullDayPay || ''}" placeholder="10.00" min="0" step="0.01">
         </div>
+      </div>
+      <div class="field">
+        <label>Period Earning Cap Per Kid ($)</label>
+        <input type="number" id="comp-period-cap" value="${household.capPerKid || ''}" placeholder="Optional" min="0" max="999" step="0.01">
       </div>`;
   } else {
     el.innerHTML = `
@@ -664,6 +659,16 @@ function renderCompFields() {
         <div class="field">
           <label>Daily Min Points</label>
           <input type="number" id="comp-daily-min" value="${cs.dailyMinPoints || ''}" placeholder="Optional" min="0">
+        </div>
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label>Max Earnings Per Kid</label>
+          <input type="number" id="comp-period-cap" value="${household.capPerKid || 120}" min="1" max="999" step="0.01">
+        </div>
+        <div class="field">
+          <label>Bonus Budget</label>
+          <input type="number" id="comp-bonus-budget" value="${household.bonusBudget || ''}" min="0" max="999" step="0.01" placeholder="Optional">
         </div>
       </div>`;
   }
@@ -678,15 +683,21 @@ window.selectCompModel = (model) => {
 
 function saveCompFields() {
   const cs = {};
+  const periodCap = document.getElementById('comp-period-cap')?.value;
+  if (periodCap !== undefined) household.capPerKid = parseFloat(periodCap) || 0;
   if (household.compModel === 'flat') {
     cs.dailyCapEnabled = !!document.getElementById('comp-cap-amount')?.value;
     cs.dailyCapAmount = parseFloat(document.getElementById('comp-cap-amount')?.value) || null;
+    household.bonusBudget = 0;
   } else if (household.compModel === 'daily-min') {
     cs.choreMinForFullDay = parseInt(document.getElementById('comp-chore-min')?.value) || 5;
     cs.fullDayPay = parseFloat(document.getElementById('comp-full-day-pay')?.value) || null;
+    household.bonusBudget = 0;
   } else {
     cs.pointsPerDollar = parseInt(document.getElementById('comp-pts-dollar')?.value) || 100;
     cs.dailyMinPoints = parseInt(document.getElementById('comp-daily-min')?.value) || null;
+    household.capPerKid = parseFloat(document.getElementById('comp-period-cap')?.value) || 120;
+    household.bonusBudget = parseFloat(document.getElementById('comp-bonus-budget')?.value) || 0;
   }
   household.compSettings = cs;
   if (cs.pointsPerDollar) household.pointMultiplier = cs.pointsPerDollar;
@@ -724,8 +735,6 @@ function saveFamilyFields() {
   const name = document.getElementById('family-name')?.value.trim();
   if (!name) { showToast('Please enter a household name'); return false; }
   household.name = name;
-  household.capPerKid = parseFloat(document.getElementById('family-cap')?.value) || 120;
-  household.bonusBudget = parseFloat(document.getElementById('family-bonus')?.value) || 0;
   return true;
 }
 
@@ -761,9 +770,9 @@ window.selectApproval = (mode) => {
 
 window.nextStep = () => {
   if (currentStep === 2 && !saveFamilyFields()) return;
-  if (currentStep === 4) saveCompFields();
-  if (currentStep === 5 && !savePayFields()) return;
-  if (currentStep === 3 && kids.length === 0) { showToast('Add at least one child or choose Set Up Later'); return; }
+  if (currentStep === 2 && kids.length === 0) { showToast('Add at least one child or choose Set Up Later'); return; }
+  if (currentStep === 3) saveCompFields();
+  if (currentStep === 4 && !savePayFields()) return;
   currentStep = Math.min(currentStep + 1, TOTAL_STEPS - 1);
   renderStep();
 };
@@ -775,7 +784,9 @@ window.goBack = () => {
 
 window.setupLater = async () => {
   if (currentStep === 2) {
+    const parentInput = document.getElementById('parent-name');
     const nameInput = document.getElementById('family-name');
+    if (parentInput?.value.trim()) household.parentName = parentInput.value.trim();
     if (nameInput?.value.trim()) household.name = nameInput.value.trim();
   }
   const confirmed = confirm('Finish setup later? Your dashboard will open with a setup checklist.');
