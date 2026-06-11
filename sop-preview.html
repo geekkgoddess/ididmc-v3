@@ -1,0 +1,910 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>I Did My Chores - SOP Help Section Preview</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+
+  :root {
+    --bg: #090909; --bg2: #111; --card: #1c1c1c; --card2: #222;
+    --border: #2a2a2a; --text: #f0ede8; --text2: #c8c4be; --muted: #888;
+    --gold: #f5c842; --gold-dim: rgba(245,200,66,0.10);
+    --green: #34d399; --red: #f87171; --blue: #60a5fa;
+  }
+  [data-theme="light"] {
+    --bg: #faf9f7; --bg2: #f3f0eb; --card: #ffffff; --card2: #f5f3ef;
+    --border: #e5e2db; --text: #1a1a1a; --text2: #444; --muted: #777;
+    --gold: #b58b00; --gold-dim: rgba(196,154,0,0.10);
+    --green: #059669; --red: #dc2626; --blue: #2563eb;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    background: var(--bg); color: var(--text);
+    padding: 32px 20px 80px; max-width: 780px; margin: 0 auto;
+    line-height: 1.6;
+  }
+  a { color: var(--gold); }
+  .top-bar { display: flex; justify-content: flex-end; margin-bottom: 20px; }
+  .theme-btn {
+    background: var(--card); border: 1px solid var(--border); border-radius: 8px;
+    padding: 7px 12px; font-size: 14px; cursor: pointer; color: var(--text);
+    font-family: inherit;
+  }
+  .preview-header {
+    text-align: left; margin-bottom: 28px; padding: 24px;
+    background: var(--gold-dim); border: 1px solid rgba(245,200,66,0.24);
+    border-radius: 14px;
+  }
+  .preview-header h1 { font-size: 24px; font-weight: 800; margin-bottom: 8px; }
+  .preview-header h1 span { color: var(--gold); }
+  .preview-header p { font-size: 13px; color: var(--text2); margin-bottom: 8px; }
+  .preview-header p:last-child { margin-bottom: 0; }
+  .review-note {
+    padding: 14px 16px; border: 1px solid var(--border); background: var(--card);
+    border-radius: 12px; margin-bottom: 30px;
+  }
+  .review-note h2 { font-size: 14px; color: var(--gold); margin-bottom: 8px; }
+  .review-note p { font-size: 13px; color: var(--text2); margin-bottom: 8px; }
+  .review-note p:last-child { margin-bottom: 0; }
+  .category-label {
+    font-size: 10px; font-weight: 800; letter-spacing: 0.14em;
+    text-transform: uppercase; color: var(--gold);
+    margin: 32px 0 8px; padding: 0 4px;
+  }
+  .acc { border: 1px solid var(--border); border-radius: 12px; margin-bottom: 8px; overflow: hidden; }
+  .acc-hdr {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 16px 18px; cursor: pointer; user-select: none;
+    background: var(--card); transition: background 0.15s;
+  }
+  .acc-hdr:hover { background: var(--card2); }
+  .acc-hdr-left { display: flex; align-items: center; gap: 12px; min-width: 0; }
+  .acc-icon { font-size: 18px; width: 30px; text-align: center; flex-shrink: 0; }
+  .acc-title { font-size: 15px; font-weight: 700; }
+  .acc-chev {
+    font-size: 18px; color: var(--muted); font-weight: 700;
+    transition: transform 0.2s; display: inline-block; margin-left: 12px;
+  }
+  .acc-chev.open { transform: rotate(90deg); }
+  .acc-body { display: none; background: var(--bg2); }
+  .acc-body.open { display: block; }
+  .step-block { padding: 18px 20px; border-bottom: 1px solid var(--border); }
+  .step-block:last-child { border-bottom: none; }
+  .step-block h3 { font-size: 13px; font-weight: 800; color: var(--gold); margin-bottom: 10px; }
+  .step-block p { font-size: 13px; color: var(--text2); line-height: 1.7; margin-bottom: 8px; }
+  .step-block p:last-child { margin-bottom: 0; }
+  .step-block strong { color: var(--text); }
+  ol.steps { padding-left: 0; list-style: none; counter-reset: step; }
+  ol.steps li {
+    counter-increment: step; font-size: 13px; color: var(--text2);
+    padding: 7px 0 7px 36px; position: relative; line-height: 1.6;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+  }
+  ol.steps li:last-child { border-bottom: none; }
+  ol.steps li::before {
+    content: counter(step); position: absolute; left: 0; top: 7px;
+    width: 22px; height: 22px; border-radius: 50%;
+    background: var(--gold); color: #000; font-size: 11px; font-weight: 800;
+    display: flex; align-items: center; justify-content: center;
+  }
+  ul.clean-list { padding-left: 18px; margin: 8px 0 0; color: var(--text2); font-size: 13px; line-height: 1.8; }
+  .note, .warn, .decision {
+    margin-top: 10px; padding: 10px 14px; border-radius: 0 8px 8px 0;
+    font-size: 12px; color: var(--text2); line-height: 1.6;
+  }
+  .note { background: var(--gold-dim); border-left: 3px solid var(--gold); }
+  .warn { background: rgba(248,113,113,0.08); border-left: 3px solid var(--red); }
+  .decision { background: rgba(96,165,250,0.10); border-left: 3px solid var(--blue); }
+  .note strong, .warn strong, .decision strong { color: var(--text); }
+  .shot {
+    margin: 12px 0; border: 1px dashed var(--border); border-radius: 10px;
+    padding: 16px; background: var(--card2);
+  }
+  .shot strong { display: block; font-size: 12px; color: var(--gold); margin-bottom: 4px; }
+  .shot p { font-size: 12px; color: var(--muted); margin: 0; }
+  .model-table { width: 100%; border-collapse: collapse; margin: 10px 0; font-size: 12px; }
+  .model-table th {
+    text-align: left; padding: 8px 10px; background: var(--card); color: var(--muted);
+    font-size: 10px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase;
+    border-bottom: 1px solid var(--border);
+  }
+  .model-table td { padding: 10px; border-bottom: 1px solid var(--border); color: var(--text2); vertical-align: top; }
+  .model-table td:first-child { font-weight: 800; color: var(--text); white-space: nowrap; }
+  .model-table tr:last-child td { border-bottom: none; }
+  .footer-note {
+    margin-top: 48px; padding: 20px; background: var(--gold-dim);
+    border: 1px solid rgba(245,200,66,0.2); border-radius: 14px; text-align: center;
+  }
+  .footer-note p { font-size: 12px; color: var(--muted); line-height: 1.7; }
+  @media (max-width: 520px) {
+    body { padding: 24px 14px 60px; }
+    .preview-header { padding: 20px; }
+    .preview-header h1 { font-size: 21px; }
+    .step-block { padding: 16px; }
+    .acc-title { font-size: 14px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="top-bar">
+  <button class="theme-btn" onclick="toggleTheme()">Toggle Theme</button>
+</div>
+
+<div class="preview-header">
+  <h1>I Did My <span>Chores</span> - Help & SOP Preview</h1>
+  <p>This is a words-first SOP preview for review before adding it to the live help section.</p>
+  <p>Goal: explain what to do after login, how to maintain the household, and how parents and kids use every major touchpoint.</p>
+</div>
+
+<div class="review-note">
+  <h2>Important Product Note</h2>
+  <p>The app now uses a guided setup assistant with a visible <strong>Set Up Later</strong> option.</p>
+  <p>If a parent skips setup, the parent dashboard shows a setup checklist so they can continue later.</p>
+</div>
+
+<div class="category-label">Getting Started</div>
+
+<div class="acc">
+  <div class="acc-hdr" onclick="toggleAcc(this)">
+    <div class="acc-hdr-left"><span class="acc-icon">1</span><span class="acc-title">Create a Parent Account</span></div>
+    <span class="acc-chev">›</span>
+  </div>
+  <div class="acc-body">
+    <div class="step-block">
+      <ol class="steps">
+        <li>Go to <strong>ididmc.com</strong>.</li>
+        <li>Select <strong>Get Started</strong> to open the sign-up page.</li>
+        <li>Choose <strong>Sign Up</strong>.</li>
+        <li>Enter your email, create a password, confirm the password, and select <strong>Create Account</strong>.</li>
+        <li>Or select <strong>Continue with Google</strong> to create the account with a Google login.</li>
+      </ol>
+      <div class="shot"><strong>Screenshot needed</strong><p>Login page with the Sign Up tab, email/password fields, Create Account button, and Google button visible.</p></div>
+      <div class="note"><strong>Parent accounts only.</strong> Kids do not need email accounts. They use the household kid link and their own 4-digit PIN.</div>
+    </div>
+  </div>
+</div>
+
+<div class="acc">
+  <div class="acc-hdr" onclick="toggleAcc(this)">
+    <div class="acc-hdr-left"><span class="acc-icon">2</span><span class="acc-title">Log In After You Already Have an Account</span></div>
+    <span class="acc-chev">›</span>
+  </div>
+  <div class="acc-body">
+    <div class="step-block">
+      <ol class="steps">
+        <li>Go to <strong>ididmc.com</strong> and select <strong>Log In</strong>.</li>
+        <li>Enter your email and password, then select <strong>Log In</strong>.</li>
+        <li>If you used Google when signing up, select <strong>Continue with Google</strong>.</li>
+        <li>If your household already exists, you will land on the <strong>Parent Dashboard</strong>.</li>
+        <li>If setup is incomplete, the dashboard shows a <strong>Finish household setup</strong> checklist with a <strong>Continue</strong> link.</li>
+      </ol>
+      <div class="note"><strong>Forgot your password?</strong> Select <strong>Forgot?</strong>, enter your email, and send yourself a reset link.</div>
+    </div>
+  </div>
+</div>
+
+<div class="acc">
+  <div class="acc-hdr" onclick="toggleAcc(this)">
+    <div class="acc-hdr-left"><span class="acc-icon">3</span><span class="acc-title">Complete First-Time Setup</span></div>
+    <span class="acc-chev">›</span>
+  </div>
+  <div class="acc-body">
+    <div class="step-block">
+      <p>The guided setup assistant walks parents through the first household setup one screen at a time.</p>
+      <ol class="steps">
+        <li><strong>Welcome:</strong> review the guided setup and beta testing note.</li>
+        <li><strong>Email check:</strong> continue through the verification placeholder. Email-code verification will be added later.</li>
+        <li><strong>Family details:</strong> enter parent name, household name, max earnings per child, and optional bonus budget.</li>
+        <li><strong>Add children:</strong> add at least one child with a name, color, and 4-digit PIN.</li>
+        <li><strong>Choose compensation:</strong> select Points, Flat Pay, or Daily Minimum and complete the matching fields.</li>
+        <li><strong>Set pay cycle:</strong> choose weekly, bi-weekly, semi-monthly, monthly, or as-needed.</li>
+        <li><strong>Choose approval mode:</strong> select Manual Approval or Auto Approve.</li>
+        <li><strong>Add starter chores:</strong> add one or two chores or skip and add chores later.</li>
+        <li><strong>Launch dashboard:</strong> review the summary and open the parent dashboard.</li>
+      </ol>
+      <div class="shot"><strong>Screenshot sequence needed</strong><p>One screenshot per setup step, plus screenshots of the info buttons for compensation, pay cycle, approval mode, and chores.</p></div>
+    </div>
+  </div>
+</div>
+
+<div class="acc">
+  <div class="acc-hdr" onclick="toggleAcc(this)">
+    <div class="acc-hdr-left"><span class="acc-icon">4</span><span class="acc-title">Set Up Later and Continue Setup</span></div>
+    <span class="acc-chev">›</span>
+  </div>
+  <div class="acc-body">
+    <div class="step-block">
+      <p>If a parent selects <strong>Set Up Later</strong>, the app saves the household and opens the parent dashboard with a setup checklist.</p>
+      <ol class="steps">
+        <li>Open the parent dashboard.</li>
+        <li>Find the <strong>Finish household setup</strong> checklist near the top of Overview.</li>
+        <li>Select <strong>Continue</strong> to return to guided setup.</li>
+        <li>Complete missing items: parent/family details, child, compensation model, pay cycle, approval mode, and chore.</li>
+        <li>When all checklist items are complete, select <strong>Mark Setup Complete</strong> or finish the guided setup flow.</li>
+        <li>Open <strong>Settings → Share with Kids</strong>, copy the kid dashboard link, and send it to the children.</li>
+      </ol>
+      <div class="note"><strong>Minimum usable setup:</strong> one kid, one chore, a pay cycle, a compensation model, an approval mode, and the kid dashboard link.</div>
+    </div>
+  </div>
+</div>
+
+<div class="category-label">Parent Dashboard</div>
+
+<div class="acc">
+  <div class="acc-hdr" onclick="toggleAcc(this)">
+    <div class="acc-hdr-left"><span class="acc-icon">5</span><span class="acc-title">What to Do First After Logging In</span></div>
+    <span class="acc-chev">›</span>
+  </div>
+  <div class="acc-body">
+    <div class="step-block">
+      <ol class="steps">
+        <li>Start on <strong>Overview</strong> to check today's submissions, pending items, and approved work.</li>
+        <li>If the pending alert appears, open <strong>Approvals</strong> and review submissions.</li>
+        <li>If your household needs changes, use <strong>Chores</strong> for chore edits or <strong>Settings</strong> for household rules.</li>
+        <li>Use <strong>History</strong> to review completion patterns and parent-entered corrections.</li>
+        <li>When there are earnings to settle, use the <strong>Pay Out</strong> button in Overview.</li>
+      </ol>
+      <div class="shot"><strong>Screenshot needed</strong><p>Parent dashboard Overview with stats tiles, kid balance cards, Pay Out button area, and Today activity.</p></div>
+    </div>
+  </div>
+</div>
+
+<div class="acc">
+  <div class="acc-hdr" onclick="toggleAcc(this)">
+    <div class="acc-hdr-left"><span class="acc-icon">6</span><span class="acc-title">Understand the Five Parent Tabs</span></div>
+    <span class="acc-chev">›</span>
+  </div>
+  <div class="acc-body">
+    <div class="step-block">
+      <ol class="steps">
+        <li><strong>Overview:</strong> shows today's submissions, pending count, approved count, kid balances, payout estimates, and today's activity.</li>
+        <li><strong>Approvals:</strong> shows submitted chores that need parent review, plus any fraud-flagged items.</li>
+        <li><strong>Chores:</strong> where parents add, edit, expand, and delete chore cards.</li>
+        <li><strong>History:</strong> shows recent completion bars, PTO markers, manual corrections, and the payday formula.</li>
+        <li><strong>Settings:</strong> where parents manage compensation, pay cycle, approval mode, kids, PTO, email notifications, sharing, account, legal, and help.</li>
+      </ol>
+      <div class="warn"><strong>Draft mismatch corrected.</strong> The live app has five parent tabs, not four.</div>
+    </div>
+  </div>
+</div>
+
+<div class="acc">
+  <div class="acc-hdr" onclick="toggleAcc(this)">
+    <div class="acc-hdr-left"><span class="acc-icon">7</span><span class="acc-title">Record or Correct Past Work</span></div>
+    <span class="acc-chev">›</span>
+  </div>
+  <div class="acc-body">
+    <div class="step-block">
+      <ol class="steps">
+        <li>From <strong>Overview</strong>, select <strong>+ Past Work</strong>.</li>
+        <li>Choose the kid, date, chore, and status.</li>
+        <li>Add an optional parent note.</li>
+        <li>Select <strong>Save</strong>.</li>
+        <li>To adjust a parent-entered item later, find it in <strong>Overview</strong> or <strong>History</strong> and select <strong>Edit</strong>.</li>
+      </ol>
+      <div class="note"><strong>Use this for corrections.</strong> Examples: a kid forgot to submit, a parent approved offline, or you need to fix a date/status.</div>
+    </div>
+  </div>
+</div>
+
+<div class="category-label">Managing Chores</div>
+
+<div class="acc">
+  <div class="acc-hdr" onclick="toggleAcc(this)">
+    <div class="acc-hdr-left"><span class="acc-icon">8</span><span class="acc-title">Add a Chore</span></div>
+    <span class="acc-chev">›</span>
+  </div>
+  <div class="acc-body">
+    <div class="step-block">
+      <ol class="steps">
+        <li>Open the <strong>Chores</strong> tab.</li>
+        <li>Select <strong>+ Add</strong>.</li>
+        <li>Enter the <strong>Chore Name</strong>.</li>
+        <li>Add <strong>Standards / What done means</strong> so kids know what counts as complete.</li>
+        <li>Enter the active value for the current compensation model: points for points model, flat dollar amount for flat pay, or no per-chore value for daily minimum.</li>
+        <li>Choose the frequency: daily, weekly, bi-weekly, monthly, quarterly, bi-annual, annual, or as-needed.</li>
+        <li>Choose whether the chore is available to any kid or assigned to one kid only.</li>
+        <li>Add optional sub-tasks if the chore needs a checklist.</li>
+        <li>Select <strong>Save Chore</strong>.</li>
+      </ol>
+      <div class="shot"><strong>Screenshot needed</strong><p>Add/Edit Chore modal showing name, standards, points/flat pay, frequency, assignment, sub-task editor, and Save Chore.</p></div>
+    </div>
+  </div>
+</div>
+
+<div class="acc">
+  <div class="acc-hdr" onclick="toggleAcc(this)">
+    <div class="acc-hdr-left"><span class="acc-icon">9</span><span class="acc-title">Edit a Chore</span></div>
+    <span class="acc-chev">›</span>
+  </div>
+  <div class="acc-body">
+    <div class="step-block">
+      <ol class="steps">
+        <li>Open <strong>Chores</strong>.</li>
+        <li>Find the chore card.</li>
+        <li>Select <strong>Edit</strong>.</li>
+        <li>Change the name, standards, value, frequency, assignment, or sub-tasks.</li>
+        <li>Select <strong>Save Chore</strong>.</li>
+      </ol>
+      <div class="note"><strong>After editing:</strong> check the kid dashboard if the change affects what kids should see today.</div>
+    </div>
+  </div>
+</div>
+
+<div class="acc">
+  <div class="acc-hdr" onclick="toggleAcc(this)">
+    <div class="acc-hdr-left"><span class="acc-icon">10</span><span class="acc-title">Remove a Chore</span></div>
+    <span class="acc-chev">›</span>
+  </div>
+  <div class="acc-body">
+    <div class="step-block">
+      <ol class="steps">
+        <li>Open <strong>Chores</strong>.</li>
+        <li>Find the chore card.</li>
+        <li>Select the <strong>X</strong> delete button.</li>
+        <li>Confirm that you want to delete the chore.</li>
+      </ol>
+      <div class="warn"><strong>Deletion cannot be undone from the screen.</strong> The chore is removed from active chore lists. Historical submissions remain in history.</div>
+    </div>
+  </div>
+</div>
+
+<div class="acc">
+  <div class="acc-hdr" onclick="toggleAcc(this)">
+    <div class="acc-hdr-left"><span class="acc-icon">11</span><span class="acc-title">Use Sub-Tasks and Standards</span></div>
+    <span class="acc-chev">›</span>
+  </div>
+  <div class="acc-body">
+    <div class="step-block">
+      <ol class="steps">
+        <li>Use <strong>Standards</strong> for written instructions like "wipe counters, sweep floor, and empty trash."</li>
+        <li>Use <strong>Sub-tasks</strong> when the kid must check off several steps before submitting.</li>
+        <li>Select <strong>+ Add Sub-task</strong> in the chore modal for each checklist item.</li>
+        <li>Remove a sub-task with the <strong>X</strong> button next to that row.</li>
+        <li>Save the chore after updating the list.</li>
+      </ol>
+      <div class="note"><strong>Kid experience:</strong> standards appear behind the info button. Sub-tasks appear in the claim modal and must be checked before submitting.</div>
+    </div>
+  </div>
+</div>
+
+<div class="category-label">Approvals & Payouts</div>
+
+<div class="acc">
+  <div class="acc-hdr" onclick="toggleAcc(this)">
+    <div class="acc-hdr-left"><span class="acc-icon">12</span><span class="acc-title">Review and Approve Chores</span></div>
+    <span class="acc-chev">›</span>
+  </div>
+  <div class="acc-body">
+    <div class="step-block">
+      <ol class="steps">
+        <li>Open <strong>Approvals</strong>.</li>
+        <li>Review each submitted chore card.</li>
+        <li>Open the proof photo if you need a larger view.</li>
+        <li>Check the child name, chore name, submission date/time, and checklist details.</li>
+        <li>Select <strong>Approve</strong> if the work counts.</li>
+        <li>Select <strong>Reject</strong> if the work should not count.</li>
+      </ol>
+      <div class="shot"><strong>Screenshot needed</strong><p>Approvals tab with a pending card, proof photo, checklist, Approve, Reject, and Exceeded Expectations buttons.</p></div>
+    </div>
+  </div>
+</div>
+
+<div class="acc">
+  <div class="acc-hdr" onclick="toggleAcc(this)">
+    <div class="acc-hdr-left"><span class="acc-icon">13</span><span class="acc-title">Award Exceeded Expectations Bonus Points</span></div>
+    <span class="acc-chev">›</span>
+  </div>
+  <div class="acc-body">
+    <div class="step-block">
+      <ol class="steps">
+        <li>Open <strong>Approvals</strong>.</li>
+        <li>Find the pending submission.</li>
+        <li>Select <strong>Exceeded Expectations</strong>.</li>
+        <li>Enter the bonus points.</li>
+        <li>Save the bonus. The submission is approved with the added bonus points.</li>
+      </ol>
+      <div class="note"><strong>Budget check:</strong> the modal shows how many bonus points are left based on the weekly bonus budget.</div>
+    </div>
+  </div>
+</div>
+
+<div class="acc">
+  <div class="acc-hdr" onclick="toggleAcc(this)">
+    <div class="acc-hdr-left"><span class="acc-icon">14</span><span class="acc-title">Change Approval Mode</span></div>
+    <span class="acc-chev">›</span>
+  </div>
+  <div class="acc-body">
+    <div class="step-block">
+      <ol class="steps">
+        <li>Open <strong>Settings</strong>.</li>
+        <li>Expand <strong>Approval Mode</strong>.</li>
+        <li>Select <strong>Manual Approval</strong> if parents should review every submission.</li>
+        <li>Select <strong>Auto Approve</strong> if submissions should count immediately.</li>
+      </ol>
+      <div class="warn"><strong>Use care with Auto Approve.</strong> Kids still submit photos, but the work counts without parent review.</div>
+    </div>
+  </div>
+</div>
+
+<div class="acc">
+  <div class="acc-hdr" onclick="toggleAcc(this)">
+    <div class="acc-hdr-left"><span class="acc-icon">15</span><span class="acc-title">Pay Out and Start a New Period</span></div>
+    <span class="acc-chev">›</span>
+  </div>
+  <div class="acc-body">
+    <div class="step-block">
+      <ol class="steps">
+        <li>Open <strong>Overview</strong>.</li>
+        <li>Review each child's period points and estimated payout.</li>
+        <li>Select <strong>Pay Out</strong> when earnings are ready to settle.</li>
+        <li>Review the payout summary.</li>
+        <li>Select <strong>Confirm Pay Out & Start New Period</strong>.</li>
+      </ol>
+      <div class="note"><strong>What happens next:</strong> the app records payout entries and advances the pay period start date.</div>
+      <div class="shot"><strong>Screenshot needed</strong><p>Pay Day modal with each kid's points and amount, plus the confirmation button.</p></div>
+    </div>
+  </div>
+</div>
+
+<div class="category-label">Kids & Household Members</div>
+
+<div class="acc">
+  <div class="acc-hdr" onclick="toggleAcc(this)">
+    <div class="acc-hdr-left"><span class="acc-icon">16</span><span class="acc-title">Add a Child After Setup</span></div>
+    <span class="acc-chev">›</span>
+  </div>
+  <div class="acc-body">
+    <div class="step-block">
+      <ol class="steps">
+        <li>Open <strong>Settings</strong>.</li>
+        <li>Expand <strong>Kids</strong>.</li>
+        <li>Select <strong>+ Add Kid</strong>.</li>
+        <li>Enter the child's name.</li>
+        <li>Enter optional phone and optional birthday in MM-DD format.</li>
+        <li>Create a 4-digit PIN.</li>
+        <li>Choose an avatar color.</li>
+        <li>Select <strong>Add Kid</strong>.</li>
+      </ol>
+      <div class="note"><strong>After adding a kid:</strong> review chores. Shared chores are available to the new child, but kid-specific chores must be assigned manually.</div>
+    </div>
+  </div>
+</div>
+
+<div class="acc">
+  <div class="acc-hdr" onclick="toggleAcc(this)">
+    <div class="acc-hdr-left"><span class="acc-icon">17</span><span class="acc-title">Edit a Child's Name, Phone, Birthday, or PIN</span></div>
+    <span class="acc-chev">›</span>
+  </div>
+  <div class="acc-body">
+    <div class="step-block">
+      <ol class="steps">
+        <li>Open <strong>Settings → Kids</strong>.</li>
+        <li>Find the child's row.</li>
+        <li>Select <strong>Edit Name</strong> to rename the child.</li>
+        <li>Select <strong>Birthday</strong> to add, change, or clear the birthday.</li>
+        <li>Select <strong>Phone</strong> to add or change a phone number.</li>
+        <li>Select <strong>Reset PIN</strong> to create a new 4-digit PIN.</li>
+      </ol>
+      <div class="note"><strong>Birthday behavior:</strong> on the child's birthday, the kid dashboard shows a birthday screen and no chores.</div>
+    </div>
+  </div>
+</div>
+
+<div class="acc">
+  <div class="acc-hdr" onclick="toggleAcc(this)">
+    <div class="acc-hdr-left"><span class="acc-icon">18</span><span class="acc-title">Remove a Child</span></div>
+    <span class="acc-chev">›</span>
+  </div>
+  <div class="acc-body">
+    <div class="step-block">
+      <ol class="steps">
+        <li>Open <strong>Settings → Kids</strong>.</li>
+        <li>Find the child.</li>
+        <li>Select <strong>Remove</strong>.</li>
+        <li>Confirm the removal.</li>
+      </ol>
+      <div class="warn"><strong>What removal means:</strong> the child is removed from active dashboards. Past submissions are kept for history.</div>
+      <div class="note"><strong>After removing a child:</strong> review chore assignments and payout records so the remaining household still makes sense.</div>
+    </div>
+  </div>
+</div>
+
+<div class="acc">
+  <div class="acc-hdr" onclick="toggleAcc(this)">
+    <div class="acc-hdr-left"><span class="acc-icon">19</span><span class="acc-title">Share the Kid Dashboard Link</span></div>
+    <span class="acc-chev">›</span>
+  </div>
+  <div class="acc-body">
+    <div class="step-block">
+      <ol class="steps">
+        <li>Open <strong>Settings</strong>.</li>
+        <li>Expand <strong>Share with Kids</strong>.</li>
+        <li>Select <strong>Copy Kid Dashboard Link</strong>.</li>
+        <li>Send the copied link to your kids by text, email, or another family channel.</li>
+        <li>Give each child their own 4-digit PIN.</li>
+      </ol>
+      <div class="note"><strong>Kids do not need a parent password.</strong> The shared link identifies the household; the PIN identifies the child.</div>
+    </div>
+  </div>
+</div>
+
+<div class="category-label">Kid Dashboard</div>
+
+<div class="acc">
+  <div class="acc-hdr" onclick="toggleAcc(this)">
+    <div class="acc-hdr-left"><span class="acc-icon">20</span><span class="acc-title">Kid Login Flow</span></div>
+    <span class="acc-chev">›</span>
+  </div>
+  <div class="acc-body">
+    <div class="step-block">
+      <ol class="steps">
+        <li>The child opens the kid dashboard link from the parent.</li>
+        <li>The child selects their name.</li>
+        <li>The child enters their 4-digit PIN.</li>
+        <li>The app opens that child's dashboard.</li>
+      </ol>
+      <div class="shot"><strong>Screenshot sequence needed</strong><p>Kid select screen, PIN screen, and loaded kid dashboard.</p></div>
+    </div>
+  </div>
+</div>
+
+<div class="acc">
+  <div class="acc-hdr" onclick="toggleAcc(this)">
+    <div class="acc-hdr-left"><span class="acc-icon">21</span><span class="acc-title">How Kids Complete a Chore</span></div>
+    <span class="acc-chev">›</span>
+  </div>
+  <div class="acc-body">
+    <div class="step-block">
+      <ol class="steps">
+        <li>From the kid dashboard, review the daily and non-daily chore lists.</li>
+        <li>Tap an available chore to claim it.</li>
+        <li>If the chore has standards, tap the info button to read the instructions.</li>
+        <li>If the chore has sub-tasks, check every item in the checklist.</li>
+        <li>Tap the photo area to take or choose a proof photo.</li>
+        <li>When the checklist and photo are complete, select <strong>Submit & Claim</strong>.</li>
+        <li>Review the success screen to see whether the chore is pending parent approval or auto-approved.</li>
+      </ol>
+      <div class="warn"><strong>Photo required.</strong> The submit button stays disabled until a photo is selected. If there are sub-tasks, all sub-tasks must also be checked.</div>
+    </div>
+  </div>
+</div>
+
+<div class="acc">
+  <div class="acc-hdr" onclick="toggleAcc(this)">
+    <div class="acc-hdr-left"><span class="acc-icon">22</span><span class="acc-title">What Kids See on Special Days</span></div>
+    <span class="acc-chev">›</span>
+  </div>
+  <div class="acc-body">
+    <div class="step-block">
+      <ol class="steps">
+        <li>On weekends, the kid dashboard shows a weekend rest screen.</li>
+        <li>On a scheduled PTO day, the kid dashboard shows a day-off screen.</li>
+        <li>On the child's birthday, the kid dashboard shows a birthday screen.</li>
+        <li>The child can use <strong>Switch Kid</strong> from special-day screens when needed.</li>
+      </ol>
+      <div class="note"><strong>Parent setup:</strong> birthdays are managed in Settings → Kids. PTO is managed in Settings → PTO / Days Off.</div>
+    </div>
+  </div>
+</div>
+
+<div class="category-label">Compensation & Pay Rules</div>
+
+<div class="acc">
+  <div class="acc-hdr" onclick="toggleAcc(this)">
+    <div class="acc-hdr-left"><span class="acc-icon">23</span><span class="acc-title">Understand the Compensation Models</span></div>
+    <span class="acc-chev">›</span>
+  </div>
+  <div class="acc-body">
+    <div class="step-block">
+      <table class="model-table">
+        <thead><tr><th>Model</th><th>How It Works</th><th>What Parents Must Set</th></tr></thead>
+        <tbody>
+          <tr><td>A - Points</td><td>Each chore earns points. Points convert to dollars.</td><td>Points per $1, optional daily minimum points, optional daily point cap, point values on chores.</td></tr>
+          <tr><td>B - Flat Pay</td><td>Each chore has its own dollar amount.</td><td>Optional daily earning cap and a flat dollar value on each chore.</td></tr>
+          <tr><td>C - Daily Min</td><td>All chores count equally. A child earns full-day pay after completing the required number of chores.</td><td>Chores needed for a full day, full-day pay amount, optional daily earning cap.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div class="acc">
+  <div class="acc-hdr" onclick="toggleAcc(this)">
+    <div class="acc-hdr-left"><span class="acc-icon">24</span><span class="acc-title">Change the Compensation Model</span></div>
+    <span class="acc-chev">›</span>
+  </div>
+  <div class="acc-body">
+    <div class="step-block">
+      <ol class="steps">
+        <li>Open <strong>Settings</strong>.</li>
+        <li>Expand <strong>Compensation Model</strong>.</li>
+        <li>Select model <strong>A</strong>, <strong>B</strong>, or <strong>C</strong>.</li>
+        <li>Fill in the fields shown for that model.</li>
+        <li>Select <strong>Save Compensation Settings</strong>.</li>
+        <li>Open <strong>Chores</strong> and update each chore's active value field if needed.</li>
+        <li>Review <strong>Overview</strong> and <strong>History</strong> to confirm payouts and formulas read correctly.</li>
+      </ol>
+      <div class="warn"><strong>Important:</strong> changing models does not magically rewrite every chore's value. After switching, review chore values, caps, minimums, payout expectations, and what kids will see.</div>
+      <div class="shot"><strong>Screenshot needed</strong><p>Compensation Model settings expanded with model buttons A, B, C and the fields for each model.</p></div>
+    </div>
+  </div>
+</div>
+
+<div class="acc">
+  <div class="acc-hdr" onclick="toggleAcc(this)">
+    <div class="acc-hdr-left"><span class="acc-icon">25</span><span class="acc-title">Set or Change the Pay Cycle</span></div>
+    <span class="acc-chev">›</span>
+  </div>
+  <div class="acc-body">
+    <div class="step-block">
+      <ol class="steps">
+        <li>Open <strong>Settings</strong>.</li>
+        <li>Expand <strong>Pay Cycle</strong>.</li>
+        <li>Choose weekly, every two weeks, twice a month, monthly, or as needed.</li>
+        <li>For weekly or bi-weekly, enter the anchor start date.</li>
+        <li>For as-needed, enter the current period start and end dates.</li>
+        <li>Select <strong>Save Pay Cycle</strong>.</li>
+      </ol>
+      <div class="note"><strong>After changing pay cycle:</strong> confirm the Overview period badge and payout timing match what you expect.</div>
+    </div>
+  </div>
+</div>
+
+<div class="category-label">Settings & Maintenance</div>
+
+<div class="acc">
+  <div class="acc-hdr" onclick="toggleAcc(this)">
+    <div class="acc-hdr-left"><span class="acc-icon">26</span><span class="acc-title">Schedule PTO or Days Off</span></div>
+    <span class="acc-chev">›</span>
+  </div>
+  <div class="acc-body">
+    <div class="step-block">
+      <ol class="steps">
+        <li>Open <strong>Settings → PTO / Days Off</strong>.</li>
+        <li>Set the number of PTO days allowed per year. Use 0 to disable PTO.</li>
+        <li>For a child, choose a PTO date.</li>
+        <li>Select <strong>Grant</strong> to add the day off.</li>
+        <li>Use <strong>Change</strong> to move a scheduled PTO day.</li>
+        <li>Use <strong>Remove</strong> to cancel a PTO day.</li>
+      </ol>
+      <div class="note"><strong>Kid experience:</strong> on a PTO day, the child sees a rest screen instead of chores.</div>
+    </div>
+  </div>
+</div>
+
+<div class="acc">
+  <div class="acc-hdr" onclick="toggleAcc(this)">
+    <div class="acc-hdr-left"><span class="acc-icon">27</span><span class="acc-title">Manage Email Notifications</span></div>
+    <span class="acc-chev">›</span>
+  </div>
+  <div class="acc-body">
+    <div class="step-block">
+      <ol class="steps">
+        <li>Open <strong>Settings → Email Notifications</strong>.</li>
+        <li>Turn <strong>Daily Summary</strong> on or off.</li>
+        <li>If Daily Summary is on, choose the send time.</li>
+        <li>Turn <strong>Weekly Payday</strong> on or off.</li>
+        <li>If Weekly Payday is on, choose the day and time.</li>
+        <li>Turn <strong>Per-Kid Emails</strong> on if you want separate emails by child.</li>
+      </ol>
+      <div class="note"><strong>Auto-save:</strong> email timing fields save when changed; toggles show a confirmation toast.</div>
+    </div>
+  </div>
+</div>
+
+<div class="acc">
+  <div class="acc-hdr" onclick="toggleAcc(this)">
+    <div class="acc-hdr-left"><span class="acc-icon">28</span><span class="acc-title">Update Account Contact Info</span></div>
+    <span class="acc-chev">›</span>
+  </div>
+  <div class="acc-body">
+    <div class="step-block">
+      <ol class="steps">
+        <li>Open <strong>Settings → Account</strong>.</li>
+        <li>Find <strong>Contact Info</strong>.</li>
+        <li>Update parent email or parent phone.</li>
+        <li>Select <strong>Save Contact Info</strong>.</li>
+      </ol>
+    </div>
+  </div>
+</div>
+
+<div class="acc">
+  <div class="acc-hdr" onclick="toggleAcc(this)">
+    <div class="acc-hdr-left"><span class="acc-icon">29</span><span class="acc-title">Plans, Billing, and Feature Limits</span></div>
+    <span class="acc-chev">›</span>
+  </div>
+  <div class="acc-body">
+    <div class="step-block">
+      <ol class="steps">
+        <li>Open <strong>Settings → Account</strong>.</li>
+        <li>Review the <strong>Your Plan</strong> card.</li>
+        <li>Use the upgrade or downgrade button if available.</li>
+      </ol>
+      <div class="warn"><strong>Current app note:</strong> plan-change buttons currently show "Billing coming soon." Do not publish instructions that imply live billing is complete until billing is actually connected.</div>
+    </div>
+  </div>
+</div>
+
+<div class="acc">
+  <div class="acc-hdr" onclick="toggleAcc(this)">
+    <div class="acc-hdr-left"><span class="acc-icon">30</span><span class="acc-title">Sign Out</span></div>
+    <span class="acc-chev">›</span>
+  </div>
+  <div class="acc-body">
+    <div class="step-block">
+      <ol class="steps">
+        <li>Open <strong>Settings → Account</strong>.</li>
+        <li>Select <strong>Sign Out</strong>.</li>
+        <li>The app clears the session and returns you to the login page.</li>
+      </ol>
+    </div>
+  </div>
+</div>
+
+<div class="acc">
+  <div class="acc-hdr" onclick="toggleAcc(this)">
+    <div class="acc-hdr-left"><span class="acc-icon">31</span><span class="acc-title">Delete Account</span></div>
+    <span class="acc-chev">›</span>
+  </div>
+  <div class="acc-body">
+    <div class="step-block">
+      <ol class="steps">
+        <li>Open <strong>Settings → Account</strong>.</li>
+        <li>Select <strong>Delete Account</strong>.</li>
+        <li>Read the deletion warning.</li>
+        <li>Select <strong>Delete Everything</strong>.</li>
+        <li>Confirm the final browser warning.</li>
+      </ol>
+      <div class="warn"><strong>This cannot be undone.</strong> It deletes the account, household document, kids, chores, and household data connected to the account.</div>
+    </div>
+  </div>
+</div>
+
+<div class="category-label">Troubleshooting</div>
+
+<div class="acc">
+  <div class="acc-hdr" onclick="toggleAcc(this)">
+    <div class="acc-hdr-left"><span class="acc-icon">32</span><span class="acc-title">A Kid Cannot Log In</span></div>
+    <span class="acc-chev">›</span>
+  </div>
+  <div class="acc-body">
+    <div class="step-block">
+      <ol class="steps">
+        <li>Confirm the child opened the correct household link from <strong>Settings → Share with Kids</strong>.</li>
+        <li>Confirm the child selected the correct name.</li>
+        <li>Open <strong>Settings → Kids</strong> and verify the child's PIN.</li>
+        <li>If needed, select <strong>Reset PIN</strong> and give the child the new 4-digit PIN.</li>
+        <li>If the dashboard still does not load, refresh the page and try again.</li>
+      </ol>
+    </div>
+  </div>
+</div>
+
+<div class="acc">
+  <div class="acc-hdr" onclick="toggleAcc(this)">
+    <div class="acc-hdr-left"><span class="acc-icon">33</span><span class="acc-title">A Chore Is Missing from a Kid Dashboard</span></div>
+    <span class="acc-chev">›</span>
+  </div>
+  <div class="acc-body">
+    <div class="step-block">
+      <ol class="steps">
+        <li>Open <strong>Chores</strong> on the parent dashboard.</li>
+        <li>Find the chore and select <strong>Edit</strong>.</li>
+        <li>Check the assignment field. If the chore is assigned to another child, switch it to <strong>Any kid</strong> or the correct child.</li>
+        <li>Check the frequency. Daily chores appear in the daily list; non-daily chores appear in the weekly/non-daily list.</li>
+        <li>Save the chore and refresh the kid dashboard.</li>
+      </ol>
+      <div class="note"><strong>Also check special days:</strong> weekends, PTO, and birthdays can show rest screens instead of chore lists.</div>
+    </div>
+  </div>
+</div>
+
+<div class="acc">
+  <div class="acc-hdr" onclick="toggleAcc(this)">
+    <div class="acc-hdr-left"><span class="acc-icon">34</span><span class="acc-title">A Photo or Submission Will Not Send</span></div>
+    <span class="acc-chev">›</span>
+  </div>
+  <div class="acc-body">
+    <div class="step-block">
+      <ol class="steps">
+        <li>Make sure the child has selected a photo.</li>
+        <li>If the chore has sub-tasks, make sure every sub-task is checked.</li>
+        <li>Check the internet connection.</li>
+        <li>Use a smaller photo if the app says the photo is too large.</li>
+        <li>Cancel and reopen the chore if the submit button does not unlock after completing the requirements.</li>
+      </ol>
+    </div>
+  </div>
+</div>
+
+<div class="acc">
+  <div class="acc-hdr" onclick="toggleAcc(this)">
+    <div class="acc-hdr-left"><span class="acc-icon">35</span><span class="acc-title">When to Contact Support</span></div>
+    <span class="acc-chev">›</span>
+  </div>
+  <div class="acc-body">
+    <div class="step-block">
+      <p>Contact support when the instructions above do not fix the issue or when household data looks wrong.</p>
+      <ol class="steps">
+        <li>Take a screenshot of the screen where the issue happened.</li>
+        <li>If possible, record a short video showing the steps that led to the issue.</li>
+        <li>Write down the parent email, child name, chore name, device/browser, and approximate time.</li>
+        <li>Use the site's support form or contact page with those details.</li>
+        <li>If a support form is not available yet, email support directly.</li>
+      </ol>
+      <div class="decision"><strong>Support recommendation:</strong> use a form first. A form can require the right details, send a copy to the website admin, and create a searchable record. A full ticketing system can come later if support volume grows.</div>
+      <div class="note"><strong>Best support detail:</strong> screenshots, videos, exact steps, and the time of the issue make fixes much faster.</div>
+    </div>
+  </div>
+</div>
+
+<div class="acc">
+  <div class="acc-hdr" onclick="toggleAcc(this)">
+    <div class="acc-hdr-left"><span class="acc-icon">36</span><span class="acc-title">Beta Testing: Report a Bug or Site Issue</span></div>
+    <span class="acc-chev">›</span>
+  </div>
+  <div class="acc-body">
+    <div class="step-block">
+      <p>During beta testing, users should expect that some bugs may appear because of browser differences, connection issues, account setup differences, or other unforeseen circumstances.</p>
+      <ol class="steps">
+        <li>Describe what you were trying to do.</li>
+        <li>Describe exactly what happened instead.</li>
+        <li>List the steps to recreate the issue, if you can.</li>
+        <li>Attach screenshots of the screen where the issue happened.</li>
+        <li>Attach a short screen recording if the issue involves tapping, switching screens, uploading photos, or something disappearing.</li>
+        <li>Include the device, browser, parent email, child name if relevant, and approximate time.</li>
+        <li>Submit the report through the beta feedback form or support form.</li>
+      </ol>
+      <div class="note"><strong>What happens after submission:</strong> support may contact the user for more information, confirm that the issue is being reviewed, or send an update after a fix is released.</div>
+      <div class="shot"><strong>Screenshot/video example</strong><p>The attached kid dashboard image is the kind of useful screenshot beta users should send when they see a confusing label, spacing issue, or unexpected dashboard state.</p></div>
+    </div>
+  </div>
+</div>
+
+<div class="acc">
+  <div class="acc-hdr" onclick="toggleAcc(this)">
+    <div class="acc-hdr-left"><span class="acc-icon">37</span><span class="acc-title">Where to Find Known Fixes and Updates</span></div>
+    <span class="acc-chev">›</span>
+  </div>
+  <div class="acc-body">
+    <div class="step-block">
+      <p>Recommended: keep a simple public-facing update log during beta so testers know their reports are being heard.</p>
+      <ol class="steps">
+        <li>Open the <strong>Help</strong> or <strong>Beta Updates</strong> section.</li>
+        <li>Review the latest fixes, known issues, and workarounds.</li>
+        <li>If your issue is already listed, follow the workaround or wait for the planned fix.</li>
+        <li>If your issue is not listed, submit a new bug report.</li>
+      </ol>
+      <div class="decision"><strong>Recommendation:</strong> publish a short "Known Issues & Fixes" page, not a long technical changelog. Keep it plain-language: Fixed, Being Reviewed, Workaround Available, or Planned.</div>
+    </div>
+  </div>
+</div>
+
+<div class="footer-note">
+  <p><strong style="color:var(--text)">Preview status:</strong> Draft for review. Next pass should add real screenshots from the updated setup assistant and support form.</p>
+</div>
+
+<script>
+function toggleAcc(hdr) {
+  const body = hdr.nextElementSibling;
+  const chev = hdr.querySelector('.acc-chev');
+  const isOpen = body.classList.contains('open');
+  body.classList.toggle('open', !isOpen);
+  chev.classList.toggle('open', !isOpen);
+}
+
+function toggleTheme() {
+  const html = document.documentElement;
+  const current = html.getAttribute('data-theme');
+  html.setAttribute('data-theme', current === 'light' ? 'dark' : 'light');
+}
+</script>
+</body>
+</html>

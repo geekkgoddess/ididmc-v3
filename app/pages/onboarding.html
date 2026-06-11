@@ -6,173 +6,256 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
   <meta name="theme-color" content="#090909">
   <title>Setup — I Did My Chores</title>
-  <link rel="stylesheet" href="../css/app.css">
+  <link rel="stylesheet" href="../../css/app.css">
   <style>
-    /* Onboarding container */
-    .screen { max-width: 500px; margin: 0 auto; }
-
-    /* Step progress */
-    .step-bar {
-      display: flex; gap: 6px; margin-bottom: 32px;
-    }
-    .step-pip {
-      flex: 1; height: 4px; border-radius: 99px;
-      background: var(--border);
-      transition: background 0.3s;
-    }
-    .step-pip.done  { background: var(--green); }
-    .step-pip.active { background: var(--gold); }
-
-    /* Form fields */
-    .field {
-      margin-bottom: 20px;
-    }
-    .field label {
-      display: block; font-size: 13px; font-weight: 600;
-      color: var(--text); margin-bottom: 8px;
-    }
-    .field input,
-    .field select,
-    .field textarea {
+    #app { max-width: 520px; }
+    .screen { padding: 24px 18px 42px; }
+    .setup-shell {
       width: 100%;
-      padding: 12px 14px;
-      background: var(--card2);
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      color: var(--text);
-      font-family: inherit;
-      font-size: 14px;
-      outline: none;
-      transition: border-color 0.2s;
+      min-height: calc(100vh - 66px);
+      display: flex;
+      flex-direction: column;
     }
-    .field input:focus,
-    .field select:focus,
-    .field textarea:focus {
-      border-color: var(--gold);
+    .setup-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 18px;
+      gap: 12px;
     }
-    .field input::placeholder {
-      color: var(--muted2);
+    .setup-brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
     }
-    .field select {
-      cursor: pointer;
-    }
-    .field select option {
-      background: var(--card);
-      color: var(--text);
-    }
-
-    /* Buttons */
-    .btn {
-      width: 100%;
-      padding: 14px 16px;
-      border: none;
-      border-radius: 10px;
-      font-family: inherit;
-      font-size: 14px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.2s;
+    .setup-logo {
+      width: 38px;
+      height: 38px;
+      border-radius: 12px;
+      background: var(--gold-dim);
+      border: 1px solid rgba(245,200,66,0.24);
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 8px;
+      font-size: 20px;
+      flex-shrink: 0;
     }
-    .btn-primary {
-      background: var(--gold);
-      color: #000;
+    .setup-title {
+      font-size: 14px;
+      font-weight: 800;
+      line-height: 1.2;
     }
-    .btn-primary:hover {
-      background: #e6b82f;
-    }
-    .btn-primary:disabled {
-      background: var(--muted2);
-      cursor: not-allowed;
+    .setup-subtitle {
+      font-size: 11px;
       color: var(--muted);
+      margin-top: 2px;
     }
-    .btn-ghost {
+    .skip-btn {
       background: transparent;
       border: 1px solid var(--border);
-      color: var(--text);
-    }
-    .btn-ghost:hover {
-      border-color: var(--gold);
-      color: var(--gold);
-    }
-    .mt-8 { margin-top: 8px !important; }
-    .mt-16 { margin-top: 16px !important; }
-
-    /* Kid card in list */
-    .kid-card {
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: var(--radius-lg);
-      padding: 14px 16px;
-      display: flex; align-items: center; gap: 12px;
-      margin-bottom: 8px;
-    }
-    .kid-delete {
-      background: none; border: none;
-      color: var(--muted); font-size: 18px;
-      cursor: pointer; padding: 4px; line-height: 1;
-    }
-    .kid-delete:hover { color: var(--red); }
-
-    /* Chore card in list */
-    .chore-card {
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: var(--radius-lg);
-      padding: 14px 16px;
-      display: flex; align-items: center; gap: 12px;
-      margin-bottom: 8px;
-    }
-
-    /* Add button */
-    .add-btn {
-      display: flex; align-items: center; justify-content: center; gap: 6px;
-      width: 100%; padding: 13px;
-      background: var(--card2); border: 1px dashed var(--border);
-      border-radius: var(--radius-lg);
-      color: var(--muted); font-size: 14px; font-weight: 600;
-      cursor: pointer; transition: all 0.15s;
-      font-family: inherit;
-    }
-    .add-btn:hover { border-color: var(--gold); color: var(--gold); }
-
-    /* Approval option cards */
-    .option-card {
-      background: var(--card);
-      border: 2px solid var(--border);
-      border-radius: var(--radius-lg);
-      padding: 16px;
+      border-radius: 999px;
+      color: var(--muted);
+      font: inherit;
+      font-size: 12px;
+      font-weight: 700;
+      padding: 8px 12px;
       cursor: pointer;
-      transition: all 0.15s;
+      white-space: nowrap;
+    }
+    .skip-btn:hover { border-color: var(--gold); color: var(--gold); }
+    .step-bar {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 20px;
+    }
+    .step-pip {
+      flex: 1;
+      height: 5px;
+      border-radius: 99px;
+      background: var(--border);
+      transition: background 0.2s;
+    }
+    .step-pip.done { background: var(--green); }
+    .step-pip.active { background: var(--gold); }
+    .setup-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 22px;
+      box-shadow: 0 18px 40px rgba(0,0,0,0.18);
+    }
+    .setup-hero-icon {
+      width: 58px;
+      height: 58px;
+      border-radius: 18px;
+      background: linear-gradient(135deg, var(--gold), #fb923c);
+      color: #111;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 28px;
+      margin-bottom: 18px;
+    }
+    .setup-card h1 {
+      font-size: 26px;
+      letter-spacing: 0;
       margin-bottom: 10px;
     }
-    .option-card.selected {
+    .setup-card p {
+      font-size: 14px;
+      color: var(--muted);
+      line-height: 1.7;
+      margin-bottom: 16px;
+    }
+    .setup-actions {
+      margin-top: 22px;
+      display: grid;
+      gap: 10px;
+    }
+    .setup-grid {
+      display: grid;
+      gap: 12px;
+    }
+    .choice-grid {
+      display: grid;
+      gap: 10px;
+    }
+    .choice-card {
+      width: 100%;
+      background: var(--card2);
+      border: 2px solid var(--border);
+      border-radius: 14px;
+      padding: 14px;
+      color: var(--text);
+      font-family: inherit;
+      text-align: left;
+      cursor: pointer;
+    }
+    .choice-card.selected {
       border-color: var(--gold);
       background: var(--gold-dim);
     }
-    .option-title { font-size: 15px; font-weight: 700; margin-bottom: 4px; }
-    .option-desc  { font-size: 13px; color: var(--muted); line-height: 1.5; }
-
-    /* Color swatches */
+    .choice-card strong {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      font-size: 14px;
+      margin-bottom: 4px;
+    }
+    .choice-card span {
+      display: block;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.5;
+    }
+    .info-btn {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      border: none;
+      background: var(--gold);
+      color: #111;
+      font-size: 12px;
+      font-weight: 900;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+    .summary-list {
+      display: grid;
+      gap: 8px;
+      margin-top: 14px;
+    }
+    .summary-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      background: var(--card2);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 12px 14px;
+    }
+    .summary-name {
+      font-size: 14px;
+      font-weight: 800;
+    }
+    .summary-sub {
+      font-size: 11px;
+      color: var(--muted);
+      margin-top: 2px;
+    }
+    .remove-mini {
+      background: transparent;
+      border: 1px solid rgba(248,113,113,0.28);
+      color: var(--red);
+      border-radius: 8px;
+      padding: 6px 9px;
+      font: inherit;
+      font-size: 12px;
+      font-weight: 800;
+      cursor: pointer;
+    }
+    .note-box {
+      border: 1px solid rgba(245,200,66,0.22);
+      background: var(--gold-dim);
+      border-radius: 14px;
+      padding: 12px 14px;
+      font-size: 13px;
+      color: var(--text);
+      line-height: 1.6;
+      margin-top: 14px;
+    }
+    .field { margin-bottom: 14px; }
+    .field-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
     .swatch {
-      width: 28px; height: 28px; border-radius: 50%;
-      border: 2px solid transparent;
-      cursor: pointer; flex-shrink: 0;
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      border: 3px solid transparent;
+      cursor: pointer;
+      flex-shrink: 0;
     }
     .swatch.sel { border-color: #fff; }
-
-    /* ── Mobile responsiveness ── */
+    .add-btn {
+      width: 100%;
+      padding: 13px;
+      background: var(--card2);
+      border: 1px dashed var(--border);
+      border-radius: 14px;
+      color: var(--muted);
+      font-family: inherit;
+      font-size: 14px;
+      font-weight: 800;
+      cursor: pointer;
+    }
+    .add-btn:hover { border-color: var(--gold); color: var(--gold); }
+    .modal-sheet { max-height: 86vh; overflow-y: auto; }
+    .pin-row { display: flex; gap: 8px; }
+    .pin-digit {
+      width: 56px;
+      height: 56px;
+      text-align: center;
+      font-size: 22px;
+      font-weight: 800;
+    }
+    .info-modal-text {
+      font-size: 14px;
+      color: var(--muted);
+      line-height: 1.7;
+      margin: 12px 0 0;
+    }
     @media (max-width: 430px) {
-      .screen { padding: 24px 16px 40px; }
-      .step-bar { margin-bottom: 24px; }
-      .pin-row { justify-content: center; gap: 8px; }
-      .pin-digit {
-        width: 56px; height: 56px; font-size: 22px;
-        text-align: center;
-      }
+      .screen { padding: 20px 14px 34px; }
+      .setup-card { padding: 18px; border-radius: 16px; }
+      .setup-card h1 { font-size: 23px; }
+      .field-row { grid-template-columns: 1fr; }
+      .pin-digit { width: 52px; height: 52px; }
     }
   </style>
 </head>
@@ -181,15 +264,26 @@
   <div id="toast"></div>
 
   <div id="screen-onboarding" class="screen active">
-    <div class="step-bar" id="step-bar"></div>
-    <div id="step-content"></div>
+    <div class="setup-shell">
+      <div class="setup-top">
+        <div class="setup-brand">
+          <div class="setup-logo">🧹</div>
+          <div>
+            <div class="setup-title">I Did My Chores</div>
+            <div class="setup-subtitle" id="step-caption">Guided setup</div>
+          </div>
+        </div>
+        <button class="skip-btn" onclick="setupLater()">Set Up Later</button>
+      </div>
+      <div class="step-bar" id="step-bar"></div>
+      <div id="step-content"></div>
+    </div>
   </div>
 
-  <!-- ── Add Kid Modal ── -->
   <div class="modal-overlay" id="modal-kid">
     <div class="modal-sheet">
       <div class="modal-handle"></div>
-      <h2 style="margin-bottom:20px">Add a Kid</h2>
+      <h2 style="margin-bottom:18px">Add a Child</h2>
       <div class="field">
         <label>Name</label>
         <input type="text" id="kid-name-input" placeholder="e.g. Janai" maxlength="20">
@@ -207,88 +301,146 @@
         <label>Avatar Color</label>
         <div class="color-picker" id="kid-color-picker"></div>
       </div>
-      <button class="btn btn-primary mt-8" onclick="saveKid()">Add Kid</button>
+      <button class="btn btn-primary" onclick="saveKid()">Add Child</button>
       <button class="btn btn-ghost mt-8" onclick="closeModal('modal-kid')">Cancel</button>
     </div>
   </div>
 
-  <!-- ── Add Chore Modal ── -->
   <div class="modal-overlay" id="modal-chore">
     <div class="modal-sheet">
       <div class="modal-handle"></div>
-      <h2 style="margin-bottom:20px">Add a Chore</h2>
+      <h2 style="margin-bottom:18px">Add a Chore</h2>
       <div class="field">
         <label>Chore Name</label>
         <input type="text" id="chore-name-input" placeholder="e.g. Vacuum Living Room" maxlength="40">
       </div>
-      <div class="field">
-        <label>Dollar Amount ($)</label>
-        <input type="number" id="chore-amount-input" placeholder="2.50" step="0.25" min="0.25" max="50">
+      <div class="field" id="chore-value-field">
+        <label id="chore-value-label">Points Value</label>
+        <input type="number" id="chore-value-input" placeholder="50" min="0" step="1">
       </div>
       <div class="field">
-        <label>What Does "Clean" Mean? <span style="color:var(--muted);font-weight:400;text-transform:none;font-size:10px">(optional — kids see this)</span></label>
-        <textarea id="chore-desc-input" placeholder="e.g. Wipe inside and outside, remove all food, no fingerprints on handles" maxlength="200" style="height:80px;resize:none"></textarea>
+        <label>What Does Done Mean?</label>
+        <textarea id="chore-desc-input" placeholder="e.g. Clear the counter, wipe crumbs, and put dishes away." maxlength="240" style="height:86px;resize:none"></textarea>
       </div>
-      <div class="field">
-        <label>Frequency</label>
-        <select id="chore-freq-input">
-          <option value="daily">Daily</option>
-          <option value="weekly">Weekly Bonus</option>
-        </select>
+      <div class="field-row">
+        <div class="field">
+          <label>Frequency</label>
+          <select id="chore-freq-input">
+            <option value="daily">Daily</option>
+            <option value="weekly">Weekly</option>
+            <option value="as-needed">As Needed</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Assigned To</label>
+          <select id="chore-assign-input">
+            <option value="any">Any kid</option>
+          </select>
+        </div>
       </div>
-      <div class="field">
-        <label>Assigned To</label>
-        <select id="chore-assign-input">
-          <option value="any">Any kid (first to claim)</option>
-        </select>
-      </div>
-      <button class="btn btn-primary mt-8" onclick="saveChore()">Add Chore</button>
+      <button class="btn btn-primary" onclick="saveChore()">Add Chore</button>
       <button class="btn btn-ghost mt-8" onclick="closeModal('modal-chore')">Cancel</button>
     </div>
   </div>
 
+  <div class="modal-overlay" id="modal-info">
+    <div class="modal-sheet">
+      <div class="modal-handle"></div>
+      <h2 id="info-title"></h2>
+      <p class="info-modal-text" id="info-body"></p>
+      <button class="btn btn-primary mt-16" onclick="closeModal('modal-info')">Got It</button>
+    </div>
+  </div>
 </div>
 
 <script type="module">
 import { auth, db } from '../js/firebase.js';
-import {
-  onAuthStateChanged, signOut
-} from 'https://www.gstatic.com/firebasejs/10.11.0/firebase-auth.js';
-import {
-  doc, setDoc, updateDoc, getDoc
-} from 'https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore.js';
+import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.11.0/firebase-auth.js';
+import { doc, setDoc, getDoc } from 'https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore.js';
 
-// ── State ────────────────────────────────────────────
-let currentUser  = null;
-let currentStep  = 0;
-let household    = {
-  name:              '',
-  payPeriodStart:    '',
-  payPeriodDays:     14,
-  capPerKid:         120,
-  approvalMode:      'manual',
-  onboardingComplete: false,
+const TOTAL_STEPS = 9;
+const AVATAR_COLORS = ['#f472b6','#60a5fa','#34d399','#fb923c','#a78bfa','#f87171','#facc15','#4ade80'];
+const STEP_LABELS = [
+  'Welcome',
+  'Email check',
+  'Family details',
+  'Children',
+  'Compensation',
+  'Pay cycle',
+  'Approvals',
+  'Chores',
+  'Ready'
+];
+const INFO_COPY = {
+  beta: {
+    title: 'Beta Testing',
+    body: 'During beta, bugs may happen because of device differences, internet connection, or setup combinations we have not seen yet. If something looks wrong, take a screenshot or short video and use the support form.'
+  },
+  compensation: {
+    title: 'Compensation Models',
+    body: 'Points converts chore points into dollars. Flat Pay gives each chore its own dollar amount. Daily Minimum pays a full-day amount after a child completes enough chores.'
+  },
+  payCycle: {
+    title: 'Pay Cycle',
+    body: 'The pay cycle controls how the dashboard groups earnings. Weekly and bi-weekly use an anchor start date. Monthly and semi-monthly follow the calendar. As Needed lets you control dates manually later.'
+  },
+  approvals: {
+    title: 'Approval Mode',
+    body: 'Manual Approval means a parent reviews each submission before it counts. Auto Approve means the chore counts as soon as the child submits proof.'
+  },
+  chores: {
+    title: 'Chores',
+    body: 'Start with one or two chores so the household can test the full flow. You can add detailed chore lists from the Chores tab after setup.'
+  }
 };
-let kids   = [];
+
+let currentUser = null;
+let currentStep = 0;
+let household = {
+  name: '',
+  parentName: '',
+  payFrequency: 'weekly',
+  payPeriodStart: new Date().toISOString().split('T')[0],
+  payPeriodDays: 7,
+  capPerKid: 120,
+  bonusBudget: 0,
+  compModel: 'points',
+  compSettings: { pointsPerDollar: 100 },
+  approvalMode: 'manual',
+  onboardingComplete: false,
+  setupSkipped: false,
+  emailSettings: {
+    dailySummary: true,
+    weeklySummary: true,
+    dailyTime: '18:00',
+    weeklyDay: 'friday',
+    weeklyTime: '18:00',
+    perKidEmails: false,
+  },
+};
+let kids = [];
 let chores = [];
 
-const TOTAL_STEPS = 4;
-const AVATAR_COLORS = [
-  '#f472b6','#60a5fa','#34d399','#fb923c',
-  '#a78bfa','#f87171','#facc15','#4ade80'
-];
-
-// ── Auth gate ─────────────────────────────────────────
-onAuthStateChanged(auth, (user) => {
-  if (!user) { window.location.href = '../index.html'; return; }
+onAuthStateChanged(auth, async (user) => {
+  if (!user) { window.location.href = '../../login.html'; return; }
   currentUser = user;
+  await loadExistingHousehold();
   renderStep();
 });
 
-// ── Step rendering ────────────────────────────────────
+async function loadExistingHousehold() {
+  const snap = await getDoc(doc(db, 'households', currentUser.uid));
+  if (!snap.exists()) return;
+  const data = snap.data();
+  household = { ...household, ...data };
+  kids = data.kids || [];
+  chores = data.chores || [];
+  if (data.onboardingComplete) window.location.href = 'parent-dashboard.html';
+}
+
 function renderStepBar() {
-  const bar = document.getElementById('step-bar');
-  bar.innerHTML = Array.from({length: TOTAL_STEPS}, (_,i) => {
+  document.getElementById('step-caption').textContent = `${STEP_LABELS[currentStep]} · Step ${currentStep + 1} of ${TOTAL_STEPS}`;
+  document.getElementById('step-bar').innerHTML = Array.from({ length: TOTAL_STEPS }, (_, i) => {
     const cls = i < currentStep ? 'done' : i === currentStep ? 'active' : '';
     return `<div class="step-pip ${cls}"></div>`;
   }).join('');
@@ -297,117 +449,370 @@ function renderStepBar() {
 function renderStep() {
   renderStepBar();
   const content = document.getElementById('step-content');
-  const renders = [renderStep0, renderStep1, renderStep2, renderStep3];
+  const renders = [
+    renderWelcome,
+    renderVerify,
+    renderFamily,
+    renderKids,
+    renderCompensation,
+    renderPayCycle,
+    renderApproval,
+    renderChores,
+    renderFinal
+  ];
   content.innerHTML = '';
   renders[currentStep](content);
 }
 
-// ── Step 0: Household basics ──────────────────────────
-function renderStep0(el) {
-  el.innerHTML = `
-    <div class="page-label">Step 1 of ${TOTAL_STEPS}</div>
-    <h1 style="margin-bottom:8px">Set up your<br>household</h1>
-    <p style="margin-bottom:28px">This takes about 2 minutes.</p>
-
-    <div class="field">
-      <label>Household Name</label>
-      <input type="text" id="s0-name" placeholder='e.g. "The Everhart House"'
-             value="${household.name}" maxlength="40">
-    </div>
-    <div class="field">
-      <label>Pay Frequency</label>
-      <select id="s0-freq" onchange="toggleOnboardingAnchor(this.value)">
-        <option value="weekly"      ${household.payFrequency==='weekly'      ?'selected':''}>Weekly</option>
-        <option value="biweekly"    ${(household.payFrequency==='biweekly'||((!household.payFrequency)&&household.payPeriodDays==14))?'selected':''}>Every 2 weeks (Bi-weekly)</option>
-        <option value="semimonthly" ${household.payFrequency==='semimonthly' ?'selected':''}>Twice a month (Semi-monthly)</option>
-        <option value="monthly"     ${(household.payFrequency==='monthly'||((!household.payFrequency)&&household.payPeriodDays==30))?'selected':''}>Monthly</option>
-        <option value="asneeded"    ${household.payFrequency==='asneeded'    ?'selected':''}>As Needed (you set dates manually)</option>
-      </select>
-    </div>
-    <div class="field" id="s0-anchor-field" style="display:${(household.payFrequency==='weekly'||household.payFrequency==='biweekly'||!household.payFrequency)?'block':'none'}">
-      <label>Anchor Start Date</label>
-      <input type="date" id="s0-date" value="${household.payPeriodStart}">
-      <p style="font-size:11px;color:var(--muted);margin:4px 0 0">First day of your first pay period — future periods roll from here.</p>
-    </div>
-    <div class="field">
-      <label>Max Earnings Per Kid Per Period ($)</label>
-      <input type="number" id="s0-cap" placeholder="120" value="${household.capPerKid}" min="10" max="999">
-    </div>
-    <div class="field">
-      <label>Weekly Bonus Budget ($) <span style="color:var(--muted);font-weight:400;text-transform:none;font-size:10px">optional — for Exceeded Expectations rewards</span></label>
-      <input type="number" id="s0-bonus" placeholder="e.g. 10" value="${household.bonusBudget||''}" min="0" max="999">
-    </div>
-    <button class="btn btn-primary mt-16" onclick="saveStep0()">Continue →</button>
-  `;
+function card(html) {
+  return `<div class="setup-card">${html}</div>`;
 }
 
-window.saveStep0 = () => {
-  const name  = document.getElementById('s0-name').value.trim();
-  const freq  = document.getElementById('s0-freq').value;
-  const date  = document.getElementById('s0-date')?.value;
-  const cap   = parseFloat(document.getElementById('s0-cap').value);
-  const needsAnchor = freq === 'weekly' || freq === 'biweekly';
-  if (!name)  { showToast('Please enter a household name'); return; }
-  if (needsAnchor && !date) { showToast('Please select an anchor start date'); return; }
-  if (!cap || cap < 1) { showToast('Please enter a valid cap amount'); return; }
-  household.name         = name;
-  household.payFrequency = freq;
-  // Keep payPeriodStart for backward compat; set to today for fixed-date freqs
-  household.payPeriodStart = date || new Date().toISOString().split('T')[0];
-  // Legacy field — kept so old getPayPeriod() fallbacks still work
-  household.payPeriodDays  = freq === 'biweekly' ? 14 : freq === 'monthly' ? 30 : 7;
-  household.capPerKid      = cap;
-  household.bonusBudget    = parseFloat(document.getElementById('s0-bonus').value) || 0;
-  currentStep = 1;
-  renderStep();
-};
+function navButtons({ next = 'Continue', back = true, disabled = false } = {}) {
+  return `
+    <div class="setup-actions">
+      <button class="btn btn-primary" onclick="nextStep()" ${disabled ? 'disabled' : ''}>${next}</button>
+      ${back ? '<button class="btn btn-ghost" onclick="goBack()">Back</button>' : ''}
+    </div>`;
+}
 
-window.toggleOnboardingAnchor = (freq) => {
-  const field = document.getElementById('s0-anchor-field');
-  if (field) field.style.display = (freq === 'weekly' || freq === 'biweekly') ? 'block' : 'none';
-};
-
-// ── Step 1: Add kids ──────────────────────────────────
-function renderStep1(el) {
-  el.innerHTML = `
-    <div class="page-label">Step 2 of ${TOTAL_STEPS}</div>
-    <h1 style="margin-bottom:8px">Add your kids</h1>
-    <p style="margin-bottom:24px">Each kid gets a PIN to log in on their phone. You can add more later.</p>
-    <div id="kids-list"></div>
-    <button class="add-btn mt-8" onclick="openAddKid()">＋ Add a Kid</button>
-    <div style="margin-top:auto;padding-top:32px">
-      <button class="btn btn-primary" onclick="saveStep1()" ${kids.length===0?'disabled':''} id="step1-next">
-        Continue →
-      </button>
-      <button class="btn btn-ghost mt-8" onclick="goBack()">← Back</button>
+function renderWelcome(el) {
+  el.innerHTML = card(`
+    <div class="setup-hero-icon">✨</div>
+    <h1>Let's set up your household.</h1>
+    <p>This works like setting up a new device: one simple screen at a time, with the important choices explained as you go.</p>
+    <div class="note-box">
+      <strong>Beta note:</strong> You are helping test the site. If anything looks confusing or breaks, screenshots and short videos are very helpful.
+      <button class="info-btn" style="margin-left:6px" onclick="openInfo('beta')">i</button>
     </div>
-  `;
+    ${navButtons({ next: 'Start Setup', back: false })}
+  `);
+}
+
+function renderVerify(el) {
+  const email = currentUser?.email || 'your email';
+  el.innerHTML = card(`
+    <div class="setup-hero-icon">✉️</div>
+    <h1>Verify your email.</h1>
+    <p>Later, this screen will ask for a verification code sent to <strong style="color:var(--text)">${esc(email)}</strong>. For beta, you can continue without a code.</p>
+    <div class="field">
+      <label>Verification Code</label>
+      <input type="text" placeholder="Coming later" disabled>
+    </div>
+    <div class="note-box">Email-code verification is planned, but not enforced yet.</div>
+    ${navButtons({ next: 'Continue' })}
+  `);
+}
+
+function renderFamily(el) {
+  el.innerHTML = card(`
+    <h1>Family details</h1>
+    <p>Add the parent contact name, name the household, and set the maximum each child can earn in one pay period.</p>
+    <div class="field">
+      <label>Parent Name</label>
+      <input type="text" id="parent-name" value="${escapeAttr(household.parentName || '')}" placeholder="Your name" maxlength="60">
+    </div>
+    <div class="field">
+      <label>Household Name</label>
+      <input type="text" id="family-name" value="${escapeAttr(household.name)}" placeholder='e.g. "The Hodge House"' maxlength="40">
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label>Max Earnings Per Kid</label>
+        <input type="number" id="family-cap" value="${household.capPerKid || 120}" min="1" max="999">
+      </div>
+      <div class="field">
+        <label>Bonus Budget</label>
+        <input type="number" id="family-bonus" value="${household.bonusBudget || ''}" min="0" max="999" placeholder="Optional">
+      </div>
+    </div>
+    ${navButtons()}
+  `);
+}
+
+function renderKids(el) {
+  el.innerHTML = card(`
+    <h1>Add children</h1>
+    <p>Each child gets their own 4-digit PIN for the kid dashboard. You can add more later in Settings.</p>
+    <div id="kids-list"></div>
+    <button class="add-btn" onclick="openAddKid()">+ Add Child</button>
+    ${navButtons({ disabled: kids.length === 0 })}
+  `);
   renderKidsList();
 }
 
-function renderKidsList() {
-  const list = document.getElementById('kids-list');
-  if (!list) return;
-  if (kids.length === 0) {
-    list.innerHTML = `<div class="empty-state" style="padding:24px">
-      <div class="empty-icon">👦</div>
-      <p>No kids added yet</p>
-    </div>`;
+function renderCompensation(el) {
+  const cs = household.compSettings || {};
+  el.innerHTML = card(`
+    <h1>Choose compensation</h1>
+    <p>Pick how children earn. You can change this later in Settings. <button class="info-btn" onclick="openInfo('compensation')">i</button></p>
+    <div class="choice-grid">
+      ${choice('points', 'A - Points', 'Each chore earns points. Points convert into dollars.')}
+      ${choice('flat', 'B - Flat Pay', 'Each chore has its own dollar amount.')}
+      ${choice('daily-min', 'C - Daily Minimum', 'All chores count equally. Complete enough chores to earn full-day pay.')}
+    </div>
+    <div id="comp-fields" style="margin-top:16px"></div>
+    ${navButtons()}
+  `);
+  renderCompFields();
+}
+
+function renderPayCycle(el) {
+  el.innerHTML = card(`
+    <h1>Pay cycle</h1>
+    <p>Choose how earnings are grouped. <button class="info-btn" onclick="openInfo('payCycle')">i</button></p>
+    <div class="field">
+      <label>Pay Frequency</label>
+      <select id="pay-frequency" onchange="togglePayFields()">
+        <option value="weekly" ${household.payFrequency === 'weekly' ? 'selected' : ''}>Weekly</option>
+        <option value="biweekly" ${household.payFrequency === 'biweekly' ? 'selected' : ''}>Every 2 weeks</option>
+        <option value="semimonthly" ${household.payFrequency === 'semimonthly' ? 'selected' : ''}>Twice a month</option>
+        <option value="monthly" ${household.payFrequency === 'monthly' ? 'selected' : ''}>Monthly</option>
+        <option value="asneeded" ${household.payFrequency === 'asneeded' ? 'selected' : ''}>As Needed</option>
+      </select>
+    </div>
+    <div id="pay-fields"></div>
+    ${navButtons()}
+  `);
+  togglePayFields();
+}
+
+function renderApproval(el) {
+  el.innerHTML = card(`
+    <h1>Approval mode</h1>
+    <p>Decide whether chores need parent review. <button class="info-btn" onclick="openInfo('approvals')">i</button></p>
+    <div class="choice-grid">
+      <button class="choice-card ${household.approvalMode === 'manual' ? 'selected' : ''}" onclick="selectApproval('manual')">
+        <strong>Manual Approval</strong>
+        <span>You approve or reject each submission before it counts.</span>
+      </button>
+      <button class="choice-card ${household.approvalMode === 'automatic' || household.approvalMode === 'auto' ? 'selected' : ''}" onclick="selectApproval('automatic')">
+        <strong>Auto Approve</strong>
+        <span>Submissions count immediately after kids submit proof.</span>
+      </button>
+    </div>
+    ${navButtons()}
+  `);
+}
+
+function renderChores(el) {
+  el.innerHTML = card(`
+    <h1>Add one or two chores</h1>
+    <p>Start small so you can test the full flow. You can build the full chore list later. <button class="info-btn" onclick="openInfo('chores')">i</button></p>
+    <div id="chores-list"></div>
+    <button class="add-btn" onclick="openAddChore()">+ Add Chore</button>
+    ${navButtons({ next: chores.length ? 'Continue' : 'Skip for Now' })}
+  `);
+  renderChoresList();
+}
+
+function renderFinal(el) {
+  el.innerHTML = card(`
+    <div class="setup-hero-icon">✅</div>
+    <h1>Ready to start.</h1>
+    <p>Your dashboard will show what still needs attention and give you the link to share with kids.</p>
+    <div class="summary-list">
+      <div class="summary-item"><div><div class="summary-name">${esc(household.name || 'Household')}</div><div class="summary-sub">Household</div></div></div>
+      <div class="summary-item"><div><div class="summary-name">${kids.length}</div><div class="summary-sub">Children added</div></div></div>
+      <div class="summary-item"><div><div class="summary-name">${chores.length}</div><div class="summary-sub">Chores added</div></div></div>
+      <div class="summary-item"><div><div class="summary-name">${compLabel(household.compModel)}</div><div class="summary-sub">Compensation model</div></div></div>
+    </div>
+    <div class="setup-actions">
+      <button class="btn btn-primary" id="finish-btn" onclick="finishOnboarding()">Launch Dashboard</button>
+      <button class="btn btn-ghost" onclick="goBack()">Back</button>
+    </div>
+  `);
+}
+
+function choice(value, title, description) {
+  return `
+    <button class="choice-card ${household.compModel === value ? 'selected' : ''}" onclick="selectCompModel('${value}')">
+      <strong>${title}</strong>
+      <span>${description}</span>
+    </button>`;
+}
+
+function renderCompFields() {
+  const cs = household.compSettings || {};
+  const el = document.getElementById('comp-fields');
+  if (!el) return;
+  if (household.compModel === 'flat') {
+    el.innerHTML = `
+      <div class="field">
+        <label>Daily Earning Cap ($)</label>
+        <input type="number" id="comp-cap-amount" value="${cs.dailyCapAmount || ''}" placeholder="Optional" min="0" step="0.01">
+      </div>`;
+  } else if (household.compModel === 'daily-min') {
+    el.innerHTML = `
+      <div class="field-row">
+        <div class="field">
+          <label>Chores for Full Day</label>
+          <input type="number" id="comp-chore-min" value="${cs.choreMinForFullDay || 5}" min="1">
+        </div>
+        <div class="field">
+          <label>Full Day Pay ($)</label>
+          <input type="number" id="comp-full-day-pay" value="${cs.fullDayPay || ''}" placeholder="10.00" min="0" step="0.01">
+        </div>
+      </div>`;
   } else {
-    list.innerHTML = kids.map((k, i) => `
-      <div class="kid-card">
-        <div class="list-avatar" style="background:${k.color}22;color:${k.color}">
-          ${k.name.charAt(0).toUpperCase()}
+    el.innerHTML = `
+      <div class="field-row">
+        <div class="field">
+          <label>Points per $1</label>
+          <input type="number" id="comp-pts-dollar" value="${cs.pointsPerDollar || 100}" min="1">
         </div>
-        <div class="list-info">
-          <div class="list-name">${k.name}</div>
-          <div class="list-sub">PIN: ${k.pin} · ${k.color}</div>
+        <div class="field">
+          <label>Daily Min Points</label>
+          <input type="number" id="comp-daily-min" value="${cs.dailyMinPoints || ''}" placeholder="Optional" min="0">
         </div>
-        <button class="kid-delete" onclick="removeKid(${i})">✕</button>
-      </div>`).join('');
+      </div>`;
   }
-  const btn = document.getElementById('step1-next');
-  if (btn) btn.disabled = kids.length === 0;
+}
+
+window.selectCompModel = (model) => {
+  saveCompFields();
+  household.compModel = model;
+  if (!household.compSettings) household.compSettings = {};
+  renderStep();
+};
+
+function saveCompFields() {
+  const cs = {};
+  if (household.compModel === 'flat') {
+    cs.dailyCapEnabled = !!document.getElementById('comp-cap-amount')?.value;
+    cs.dailyCapAmount = parseFloat(document.getElementById('comp-cap-amount')?.value) || null;
+  } else if (household.compModel === 'daily-min') {
+    cs.choreMinForFullDay = parseInt(document.getElementById('comp-chore-min')?.value) || 5;
+    cs.fullDayPay = parseFloat(document.getElementById('comp-full-day-pay')?.value) || null;
+  } else {
+    cs.pointsPerDollar = parseInt(document.getElementById('comp-pts-dollar')?.value) || 100;
+    cs.dailyMinPoints = parseInt(document.getElementById('comp-daily-min')?.value) || null;
+  }
+  household.compSettings = cs;
+  if (cs.pointsPerDollar) household.pointMultiplier = cs.pointsPerDollar;
+}
+
+window.togglePayFields = () => {
+  const freq = document.getElementById('pay-frequency')?.value || household.payFrequency || 'weekly';
+  const el = document.getElementById('pay-fields');
+  if (!el) return;
+  if (freq === 'weekly' || freq === 'biweekly') {
+    el.innerHTML = `
+      <div class="field">
+        <label>Anchor Start Date</label>
+        <input type="date" id="pay-start" value="${household.payPeriodStart || new Date().toISOString().split('T')[0]}">
+      </div>`;
+  } else if (freq === 'asneeded') {
+    el.innerHTML = `
+      <div class="field-row">
+        <div class="field">
+          <label>Current Start</label>
+          <input type="date" id="pay-current-start" value="${household.currentPeriodStart || new Date().toISOString().split('T')[0]}">
+        </div>
+        <div class="field">
+          <label>Current End</label>
+          <input type="date" id="pay-current-end" value="${household.currentPeriodEnd || ''}">
+        </div>
+      </div>`;
+  } else {
+    el.innerHTML = '<div class="note-box">This pay cycle follows the calendar. You can adjust details later in Settings.</div>';
+  }
+};
+
+function saveFamilyFields() {
+  household.parentName = document.getElementById('parent-name')?.value.trim() || '';
+  const name = document.getElementById('family-name')?.value.trim();
+  if (!name) { showToast('Please enter a household name'); return false; }
+  household.name = name;
+  household.capPerKid = parseFloat(document.getElementById('family-cap')?.value) || 120;
+  household.bonusBudget = parseFloat(document.getElementById('family-bonus')?.value) || 0;
+  return true;
+}
+
+function savePayFields() {
+  const freq = document.getElementById('pay-frequency')?.value || household.payFrequency || 'weekly';
+  household.payFrequency = freq;
+  household.payPeriodDays = { weekly: 7, biweekly: 14, semimonthly: 15, monthly: 30, asneeded: 0 }[freq] || 7;
+  if (freq === 'weekly' || freq === 'biweekly') {
+    const start = document.getElementById('pay-start')?.value;
+    if (!start) { showToast('Please choose an anchor start date'); return false; }
+    household.payPeriodStart = start;
+    household.currentPeriodStart = '';
+    household.currentPeriodEnd = '';
+  } else if (freq === 'asneeded') {
+    const start = document.getElementById('pay-current-start')?.value;
+    const end = document.getElementById('pay-current-end')?.value;
+    if (!start || !end) { showToast('Please choose start and end dates'); return false; }
+    household.payPeriodStart = start;
+    household.currentPeriodStart = start;
+    household.currentPeriodEnd = end;
+  } else {
+    household.payPeriodStart = household.payPeriodStart || new Date().toISOString().split('T')[0];
+    household.currentPeriodStart = '';
+    household.currentPeriodEnd = '';
+  }
+  return true;
+}
+
+window.selectApproval = (mode) => {
+  household.approvalMode = mode;
+  renderStep();
+};
+
+window.nextStep = () => {
+  if (currentStep === 2 && !saveFamilyFields()) return;
+  if (currentStep === 4) saveCompFields();
+  if (currentStep === 5 && !savePayFields()) return;
+  if (currentStep === 3 && kids.length === 0) { showToast('Add at least one child or choose Set Up Later'); return; }
+  currentStep = Math.min(currentStep + 1, TOTAL_STEPS - 1);
+  renderStep();
+};
+
+window.goBack = () => {
+  currentStep = Math.max(currentStep - 1, 0);
+  renderStep();
+};
+
+window.setupLater = async () => {
+  if (currentStep === 2) {
+    const nameInput = document.getElementById('family-name');
+    if (nameInput?.value.trim()) household.name = nameInput.value.trim();
+  }
+  const confirmed = confirm('Finish setup later? Your dashboard will open with a setup checklist.');
+  if (!confirmed) return;
+  await saveHousehold(false, true);
+  window.location.href = 'parent-dashboard.html';
+};
+
+window.finishOnboarding = async () => {
+  const btn = document.getElementById('finish-btn');
+  btn.disabled = true;
+  btn.textContent = 'Saving...';
+  try {
+    await saveHousehold(true, false);
+    window.location.href = 'parent-dashboard.html';
+  } catch (err) {
+    console.error(err);
+    showToast('Setup could not be saved. Check your connection.');
+    btn.disabled = false;
+    btn.textContent = 'Launch Dashboard';
+  }
+};
+
+async function saveHousehold(complete, skipped) {
+  const hData = {
+    ...household,
+    name: household.name || 'My Household',
+    ownerId: currentUser.uid,
+    ownerEmail: currentUser.email,
+    updatedAt: new Date().toISOString(),
+    onboardingComplete: complete,
+    setupSkipped: skipped,
+    kids,
+    chores,
+  };
+  if (!household.createdAt) hData.createdAt = new Date().toISOString();
+  await setDoc(doc(db, 'households', currentUser.uid), hData, { merge: true });
 }
 
 window.openAddKid = () => {
@@ -421,16 +826,12 @@ window.openAddKid = () => {
 function renderColorPicker() {
   const used = kids.map(k => k.color);
   const picker = document.getElementById('kid-color-picker');
-  picker.innerHTML = AVATAR_COLORS.map(c => `
-    <div class="swatch ${!used.includes(c) && picker.querySelector('.sel') === null ? 'sel' : ''}"
-         style="background:${c}" data-color="${c}"
-         onclick="selectColor(this)"></div>`).join('');
-  // auto-select first available
-  const first = picker.querySelector(`.swatch:not(.sel)`);
-  if (first) first.classList.add('sel');
-  // if none selected yet, select first
-  if (!picker.querySelector('.sel')) picker.querySelector('.swatch').classList.add('sel');
-}
+  picker.innerHTML = AVATAR_COLORS.map((c, i) => `
+    <div class="swatch ${i === 0 ? 'sel' : ''}" style="background:${c};opacity:${used.includes(c) ? 0.45 : 1}" data-color="${c}" onclick="selectColor(this)"></div>
+  `).join('');
+  const firstFree = [...picker.querySelectorAll('.swatch')].find(s => !used.includes(s.dataset.color));
+  if (firstFree) selectColor(firstFree);
+};
 
 window.selectColor = (el) => {
   document.querySelectorAll('#kid-color-picker .swatch').forEach(s => s.classList.remove('sel'));
@@ -439,178 +840,148 @@ window.selectColor = (el) => {
 
 window.saveKid = () => {
   const name = document.getElementById('kid-name-input').value.trim();
-  const pins  = [...document.querySelectorAll('#add-pin-row .pin-digit')].map(d => d.value);
-  const pin   = pins.join('');
-  const colorEl = document.querySelector('#kid-color-picker .sel');
-  const color = colorEl ? colorEl.dataset.color : AVATAR_COLORS[0];
-
-  if (!name)        { showToast('Please enter a name'); return; }
-  if (pin.length !== 4 || !/^\d{4}$/.test(pin)) { showToast('Please enter a 4-digit PIN'); return; }
-  if (kids.find(k => k.name.toLowerCase() === name.toLowerCase())) {
-    showToast('A kid with that name already exists'); return;
-  }
-
-  kids.push({ name, pin, color, id: Date.now().toString() });
+  const pin = [...document.querySelectorAll('#add-pin-row .pin-digit')].map(d => d.value).join('');
+  const color = document.querySelector('#kid-color-picker .sel')?.dataset.color || AVATAR_COLORS[0];
+  if (!name) { showToast('Please enter a name'); return; }
+  if (!/^\d{4}$/.test(pin)) { showToast('Please enter a 4-digit PIN'); return; }
+  if (kids.some(k => k.name.toLowerCase() === name.toLowerCase())) { showToast('That child already exists'); return; }
+  kids.push({ id: Date.now().toString(), name, pin, color });
   closeModal('modal-kid');
-  renderKidsList();
-  updateChoreAssignOptions();
-};
-
-window.removeKid = (i) => {
-  kids.splice(i, 1);
-  renderKidsList();
-  updateChoreAssignOptions();
-};
-
-window.saveStep1 = () => {
-  if (kids.length === 0) { showToast('Add at least one kid to continue'); return; }
-  currentStep = 2;
   renderStep();
 };
 
-// ── Step 2: Add chores ────────────────────────────────
-function renderStep2(el) {
-  el.innerHTML = `
-    <div class="page-label">Step 3 of ${TOTAL_STEPS}</div>
-    <h1 style="margin-bottom:8px">Build your chore list</h1>
-    <p style="margin-bottom:24px">Set each chore's name, value, and whether it's daily or a weekly bonus. You can edit these anytime.</p>
-    <div id="chores-list"></div>
-    <button class="add-btn mt-8" onclick="openAddChore()">＋ Add a Chore</button>
-    <div style="margin-top:auto;padding-top:32px">
-      <button class="btn btn-primary" onclick="saveStep2()">Continue →</button>
-      <button class="btn btn-ghost mt-8" onclick="goBack()">← Back</button>
-    </div>
-  `;
-  renderChoresList();
+window.removeKid = (idx) => {
+  kids.splice(idx, 1);
+  renderStep();
+};
+
+function renderKidsList() {
+  const list = document.getElementById('kids-list');
+  if (!list) return;
+  if (!kids.length) {
+    list.innerHTML = '<div class="note-box">No children added yet.</div>';
+    return;
+  }
+  list.innerHTML = `<div class="summary-list">${kids.map((kid, i) => `
+    <div class="summary-item">
+      <div>
+        <div class="summary-name">${esc(kid.name)}</div>
+        <div class="summary-sub">PIN ${esc(kid.pin)} · ${esc(kid.color)}</div>
+      </div>
+      <button class="remove-mini" onclick="removeKid(${i})">Remove</button>
+    </div>`).join('')}</div>`;
 }
 
-function renderChoresList() {
-  const list = document.getElementById('chores-list');
-  if (!list) return;
-  if (chores.length === 0) {
-    list.innerHTML = `<div class="empty-state" style="padding:24px">
-      <div class="empty-icon">📋</div>
-      <p>No chores added yet</p>
-    </div>`;
+window.openAddChore = () => {
+  document.getElementById('chore-name-input').value = '';
+  document.getElementById('chore-value-input').value = '';
+  document.getElementById('chore-desc-input').value = '';
+  document.getElementById('chore-freq-input').value = 'daily';
+  updateChoreValueLabel();
+  updateChoreAssignOptions();
+  document.getElementById('modal-chore').classList.add('active');
+  setTimeout(() => document.getElementById('chore-name-input').focus(), 100);
+};
+
+function updateChoreValueLabel() {
+  const field = document.getElementById('chore-value-field');
+  const label = document.getElementById('chore-value-label');
+  const input = document.getElementById('chore-value-input');
+  if (!field || !label || !input) return;
+  if (household.compModel === 'daily-min') {
+    field.style.display = 'none';
+    input.value = '';
+  } else if (household.compModel === 'flat') {
+    field.style.display = 'block';
+    label.textContent = 'Flat Pay ($)';
+    input.placeholder = '5.00';
+    input.step = '0.01';
   } else {
-    list.innerHTML = chores.map((c, i) => `
-      <div class="chore-card">
-        <div style="width:8px;height:8px;border-radius:50%;background:${c.freq==='weekly'?'var(--gold)':'var(--green)'};flex-shrink:0"></div>
-        <div class="list-info">
-          <div class="list-name">${c.name}</div>
-          <div class="list-sub">$${parseFloat(c.amount).toFixed(2)} · ${c.freq === 'weekly' ? 'Weekly bonus' : 'Daily'} · ${c.assignedTo === 'any' ? 'Shared' : c.assignedTo}</div>
-        </div>
-        <button class="kid-delete" onclick="removeChore(${i})">✕</button>
-      </div>`).join('');
+    field.style.display = 'block';
+    label.textContent = 'Points Value';
+    input.placeholder = '50';
+    input.step = '1';
   }
 }
 
 function updateChoreAssignOptions() {
   const sel = document.getElementById('chore-assign-input');
   if (!sel) return;
-  const current = sel.value;
-  sel.innerHTML = `<option value="any">Any kid (first to claim)</option>` +
-    kids.map(k => `<option value="${k.name}" ${current===k.name?'selected':''}>${k.name} only</option>`).join('');
+  sel.innerHTML = '<option value="any">Any kid</option>' +
+    kids.map(k => `<option value="${escapeAttr(k.name)}">${esc(k.name)} only</option>`).join('');
 }
 
-window.openAddChore = () => {
-  document.getElementById('chore-name-input').value   = '';
-  document.getElementById('chore-amount-input').value = '';
-  document.getElementById('chore-desc-input').value   = '';
-  document.getElementById('chore-freq-input').value   = 'daily';
-  updateChoreAssignOptions();
-  document.getElementById('modal-chore').classList.add('active');
-  setTimeout(() => document.getElementById('chore-name-input').focus(), 100);
-};
-
 window.saveChore = () => {
-  const name   = document.getElementById('chore-name-input').value.trim();
-  const amount = parseFloat(document.getElementById('chore-amount-input').value);
-  const freq   = document.getElementById('chore-freq-input').value;
-  const assign = document.getElementById('chore-assign-input').value;
-  const desc   = document.getElementById('chore-desc-input').value.trim();
-
-  if (!name)            { showToast('Please enter a chore name'); return; }
-  if (!amount || amount <= 0) { showToast('Please enter a valid dollar amount'); return; }
-
-  chores.push({ name, amount, freq, assignedTo: assign, desc, id: Date.now().toString() });
+  const name = document.getElementById('chore-name-input').value.trim();
+  const value = parseFloat(document.getElementById('chore-value-input').value) || 0;
+  const freq = document.getElementById('chore-freq-input').value;
+  const assignedTo = document.getElementById('chore-assign-input').value;
+  const desc = document.getElementById('chore-desc-input').value.trim();
+  if (!name) { showToast('Please enter a chore name'); return; }
+  if (household.compModel !== 'daily-min' && value <= 0) { showToast('Please enter a value'); return; }
+  chores.push({
+    id: Date.now().toString(),
+    name,
+    desc,
+    freq,
+    assignedTo,
+    subTasks: [],
+    pointValue: household.compModel === 'points' ? Math.round(value) : 0,
+    flatPayValue: household.compModel === 'flat' ? value : 0,
+  });
   closeModal('modal-chore');
-  renderChoresList();
-};
-
-window.removeChore = (i) => {
-  chores.splice(i, 1);
-  renderChoresList();
-};
-
-window.saveStep2 = () => {
-  currentStep = 3;
   renderStep();
 };
 
-// ── Step 3: Approval mode ─────────────────────────────
-function renderStep3(el) {
-  el.innerHTML = `
-    <div class="page-label">Step 4 of ${TOTAL_STEPS}</div>
-    <h1 style="margin-bottom:8px">Approval settings</h1>
-    <p style="margin-bottom:24px">How should chore submissions be handled?</p>
+window.removeChore = (idx) => {
+  chores.splice(idx, 1);
+  renderStep();
+};
 
-    <div class="option-card ${household.approvalMode==='manual'?'selected':''}"
-         onclick="selectApproval('manual')" id="opt-manual">
-      <div class="option-title">✋ Manual Approval</div>
-      <div class="option-desc">You review each submission and approve or reject it before it counts toward their balance. Best if you want to verify the quality of work.</div>
-    </div>
-
-    <div class="option-card ${household.approvalMode==='auto'?'selected':''}"
-         onclick="selectApproval('auto')" id="opt-auto">
-      <div class="option-title">⚡ Auto Approve</div>
-      <div class="option-desc">Submissions are approved immediately on submit. Photo proof is still required and stored. Best for trusted kids.</div>
-    </div>
-
-    <div style="margin-top:32px">
-      <button class="btn btn-primary" id="finish-btn" onclick="finishOnboarding()">
-        Launch My Household 🎉
-      </button>
-      <button class="btn btn-ghost mt-8" onclick="goBack()">← Back</button>
-    </div>
-  `;
+function renderChoresList() {
+  const list = document.getElementById('chores-list');
+  if (!list) return;
+  if (!chores.length) {
+    list.innerHTML = '<div class="note-box">No chores added yet. You can skip and add them later from the Chores tab.</div>';
+    return;
+  }
+  list.innerHTML = `<div class="summary-list">${chores.map((chore, i) => `
+    <div class="summary-item">
+      <div>
+        <div class="summary-name">${esc(chore.name)}</div>
+        <div class="summary-sub">${choreValueLabel(chore)} · ${esc(chore.freq)} · ${chore.assignedTo === 'any' ? 'Any kid' : esc(chore.assignedTo)}</div>
+      </div>
+      <button class="remove-mini" onclick="removeChore(${i})">Remove</button>
+    </div>`).join('')}</div>`;
 }
 
-window.selectApproval = (mode) => {
-  household.approvalMode = mode;
-  document.getElementById('opt-manual').classList.toggle('selected', mode === 'manual');
-  document.getElementById('opt-auto').classList.toggle('selected', mode === 'auto');
+function choreValueLabel(chore) {
+  if (household.compModel === 'flat') return `$${Number(chore.flatPayValue || 0).toFixed(2)}`;
+  if (household.compModel === 'daily-min') return '1 unit';
+  return `${chore.pointValue || 0} pts`;
+}
+
+function compLabel(model) {
+  return model === 'flat' ? 'Flat Pay' : model === 'daily-min' ? 'Daily Minimum' : 'Points';
+}
+
+window.openInfo = (key) => {
+  const copy = INFO_COPY[key];
+  if (!copy) return;
+  document.getElementById('info-title').textContent = copy.title;
+  document.getElementById('info-body').textContent = copy.body;
+  document.getElementById('modal-info').classList.add('active');
 };
 
-window.finishOnboarding = async () => {
-  const btn = document.getElementById('finish-btn');
-  btn.disabled = true;
-  btn.textContent = 'Saving…';
-  try {
-    const hData = {
-      ...household,
-      onboardingComplete: true,
-      ownerId: currentUser.uid,
-      ownerEmail: currentUser.email,
-      createdAt: new Date().toISOString(),
-      kids: kids,
-      chores: chores,
-    };
-    await setDoc(doc(db, 'households', currentUser.uid), hData);
-    window.location.href = 'parent-dashboard.html';
-  } catch(e) {
-    console.error(e);
-    showToast('❌ Error saving — check your connection');
-    btn.disabled = false;
-    btn.textContent = 'Launch My Household 🎉';
-  }
+window.closeModal = (id) => {
+  document.getElementById(id).classList.remove('active');
 };
 
-// ── PIN input auto-advance ────────────────────────────
 document.addEventListener('input', (e) => {
   if (!e.target.classList.contains('pin-digit')) return;
+  e.target.value = e.target.value.replace(/\D/g, '').slice(0, 1);
   const inputs = [...e.target.closest('.pin-row').querySelectorAll('.pin-digit')];
-  const idx    = inputs.indexOf(e.target);
+  const idx = inputs.indexOf(e.target);
   if (e.target.value && idx < inputs.length - 1) inputs[idx + 1].focus();
 });
 
@@ -618,25 +989,24 @@ document.addEventListener('keydown', (e) => {
   if (!e.target.classList.contains('pin-digit')) return;
   if (e.key === 'Backspace' && !e.target.value) {
     const inputs = [...e.target.closest('.pin-row').querySelectorAll('.pin-digit')];
-    const idx    = inputs.indexOf(e.target);
-    if (idx > 0) { inputs[idx - 1].focus(); inputs[idx - 1].value = ''; }
+    const idx = inputs.indexOf(e.target);
+    if (idx > 0) inputs[idx - 1].focus();
   }
 });
-
-// ── Shared helpers ────────────────────────────────────
-window.goBack = () => {
-  if (currentStep > 0) { currentStep--; renderStep(); }
-};
-
-window.closeModal = (id) => {
-  document.getElementById(id).classList.remove('active');
-};
 
 function showToast(msg) {
   const t = document.getElementById('toast');
   t.textContent = msg;
   t.classList.add('show');
   setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+function esc(str) {
+  return String(str ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function escapeAttr(str) {
+  return esc(str).replace(/`/g, '&#96;');
 }
 </script>
 </body>

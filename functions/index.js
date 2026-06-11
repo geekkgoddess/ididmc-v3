@@ -8,7 +8,7 @@
 
 const {onSchedule}          = require("firebase-functions/v2/scheduler");
 const {onObjectFinalized}   = require("firebase-functions/v2/storage");
-const {onDocumentCreated}   = require("firebase-functions/v2/firestore");
+const {onDocumentCreated, onDocumentUpdated} = require("firebase-functions/v2/firestore");
 const functions             = require("firebase-functions");
 const admin               = require("firebase-admin");
 const nodemailer          = require("nodemailer");
@@ -54,6 +54,48 @@ const transporter = nodemailer.createTransport({
     pass: process.env.GMAIL_PASSWORD,
   },
 });
+
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL || process.env.GMAIL_EMAIL || "jmhodgefl@gmail.com";
+
+function setCors(res) {
+  res.set("Access-Control-Allow-Origin", "*");
+  res.set("Access-Control-Allow-Methods", "POST, OPTIONS");
+  res.set("Access-Control-Allow-Headers", "Content-Type");
+}
+
+function escapeHtml(value = "") {
+  return String(value)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
+}
+
+async function sendAdminAlert({ subject, title, rows = [], preface = "" }) {
+  if (!ADMIN_EMAIL) return;
+  const rowHtml = rows.map(([label, value]) => `
+    <tr>
+      <td style="padding:8px 10px;border-bottom:1px solid #eeeeee;color:#777777;font-size:12px;font-weight:700;text-transform:uppercase">${escapeHtml(label)}</td>
+      <td style="padding:8px 10px;border-bottom:1px solid #eeeeee;color:#111111;font-size:13px;white-space:pre-wrap">${escapeHtml(value || "—")}</td>
+    </tr>`).join("");
+  const html = `<!DOCTYPE html>
+<html><body style="margin:0;padding:24px;background:#f4f1ea;font-family:Arial,sans-serif">
+  <div style="max-width:640px;margin:0 auto;background:#ffffff;border-radius:14px;overflow:hidden;border:1px solid #e5e2db">
+    <div style="background:#111111;color:#f5c842;padding:20px 24px;font-size:18px;font-weight:800">${escapeHtml(title)}</div>
+    <div style="padding:22px 24px">
+      ${preface ? `<p style="margin:0 0 16px;color:#444444;font-size:14px;line-height:1.6">${escapeHtml(preface)}</p>` : ""}
+      <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse">${rowHtml}</table>
+    </div>
+  </div>
+</body></html>`;
+  await transporter.sendMail({
+    from: `"I Did My Chores" <${process.env.GMAIL_EMAIL}>`,
+    to: ADMIN_EMAIL,
+    subject,
+    html,
+  });
+}
 
 
 // ================================================================
@@ -137,6 +179,73 @@ exports.getPhotoDownloadUrl = functions.https.onCall(async (data, context) => {
   const file = bucket.file(filePath);
   const [url] = await file.getDownloadURL();
   return {downloadUrl: url};
+});
+
+exports.submitSupportRequest = functions.https.onRequest(async (req, res) => {
+  setCors(res);
+  if (req.method === "OPTIONS") return res.status(204).send("");
+  if (req.method !== "POST") return res.status(405).json({error: "method-not-allowed"});
+
+  try {
+    const body = req.body || {};
+    const name = String(body.name || "").trim();
+    const email = String(body.email || "").trim();
+    const issueType = String(body.issueType || body.subject || "Support Request").trim();
+    const message = String(body.message || "").trim();
+    const page = String(body.page || "").trim();
+    const childName = String(body.childName || "").trim();
+    const device = String(body.device || "").trim();
+    const steps = String(body.steps || "").trim();
+    const mediaLink = String(body.mediaLink || "").trim();
+    const severity = String(body.severity || "normal").trim();
+
+    if (!email || !email.includes("@") || !message) {
+      return res.status(400).json({error: "missing-required-fields"});
+    }
+
+    const payload = {
+      name,
+      email,
+      issueType,
+      message,
+      page,
+      childName,
+      device,
+      steps,
+      mediaLink,
+      severity,
+      userAgent: req.get("user-agent") || "",
+      status: "new",
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    };
+
+    const docRef = await db.collection("support_requests").add(payload);
+
+    await sendAdminAlert({
+      subject: `I Did My Chores support: ${issueType}`,
+      title: "New Support Request",
+      preface: "A user submitted a support or beta feedback report.",
+      rows: [
+        ["Report ID", docRef.id],
+        ["Type", issueType],
+        ["Severity", severity],
+        ["Name", name],
+        ["Email", email],
+        ["Page / Screen", page],
+        ["Child", childName],
+        ["Device / Browser", device],
+        ["Steps", steps],
+        ["Media Link", mediaLink],
+        ["Message", message],
+      ],
+    });
+
+    log.info("support_request_created", {id: docRef.id, issueType, email});
+    res.json({ok: true, id: docRef.id});
+  } catch (err) {
+    log.error("endpoint_error", {endpoint: "submitSupportRequest", err: err.message});
+    res.status(500).json({error: "internal"});
+  }
 });
 
 
@@ -984,12 +1093,6 @@ exports.submitKidLiteChore = functions.https.onRequest(async (req, res) => {
 //  HELPER FUNCTIONS
 // ================================================================
 
-function setCors(res) {
-  res.set("Access-Control-Allow-Origin", "*");
-  res.set("Access-Control-Allow-Methods", "POST, OPTIONS");
-  res.set("Access-Control-Allow-Headers", "Content-Type");
-}
-
 // ── PIN brute-force protection ────────────────────────────────────
 // Tracks failed PIN attempts per household+kid in Firestore.
 // After 5 failures in a 5-minute window the endpoint returns 429.
@@ -1492,14 +1595,59 @@ async function sendWelcomeEmail({ email, householdName }) {
 exports.onHouseholdCreated = onDocumentCreated('households/{uid}', async (event) => {
   const uid  = event.params.uid;
   const data = event.data.data();
-  if (!data.onboardingComplete) return null;   // skip partial / in-progress documents
   try {
     const userRecord = await admin.auth().getUser(uid);
-    if (userRecord.email) {
+    await sendAdminAlert({
+      subject: `New I Did My Chores household: ${data.name || userRecord.email || uid}`,
+      title: "New Household Created",
+      preface: data.onboardingComplete
+        ? "A household completed onboarding."
+        : "A household was created before onboarding was completed.",
+      rows: [
+        ["Household ID", uid],
+        ["Household Name", data.name || ""],
+        ["Parent Name", data.parentName || ""],
+        ["Owner Email", data.ownerEmail || userRecord.email || ""],
+        ["Onboarding Complete", data.onboardingComplete ? "Yes" : "No"],
+        ["Setup Skipped", data.setupSkipped ? "Yes" : "No"],
+        ["Kids", Array.isArray(data.kids) ? String(data.kids.length) : "0"],
+        ["Chores", Array.isArray(data.chores) ? String(data.chores.length) : "0"],
+      ],
+    });
+    if (data.onboardingComplete && userRecord.email) {
       await sendWelcomeEmail({ email: userRecord.email, householdName: data.name });
     }
   } catch (e) {
-    log.error("email_failed", {type: "welcome", uid, err: e.message});
+    log.error("email_failed", {type: "household_created", uid, err: e.message});
+  }
+  return null;
+});
+
+exports.onHouseholdSetupCompleted = onDocumentUpdated('households/{uid}', async (event) => {
+  const uid = event.params.uid;
+  const before = event.data.before.data();
+  const after = event.data.after.data();
+  if (before.onboardingComplete || !after.onboardingComplete) return null;
+  try {
+    const userRecord = await admin.auth().getUser(uid);
+    await sendAdminAlert({
+      subject: `I Did My Chores setup completed: ${after.name || userRecord.email || uid}`,
+      title: "Household Setup Completed",
+      preface: "A household that previously skipped or paused setup has now completed onboarding.",
+      rows: [
+        ["Household ID", uid],
+        ["Household Name", after.name || ""],
+        ["Parent Name", after.parentName || ""],
+        ["Owner Email", after.ownerEmail || userRecord.email || ""],
+        ["Kids", Array.isArray(after.kids) ? String(after.kids.length) : "0"],
+        ["Chores", Array.isArray(after.chores) ? String(after.chores.length) : "0"],
+      ],
+    });
+    if (userRecord.email) {
+      await sendWelcomeEmail({ email: userRecord.email, householdName: after.name });
+    }
+  } catch (e) {
+    log.error("email_failed", {type: "setup_completed", uid, err: e.message});
   }
   return null;
 });

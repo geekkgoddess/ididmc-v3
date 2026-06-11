@@ -321,6 +321,8 @@
       </div>
     </div>
 
+    <div id="setup-checklist" style="display:none;margin-bottom:16px"></div>
+
     <!-- Stats -->
     <div class="stats-row" id="stats-row"></div>
 
@@ -1172,8 +1174,9 @@ async function loadHousehold() {
   const snap = await getDoc(doc(db, 'households', currentUser.uid));
   if (!snap.exists()) { window.location.href = 'onboarding.html'; return; }
   household = snap.data();
+  normalizeHousehold();
 
-  document.getElementById('hh-name').textContent = household.name;
+  document.getElementById('hh-name').textContent = household.name || 'My Household';
   renderPeriodBadge();
   renderSettings();
   renderChoresAdmin();
@@ -1217,7 +1220,8 @@ function setupRealtime() {
   onSnapshot(doc(db, 'households', currentUser.uid), (snap) => {
     if (!snap.exists()) { window.location.href = 'onboarding.html'; return; }
     household = snap.data();
-    document.getElementById('hh-name').textContent = household.name;
+    normalizeHousehold();
+    document.getElementById('hh-name').textContent = household.name || 'My Household';
     renderPeriodBadge();
     renderSettings();
     renderChoresAdmin();
@@ -1239,9 +1243,85 @@ function setupRealtime() {
   });
 }
 
+function normalizeHousehold() {
+  household.kids = household.kids || [];
+  household.chores = household.chores || [];
+  household.emailSettings = household.emailSettings || {};
+  household.compModel = household.compModel || 'points';
+  household.compSettings = household.compSettings || {};
+  household.payFrequency = household.payFrequency ||
+    (household.payPeriodDays === 14 ? 'biweekly' :
+     household.payPeriodDays === 30 ? 'monthly' : 'weekly');
+  household.payPeriodStart = household.payPeriodStart || getToday();
+  household.capPerKid = household.capPerKid || 120;
+}
+
+function renderSetupChecklist() {
+  const el = document.getElementById('setup-checklist');
+  if (!el) return;
+  if (household.onboardingComplete && !household.setupSkipped) {
+    el.style.display = 'none';
+    el.innerHTML = '';
+    return;
+  }
+  const checks = [
+    { label: 'Family details', done: !!household.name },
+    { label: 'At least one child', done: (household.kids || []).length > 0 },
+    { label: 'Compensation model', done: !!household.compModel },
+    { label: 'Pay cycle', done: !!household.payFrequency },
+    { label: 'Approval mode', done: !!household.approvalMode },
+    { label: 'At least one chore', done: (household.chores || []).length > 0 },
+  ];
+  const doneCount = checks.filter(c => c.done).length;
+  const complete = doneCount === checks.length;
+  el.style.display = 'block';
+  el.innerHTML = `
+    <div style="background:var(--gold-dim);border:1px solid rgba(245,200,66,0.24);
+                border-radius:var(--radius-lg);padding:16px">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:12px">
+        <div>
+          <div style="font-size:15px;font-weight:800;color:var(--text)">Finish household setup</div>
+          <div style="font-size:12px;color:var(--muted);margin-top:3px">${doneCount} of ${checks.length} setup items complete</div>
+        </div>
+        <a href="onboarding.html"
+           style="background:var(--gold);color:#111;border-radius:999px;padding:7px 12px;
+                  font-size:12px;font-weight:800;text-decoration:none;white-space:nowrap">
+          Continue
+        </a>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px">
+        ${checks.map(c => `
+          <div style="font-size:12px;color:${c.done ? 'var(--green)' : 'var(--muted)'};
+                      background:var(--card);border:1px solid var(--border);
+                      border-radius:8px;padding:7px 9px">
+            ${c.done ? '✓' : '○'} ${c.label}
+          </div>`).join('')}
+      </div>
+      ${complete ? `
+        <button onclick="markSetupComplete()"
+                style="margin-top:12px;width:100%;background:var(--green);color:#06130d;
+                       border:none;border-radius:10px;padding:10px;font-family:inherit;
+                       font-size:13px;font-weight:800;cursor:pointer">
+          Mark Setup Complete
+        </button>` : ''}
+    </div>`;
+}
+
+window.markSetupComplete = async () => {
+  await updateDoc(doc(db, 'households', currentUser.uid), {
+    onboardingComplete: true,
+    setupSkipped: false,
+  });
+  household.onboardingComplete = true;
+  household.setupSkipped = false;
+  renderSetupChecklist();
+  showToast('✅ Setup complete');
+};
+
 // ── Overview ──────────────────────────────────────────────────
 function renderOverview() {
   if (!household) return;
+  renderSetupChecklist();
   const period = getPayPeriod();
   const today  = getToday();
 
@@ -2212,12 +2292,20 @@ function renderPlanCard() {
 function renderContactCard() {
   const el = document.getElementById('contact-card');
   if (!el) return;
+  const parentName = household.parentName || '';
   const email = household.ownerEmail || currentUser?.email || '';
   const phone = household.parentPhone || '';
   el.innerHTML = `
     <div style="padding:14px 0 12px">
       <div style="font-size:11px;font-weight:700;letter-spacing:.08em;color:var(--muted);text-transform:uppercase;margin-bottom:10px">Contact Info</div>
       <div style="display:grid;gap:10px">
+        <div>
+          <label style="font-size:12px;color:var(--muted);display:block;margin-bottom:5px">Parent name</label>
+          <input id="contact-parent-name" type="text" value="${escapeAttr(parentName)}" placeholder="Your name"
+                 style="width:100%;background:var(--card2);border:1px solid var(--border);
+                        border-radius:8px;padding:10px 12px;color:var(--text);
+                        font-family:inherit;font-size:13px;box-sizing:border-box">
+        </div>
         <div>
           <label style="font-size:12px;color:var(--muted);display:block;margin-bottom:5px">Parent email</label>
           <input id="contact-email" type="email" value="${escapeAttr(email)}"
@@ -2249,12 +2337,14 @@ window.changePlan = (targetPlan) => {
 };
 
 window.saveContactInfo = async () => {
+  const parentName = document.getElementById('contact-parent-name')?.value.trim();
   const ownerEmail = document.getElementById('contact-email')?.value.trim();
   const parentPhone = document.getElementById('contact-phone')?.value.trim();
   if (ownerEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(ownerEmail)) {
     showToast('Enter a valid email'); return;
   }
-  await updateDoc(doc(db, 'households', currentUser.uid), { ownerEmail, parentPhone });
+  await updateDoc(doc(db, 'households', currentUser.uid), { parentName, ownerEmail, parentPhone });
+  household.parentName = parentName;
   household.ownerEmail = ownerEmail;
   household.parentPhone = parentPhone;
   showToast('✅ Contact info saved');

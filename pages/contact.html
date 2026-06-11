@@ -12,25 +12,25 @@
   <div class="page-content">
     <div style="max-width:640px;margin:0 auto;padding:48px 0 80px">
 
-      <div class="section-label" style="margin-bottom:12px">Get In Touch</div>
+      <div class="section-label" style="margin-bottom:12px">Support & Feedback</div>
       <h1 style="font-size:clamp(28px,5vw,42px);font-weight:800;letter-spacing:-0.8px;margin-bottom:12px">
-        We'd love to hear from you.
+        Tell us what happened.
       </h1>
       <p style="font-size:16px;color:var(--muted);margin-bottom:40px;line-height:1.7">
-        Questions, feedback, feature requests — or just want to share how your household is running now? Fill out the form below and we'll get back to you at <strong style="color:var(--text)">jmhodgefl@gmail.com</strong>.
+        Questions, beta feedback, bug reports, and feature ideas all go here. If something broke, include screenshots or a short video link so we can understand it quickly.
       </p>
 
       <!-- Success message -->
       <div id="success-msg" style="display:none;background:var(--green-dim);border:1px solid rgba(52,211,153,0.3);
            border-radius:12px;padding:20px 24px;margin-bottom:24px;text-align:center">
         <div style="font-size:32px;margin-bottom:8px">✅</div>
-        <div style="font-weight:700;font-size:16px">Message sent!</div>
-        <p style="font-size:14px;color:var(--muted);margin-top:4px">We'll get back to you soon.</p>
+        <div style="font-weight:700;font-size:16px">Report sent!</div>
+        <p style="font-size:14px;color:var(--muted);margin-top:4px">Thank you. We may follow up if we need more details.</p>
       </div>
 
-      <form id="contact-form" name="contact" netlify netlify-honeypot="bot-field"
+      <form id="contact-form" name="support-request" netlify netlify-honeypot="bot-field"
             onsubmit="handleSubmit(event)">
-        <input type="hidden" name="form-name" value="contact">
+        <input type="hidden" name="form-name" value="support-request">
         <input type="text" name="bot-field" style="display:none">
 
         <div class="form-field">
@@ -42,26 +42,65 @@
           <input type="email" name="email" placeholder="you@email.com" required>
         </div>
         <div class="form-field">
-          <label>Subject</label>
-          <select name="subject" required>
+          <label>What are you reporting?</label>
+          <select name="issueType" required>
             <option value="" disabled selected>Select a topic</option>
             <option value="General Question">General Question</option>
             <option value="Feature Request">Feature Request</option>
             <option value="Bug Report">Bug Report</option>
+            <option value="Beta Feedback">Beta Feedback</option>
+            <option value="Setup / Onboarding Help">Setup / Onboarding Help</option>
+            <option value="Kid Dashboard Issue">Kid Dashboard Issue</option>
             <option value="Billing">Billing</option>
-            <option value="Partnership">Partnership / Collaboration</option>
             <option value="Other">Other</option>
           </select>
         </div>
         <div class="form-field">
+          <label>Urgency</label>
+          <select name="severity">
+            <option value="normal" selected>Normal - can wait</option>
+            <option value="blocked">Blocked - cannot use the app</option>
+            <option value="data">Data looks wrong</option>
+            <option value="security">Privacy or security concern</option>
+          </select>
+        </div>
+        <div class="form-field">
+          <label>Page or Screen</label>
+          <input type="text" name="page" placeholder="e.g. Parent Dashboard, Kid Dashboard, Onboarding">
+        </div>
+        <div class="form-field">
+          <label>Child Name <span style="color:var(--muted);font-weight:400;text-transform:none;font-size:11px">(if relevant)</span></label>
+          <input type="text" name="childName" placeholder="Optional">
+        </div>
+        <div class="form-field">
+          <label>Device / Browser</label>
+          <input type="text" name="device" placeholder="e.g. iPhone Safari, Android Chrome, Windows Edge">
+        </div>
+        <div class="form-field">
+          <label>Steps to Recreate</label>
+          <textarea name="steps" placeholder="What did you tap or do right before the issue happened?"></textarea>
+        </div>
+        <div class="form-field">
+          <label>Screenshot or Video Link</label>
+          <input type="url" name="mediaLink" placeholder="Paste an iCloud, Google Drive, Dropbox, or Loom link">
+          <p style="font-size:12px;color:var(--muted);margin-top:6px;line-height:1.5">If you do not have a link, submit the form anyway and we may ask for screenshots by email.</p>
+        </div>
+        <div class="form-field">
           <label>Message</label>
-          <textarea name="message" placeholder="Tell us what's on your mind…" required></textarea>
+          <textarea name="message" placeholder="Describe the issue, question, or idea in detail." required></textarea>
         </div>
 
         <button type="submit" class="btn btn-primary" style="width:100%;justify-content:center" id="submit-btn">
-          Send Message
+          Submit Report
         </button>
       </form>
+
+      <div class="card" style="margin-top:20px">
+        <div style="font-weight:700;font-size:14px;margin-bottom:6px;color:var(--text)">Beta tester note</div>
+        <p style="font-size:13px;color:var(--muted);line-height:1.7">
+          During beta, bugs can happen because of device differences, connection issues, or setup combinations we did not anticipate. The most helpful reports include what you expected, what happened instead, and a screenshot or short video.
+        </p>
+      </div>
 
       <hr style="border:none;border-top:1px solid var(--border);margin:48px 0">
 
@@ -90,14 +129,27 @@ function handleSubmit(e) {
   btn.disabled = true; btn.textContent = 'Sending…';
   const form = document.getElementById('contact-form');
   const data = new FormData(form);
-  fetch('/', { method: 'POST', body: data })
-    .then(() => {
+  const payload = Object.fromEntries(data.entries());
+  fetch('https://us-central1-i-did-my-chores.cloudfunctions.net/submitSupportRequest', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  })
+    .then((res) => {
+      if (!res.ok) throw new Error('Support endpoint failed');
       form.style.display = 'none';
       document.getElementById('success-msg').style.display = 'block';
     })
     .catch(() => {
-      btn.disabled = false; btn.textContent = 'Send Message';
-      alert('Something went wrong. Please email jmhodgefl@gmail.com directly.');
+      fetch('/', { method: 'POST', body: data })
+        .then(() => {
+          form.style.display = 'none';
+          document.getElementById('success-msg').style.display = 'block';
+        })
+        .catch(() => {
+          btn.disabled = false; btn.textContent = 'Submit Report';
+          alert('Something went wrong. Please email jmhodgefl@gmail.com directly.');
+        });
     });
 }
 </script>

@@ -50,6 +50,7 @@ function injectNav() {
         <li><a href="${isRoot ? '#features' : '/#features'}">Features</a></li>
         <li><a href="${isRoot ? '#pricing' : '/#pricing'}">Pricing</a></li>
         <li><a href="/pages/about.html">About</a></li>
+        <li><a href="/pages/known-issues.html">Beta Updates</a></li>
         <li><a href="/pages/contact.html">Contact</a></li>
       </ul>
       <div class="nav-right">
@@ -63,6 +64,7 @@ function injectNav() {
       <a href="${isRoot ? '#features' : '/#features'}" style="display:block;padding:10px 0;font-weight:600;color:var(--text2)">Features</a>
       <a href="${isRoot ? '#pricing' : '/#pricing'}" style="display:block;padding:10px 0;font-weight:600;color:var(--text2)">Pricing</a>
       <a href="/pages/about.html" style="display:block;padding:10px 0;font-weight:600;color:var(--text2)">About</a>
+      <a href="/pages/known-issues.html" style="display:block;padding:10px 0;font-weight:600;color:var(--text2)">Beta Updates</a>
       <a href="/pages/contact.html" style="display:block;padding:10px 0;font-weight:600;color:var(--text2)">Contact</a>
       <div style="display:flex;gap:8px;margin-top:12px">
         <a href="/login.html" class="btn btn-secondary btn-sm" style="flex:1;justify-content:center">Log In</a>
@@ -99,6 +101,7 @@ function injectFooter() {
           <li><a href="/#features">Features</a></li>
           <li><a href="/#pricing">Pricing</a></li>
           <li><a href="/#how-it-works">How It Works</a></li>
+          <li><a href="/pages/known-issues.html">Beta Updates</a></li>
           <li><a href="/login.html?signup=true">Get Started</a></li>
         </ul>
       </div>

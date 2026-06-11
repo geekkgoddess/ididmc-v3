@@ -12,6 +12,12 @@
   to   = "/app/pages/parent-dashboard.html"
   status = 302
 
+# Compatibility for older app pages that referenced CSS from /app/css.
+[[redirects]]
+  from = "/app/css/*"
+  to   = "/css/:splat"
+  status = 200
+
 # Unsubscribe page (must come before the catch-all)
 [[redirects]]
   from = "/unsubscribe"
