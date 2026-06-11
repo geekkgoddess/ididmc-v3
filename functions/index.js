@@ -18,6 +18,32 @@ const ExifParser          = require("exif-parser");  // npm install exif-parser
 admin.initializeApp();
 const db = admin.firestore();
 
+// ================================================================
+//  STRUCTURED LOGGER
+//  Firebase Cloud Functions v2 runs on Cloud Run. Any JSON object
+//  written to stdout is parsed by Google Cloud Logging and indexed
+//  as structured fields — queryable via Log Explorer.
+//
+//  Usage:
+//    log.info('submission_created', { householdId, kidName, choreId });
+//    log.warn('pin_failure',        { householdId, kidName, attempt: 3 });
+//    log.error('email_send_failed', { to: email, err: err.message });
+// ================================================================
+const log = {
+  _write(severity, event, fields = {}) {
+    // console.log() on Cloud Run goes to stdout → Cloud Logging parses it
+    console.log(JSON.stringify({
+      severity,
+      message: event,
+      ...fields,
+      timestamp: new Date().toISOString(),
+    }));
+  },
+  info:  (event, fields) => log._write("INFO",    event, fields),
+  warn:  (event, fields) => log._write("WARNING", event, fields),
+  error: (event, fields) => log._write("ERROR",   event, fields),
+};
+
 // ── Email transporter (uses Gmail App Password) ─────────────────
 // Set these in Firebase environment:
 // firebase functions:config:set gmail.email="you@gmail.com" gmail.password="your_app_password"
@@ -171,7 +197,7 @@ exports.claimChore = functions.https.onRequest(async (req, res) => {
     household = hSnap.data();
     chore = (household.chores || []).find((c) => c.id === choreId) || chore;
   } catch (err) {
-    console.warn("Could not load household:", err.message);
+    log.warn("household_load_failed", {householdId, err: err.message, endpoint: "claimChore"});
     return res.status(500).json({error: "internal"});
   }
 
@@ -228,12 +254,15 @@ exports.claimChore = functions.https.onRequest(async (req, res) => {
       return {success: true, claimedBy: kidName};
     });
 
+    log.info("chore_claimed", {householdId, kidName, choreId, choreName: chore.name});
     res.json(result);
   } catch (err) {
     if (err.message.startsWith("CLAIMED_BY:")) {
       const claimedBy = err.message.replace("CLAIMED_BY:", "");
+      log.warn("claim_conflict", {householdId, kidName, choreId, claimedBy});
       res.status(409).json({error: "already-exists", message: `This chore was just claimed by ${claimedBy}.`});
     } else {
+      log.error("endpoint_error", {endpoint: "claimChore", householdId, err: err.message});
       res.status(500).json({error: "internal", message: err.message});
     }
   }
@@ -284,7 +313,7 @@ exports.releaseExpiredClaims = onSchedule("every 20 minutes", async (event) => {
       });
 
       await batch.commit();
-      console.log(`Released ${releaseCount} expired chore claims.`);
+      log.info("claims_released", {releaseCount});
       return null;
     });
 
@@ -485,7 +514,7 @@ exports.sendDailySummary = onSchedule({schedule:"0 22 * * *",timeZone:"America/N
       });
 
       await Promise.all(emailPromises);
-      console.log(`Daily summaries sent for ${householdsSnap.size} households.`);
+      log.info("daily_summaries_sent", {householdCount: householdsSnap.size});
       return null;
     });
 
@@ -712,9 +741,11 @@ exports.getKidLiteDashboard = functions.https.onRequest(async (req, res) => {
     const kid = (household.kids || []).find((k) => k.name === kidName);
     if (!kid || String(kid.pin) !== String(pin)) {
       await recordPinFailure(householdId, kidName);
+      log.warn("pin_failure", {householdId, kidName, endpoint: "getKidLiteDashboard"});
       return res.status(403).json({error: "bad-pin"});
     }
     await clearPinAttempts(householdId, kidName);
+    log.info("pin_success", {householdId, kidName, endpoint: "getKidLiteDashboard"});
 
     const today = getTodayEt();
     const payPeriod = getPayPeriodForHousehold(household, today);
@@ -760,6 +791,11 @@ exports.getKidLiteDashboard = functions.https.onRequest(async (req, res) => {
       approvalMode: household.approvalMode || "manual",
       pointMultiplier: household.pointMultiplier || 5,
       ptoToday: ((household.ptoSchedule || {})[kidName] || []).includes(today),
+      ptoDaysPerYear: household.ptoDaysPerYear || 0,
+      ptoDaysRemaining: Math.max(
+        0,
+        (household.ptoDaysPerYear || 0) - ((household.ptoSchedule || {})[kidName] || []).length
+      ),
       chores: visibleChores,
       dailyClaimed,
       weeklyClaimed,
@@ -780,9 +816,10 @@ exports.getKidLiteDashboard = functions.https.onRequest(async (req, res) => {
     });
   } catch (err) {
     if (err.message === "THROTTLED") {
+      log.warn("pin_throttled", {householdId, kidName, retryAfterSec: err.retryAfterSec, endpoint: "getKidLiteDashboard"});
       return res.status(429).json({error: "too-many-attempts", retryAfterSec: err.retryAfterSec || 300});
     }
-    console.error("getKidLiteDashboard error:", err);
+    log.error("endpoint_error", {endpoint: "getKidLiteDashboard", householdId, err: err.message});
     res.status(500).json({error: "internal", message: err.message});
   }
 });
@@ -816,6 +853,7 @@ exports.submitKidLiteChore = functions.https.onRequest(async (req, res) => {
     const kid = (household.kids || []).find((k) => k.name === kidName);
     if (!kid || String(kid.pin) !== String(pin)) {
       await recordPinFailure(householdId, kidName);
+      log.warn("pin_failure", {householdId, kidName, endpoint: "submitKidLiteChore"});
       return res.status(403).json({error: "bad-pin"});
     }
     await clearPinAttempts(householdId, kidName);
@@ -906,6 +944,7 @@ exports.submitKidLiteChore = functions.https.onRequest(async (req, res) => {
       [`${choreId}_submittedAt`]: admin.firestore.Timestamp.now(),
     }, {merge: true});
 
+    log.info("submission_created", {householdId, kidName, choreId, choreName: chore.name, status, source: "kid-lite"});
     res.json({
       success: true,
       status,
@@ -914,7 +953,6 @@ exports.submitKidLiteChore = functions.https.onRequest(async (req, res) => {
       choreName: chore.name,
     });
   } catch (err) {
-    console.error("submitKidLiteChore error:", err);
     if (err.message && err.message.startsWith("CLAIMED_BY:")) {
       return res.status(409).json({
         error: "already-claimed",
@@ -925,8 +963,10 @@ exports.submitKidLiteChore = functions.https.onRequest(async (req, res) => {
       return res.status(409).json({error: "already-submitted", message: "This chore was already submitted."});
     }
     if (err.message === "THROTTLED") {
+      log.warn("pin_throttled", {householdId, kidName, retryAfterSec: err.retryAfterSec, endpoint: "submitKidLiteChore"});
       return res.status(429).json({error: "too-many-attempts", retryAfterSec: err.retryAfterSec || 300});
     }
+    log.error("endpoint_error", {endpoint: "submitKidLiteChore", householdId, kidName, err: err.message});
     res.status(500).json({error: "internal", message: err.message});
   }
 });
@@ -1062,20 +1102,27 @@ function getPayPeriodForHousehold(household, todayStr) {
 
 function calculateKidStats(submissions, today) {
   const stats = {
-    pointsToday: 0,
-    pointsPeriod: 0,
-    flatToday: 0,
-    flatPeriod: 0,
+    pointsToday:    0,
+    pointsPeriod:   0,
+    pointsApproved: 0, // confirmed by parent
+    pointsPending:  0, // submitted but awaiting review
+    flatToday:      0,
+    flatPeriod:     0,
     dailyDoneCount: 0,
   };
   submissions.forEach((s) => {
-    const pts = (s.points || 0) + (s.bonusPoints || 0);
+    const pts  = (s.points || 0) + (s.bonusPoints || 0);
     const flat = s.flatPayValue || 0;
     stats.pointsPeriod += pts;
-    stats.flatPeriod += flat;
+    stats.flatPeriod   += flat;
+    if (s.status === "approved") {
+      stats.pointsApproved += pts;
+    } else if (s.status !== "rejected" && s.status !== "rejected_fraud") {
+      stats.pointsPending += pts;
+    }
     if (s.date === today) {
       stats.pointsToday += pts;
-      stats.flatToday += flat;
+      stats.flatToday   += flat;
       stats.dailyDoneCount++;
     }
   });
@@ -1164,7 +1211,7 @@ exports.detectPhotoFraud = onObjectFinalized({ bucket: "i-did-my-chores.firebase
   // Path format: photos/{householdId}/{kidName}/{choreId}/{date}_{timestamp}.{ext}
   const parts = filePath.split("/");
   if (parts.length < 5) {
-    console.warn("Unexpected photo path format, skipping fraud check:", filePath);
+    log.warn("fraud_check_skipped", {reason: "unexpected_path_format", filePath});
     return null;
   }
   const householdId = parts[1];
@@ -1174,11 +1221,11 @@ exports.detectPhotoFraud = onObjectFinalized({ bucket: "i-did-my-chores.firebase
   const uploadDate  = filename.split("_")[0]; // "YYYY-MM-DD"
 
   if (!uploadDate || !/^\d{4}-\d{2}-\d{2}$/.test(uploadDate)) {
-    console.warn("Could not parse upload date from filename, skipping:", filename);
+    log.warn("fraud_check_skipped", {reason: "unparseable_date", filename});
     return null;
   }
 
-  console.log(`Photo fraud check: ${filePath} | uploadDate: ${uploadDate}`);
+  log.info("fraud_check_started", {filePath, uploadDate, householdId, kidName});
 
   // ── Download the file bytes ──────────────────────────────────
   const bucket   = admin.storage().bucket(object.bucket);
@@ -1188,7 +1235,7 @@ exports.detectPhotoFraud = onObjectFinalized({ bucket: "i-did-my-chores.firebase
     const [contents] = await fileRef.download();
     fileBuffer = contents;
   } catch (err) {
-    console.error("Could not download file for fraud check:", err);
+    log.error("fraud_check_download_failed", {filePath, err: err.message});
     return null;
   }
 
@@ -1209,13 +1256,13 @@ exports.detectPhotoFraud = onObjectFinalized({ bucket: "i-did-my-chores.firebase
         if (photoDate < uploadDate) {
           // Photo was taken BEFORE today — pre-taken, not a live submission
           fraudReason = `EXIF date mismatch: photo taken ${photoDate}, submitted on ${uploadDate}`;
-          console.warn(`FRAUD DETECTED (EXIF): ${filePath} — ${fraudReason}`);
+          log.warn("fraud_detected", {type: "exif", filePath, fraudReason});
         }
       }
       // If no EXIF date found, give the kid the benefit of the doubt — pass
     } catch (exifErr) {
       // Corrupted or missing EXIF — not conclusive evidence of fraud, continue
-      console.log("Could not parse EXIF (not necessarily fraud):", exifErr.message);
+      log.info("exif_parse_skipped", {filePath, reason: exifErr.message});
     }
   }
 
@@ -1228,7 +1275,7 @@ exports.detectPhotoFraud = onObjectFinalized({ bucket: "i-did-my-chores.firebase
   if (!fraudReason && hashSnap.exists()) {
     const prior = hashSnap.data();
     fraudReason = `Duplicate photo: already submitted by ${prior.kidName} on ${prior.uploadDate}`;
-    console.warn(`FRAUD DETECTED (duplicate hash): ${filePath} — ${fraudReason}`);
+    log.warn("fraud_detected", {type: "duplicate_hash", filePath, fraudReason});
   }
 
   // ── On fraud: flag submission + delete file ──────────────────
@@ -1250,17 +1297,17 @@ exports.detectPhotoFraud = onObjectFinalized({ bucket: "i-did-my-chores.firebase
         fraudReason: fraudReason,
         flaggedAt:   admin.firestore.FieldValue.serverTimestamp(),
       });
-      console.log(`Submission ${submDoc.id} marked rejected_fraud`);
+      log.info("submission_fraud_flagged", {submissionId: submDoc.id, filePath, fraudReason, householdId, kidName});
     } else {
-      console.warn("No matching submission found for fraudulent photo:", filePath);
+      log.warn("fraud_submission_not_found", {filePath, fraudReason});
     }
 
     // Delete the fraudulent photo from Storage
     try {
       await fileRef.delete();
-      console.log("Fraudulent photo deleted:", filePath);
+      log.info("fraud_photo_deleted", {filePath});
     } catch (delErr) {
-      console.error("Could not delete fraudulent photo:", delErr);
+      log.error("fraud_photo_delete_failed", {filePath, err: delErr.message});
     }
 
     return null;
@@ -1274,7 +1321,7 @@ exports.detectPhotoFraud = onObjectFinalized({ bucket: "i-did-my-chores.firebase
     uploadDate: uploadDate,
     storedAt:   admin.firestore.FieldValue.serverTimestamp(),
   });
-  console.log(`Photo passed fraud checks, hash stored: ${hash.slice(0, 12)}…`);
+  log.info("fraud_check_passed", {filePath, hashPrefix: hash.slice(0, 12), householdId, kidName});
   return null;
 });
 
@@ -1429,7 +1476,7 @@ async function sendWelcomeEmail({ email, householdName }) {
     subject: "Welcome to I Did My Chores! 🧹",
     html,
   });
-  console.log(`Welcome email sent to ${email}`);
+  log.info("email_sent", {type: "welcome", email});
 }
 
 // ── Cloud Function trigger: fires when a new household is created ─
@@ -1444,7 +1491,7 @@ exports.onHouseholdCreated = onDocumentCreated('households/{uid}', async (event)
       await sendWelcomeEmail({ email: userRecord.email, householdName: data.name });
     }
   } catch (e) {
-    console.error('Welcome email trigger error:', e);
+    log.error("email_failed", {type: "welcome", uid, err: e.message});
   }
   return null;
 });
@@ -1565,7 +1612,7 @@ async function sendSubscriberEmail({ email, firstName }) {
             </p>
             <p style="margin:0;font-size:12px;color:#6b7280">
               © ${year} I Did My Chores ·
-              <a href="https://ididmc.com/unsubscribe" style="color:#6b7280;text-decoration:underline">Unsubscribe</a>
+              <a href="https://ididmc.com/unsubscribe?email=${encodeURIComponent(email)}" style="color:#6b7280;text-decoration:underline">Unsubscribe</a>
             </p>
           </td>
         </tr>
@@ -1583,7 +1630,7 @@ async function sendSubscriberEmail({ email, firstName }) {
     subject: "You're on the list! ✉️",
     html,
   });
-  console.log(`Subscriber email sent to ${email}`);
+  log.info("email_sent", {type: "subscriber", email});
 }
 
 // ── Cloud Function trigger: fires when a new subscriber document is created ─
@@ -1594,7 +1641,45 @@ exports.onSubscriberCreated = onDocumentCreated('subscribers/{email}', async (ev
   try {
     await sendSubscriberEmail({ email, firstName });
   } catch (e) {
-    console.error('Subscriber email trigger error:', e);
+    log.error("email_failed", {type: "subscriber", email, err: e.message});
   }
   return null;
+});
+
+
+// ================================================================
+//  UNSUBSCRIBE — HTTP endpoint
+//  Called by the /unsubscribe page. Deletes the subscriber doc so
+//  future newsletter triggers won't fire for this address.
+//
+//  POST body: { email: "user@example.com" }
+//  200  → unsubscribed successfully
+//  404  → email not found (already removed or never subscribed)
+//  400  → missing / invalid email
+// ================================================================
+exports.unsubscribeEmail = functions.https.onRequest(async (req, res) => {
+  // Allow the Netlify-hosted unsubscribe page to call this
+  setCors(res);
+  if (req.method === "OPTIONS") return res.status(204).send("");
+  if (req.method !== "POST") return res.status(405).json({error: "method-not-allowed"});
+
+  const {email} = req.body || {};
+
+  // Basic validation — must look like an email address
+  if (!email || typeof email !== "string" || !email.includes("@")) {
+    return res.status(400).json({error: "invalid-email"});
+  }
+
+  const docRef  = db.collection("subscribers").doc(email.toLowerCase().trim());
+  const docSnap = await docRef.get();
+
+  if (!docSnap.exists) {
+    // Not subscribed — could be already removed; treat as success on the client
+    log.info("unsubscribe_not_found", {email});
+    return res.status(404).json({error: "not-found"});
+  }
+
+  await docRef.delete();
+  log.info("unsubscribed", {email});
+  return res.status(200).json({success: true});
 });

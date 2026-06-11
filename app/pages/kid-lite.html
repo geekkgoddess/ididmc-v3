@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧹</text></svg>">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
   <title>I Did My Chores - Kid Lite</title>
   <link rel="stylesheet" href="../../css/app.css">
@@ -77,8 +78,8 @@
       flex-shrink: 0;
     }
     .chore-main { flex: 1; min-width: 0; }
-    .chore-name { font-size: 14px; font-weight: 800; }
-    .chore-sub { font-size: 11px; color: var(--muted); margin-top: 3px; }
+    .chore-name { display: block; font-size: 14px; font-weight: 800; }
+    .chore-sub { display: block; font-size: 11px; color: var(--muted); margin-top: 3px; }
     .value-pill {
       font-family: 'DM Mono', monospace;
       font-size: 12px;
@@ -220,7 +221,20 @@
       <div class="summary-tile">
         <div class="page-label">This Period</div>
         <div class="summary-value" id="period-value">0</div>
-        <p id="period-sub" style="font-size:11px;margin-top:5px">pts pending/approved</p>
+        <p id="period-approved" style="font-size:11px;margin-top:4px;color:var(--green)"></p>
+        <p id="period-pending" style="font-size:11px;margin-top:2px;color:var(--muted)"></p>
+      </div>
+    </div>
+
+    <!-- PTO days remaining (only shown when ptoDaysPerYear > 0) -->
+    <div id="pto-remaining-card" style="display:none;background:var(--gold-dim);
+         border:1px solid rgba(245,200,66,0.2);border-radius:12px;
+         padding:10px 16px;margin-bottom:16px;
+         display:flex;align-items:center;gap:10px">
+      <span style="font-size:20px">🏖️</span>
+      <div>
+        <div style="font-size:13px;font-weight:700;color:var(--gold)" id="pto-remaining-label">0 PTO days remaining</div>
+        <div style="font-size:11px;color:var(--muted)">Days off this year</div>
       </div>
     </div>
 
@@ -407,12 +421,27 @@ function renderDashboard() {
     document.getElementById('today-value').textContent = '$' + Number(stats.flatToday || 0).toFixed(2);
     document.getElementById('period-value').textContent = '$' + Number(stats.flatPeriod || 0).toFixed(2);
     document.getElementById('today-sub').textContent = 'earned today';
-    document.getElementById('period-sub').textContent = 'this period';
+    document.getElementById('period-approved').textContent = '';
+    document.getElementById('period-pending').textContent = 'this period';
   } else {
     document.getElementById('today-value').textContent = stats.pointsToday || 0;
     document.getElementById('period-value').textContent = stats.pointsPeriod || 0;
     document.getElementById('today-sub').textContent = 'pts today';
-    document.getElementById('period-sub').textContent = 'pts pending/approved';
+    var approved = stats.pointsApproved || 0;
+    var pending  = stats.pointsPending  || 0;
+    document.getElementById('period-approved').textContent = approved + ' pts approved ✓';
+    document.getElementById('period-pending').textContent  = pending  > 0 ? pending + ' pts pending…' : '';
+  }
+
+  // PTO remaining
+  var ptoRemaining = household.ptoDaysRemaining;
+  var ptoCard = document.getElementById('pto-remaining-card');
+  if (typeof ptoRemaining === 'number' && ptoRemaining >= 0 && (household.ptoDaysPerYear || 0) > 0) {
+    ptoCard.style.display = 'flex';
+    document.getElementById('pto-remaining-label').textContent =
+      ptoRemaining + ' PTO day' + (ptoRemaining !== 1 ? 's' : '') + ' remaining';
+  } else {
+    ptoCard.style.display = 'none';
   }
 
   renderChoreList('daily');

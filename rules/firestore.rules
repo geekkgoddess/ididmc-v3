@@ -62,6 +62,31 @@ service cloud.firestore {
       allow update, delete: if false; // Payouts are permanent records
     }
 
+    // ── Photo hashes (fraud detection) ──────────────────────────
+    // Written and read exclusively by Cloud Functions (Admin SDK).
+    // Admin SDK bypasses these rules, so `if false` locks out all
+    // browser clients — including authenticated parents — without
+    // affecting the fraud-detection function.
+    match /photo_hashes/{hash} {
+      allow read, write: if false;
+    }
+
+    // ── Email subscribers ────────────────────────────────────────
+    // Writing a doc here triggers the welcome email Cloud Function.
+    // Only the admin account can create subscriber records;
+    // never from anonymous client JS.
+    match /subscribers/{email} {
+      allow read, write: if request.auth != null
+                         && request.auth.token.email == "jmhodgefl@gmail.com";
+    }
+
+    // ── PIN brute-force rate limits ──────────────────────────────
+    // Written and read exclusively by Cloud Functions (Admin SDK).
+    // No client — authenticated or not — should touch this directly.
+    match /pin_attempts/{key} {
+      allow read, write: if false;
+    }
+
     // ── Admin site content ──────────────────────────────────────
     match /admin/{docId} {
       allow read:  if true;  // Public content (pricing, hero text)
