@@ -563,14 +563,18 @@ function withTimeout(promise, ms, message) {
 }
 
 async function loadClaimedState() {
-  const todayKey = `daily_${householdId}_${getToday()}`;
-  const weekKey  = `weekly_${householdId}_${getWeekStart()}`;
-  const [dSnap, wSnap] = await Promise.all([
-    getDoc(doc(db, 'chore_claims', todayKey)),
-    getDoc(doc(db, 'chore_claims', weekKey))
-  ]);
-  dailyClaimed  = dSnap.exists()  ? dSnap.data()  : {};
-  weeklyClaimed = wSnap.exists()  ? wSnap.data()  : {};
+  const visibleChores = (household.chores || []).filter(c =>
+    c.assignedTo === 'any' || c.assignedTo === currentKid.name
+  );
+  const claimDocIds = [...new Set(visibleChores.map(getClaimDocIdForChore))];
+  const snaps = await Promise.all(claimDocIds.map(id => getDoc(doc(db, 'chore_claims', id))));
+  dailyClaimed = {};
+  weeklyClaimed = {};
+  snaps.forEach(snap => {
+    if (!snap.exists()) return;
+    if (snap.id.startsWith('daily_')) Object.assign(dailyClaimed, snap.data());
+    else Object.assign(weeklyClaimed, snap.data());
+  });
 }
 
 async function loadPoints() {
@@ -700,8 +704,8 @@ function renderDashboard() {
   // K = number of kids
   const K = household.kids?.length || 1;
 
-  // Q = individual daily quota = T / K (rounded up)
-  const Q = Math.ceil(T / K);
+  // Q = individual daily quota
+  const Q = getDailyChoreTarget(T, K);
 
   // completionPct = chores done today / quota * 100
   const pct = Q > 0 ? Math.min(Math.round((dailyDoneCount / Q) * 100), 100) : 0;
@@ -717,7 +721,7 @@ function renderDashboard() {
     periodText    = `$${flatPeriod.toFixed(2)} this period`;
     progressLabel = `${dailyDoneCount} of ${Q} chores done`;
   } else if (model === 'daily-min') {
-    const choreMin   = cs.choreMin   || 0;
+    const choreMin   = cs.choreMinForFullDay || cs.choreMin || 0;
     const fullDayPay = cs.fullDayPay || 0;
     const goalMet    = choreMin > 0 && dailyDoneCount >= choreMin;
     bigNum        = `${dailyDoneCount}/${choreMin}`;
@@ -1050,9 +1054,7 @@ window.submitClaim = async () => {
     });
 
     // ── STEP 3: Update chore claim status to "submitted" ──────
-    const claimDocId  = currentChore.type === 'daily'
-      ? `daily_${householdId}_${today}`
-      : `weekly_${householdId}_${weekStart}`;
+    const claimDocId = getClaimDocIdForChore(currentChore);
 
     const claimSnap = await getDoc(doc(db, 'chore_claims', claimDocId));
     const updates   = { [`${currentChore.id}_status`]: 'submitted' };
@@ -1089,7 +1091,7 @@ window.submitClaim = async () => {
       earnedLabel  = `+$${flat.toFixed(2)}`;
       todayLine    = `Today: <strong style="color:var(--gold)">$${flatToday.toFixed(2)}</strong>`;
     } else if (successModel === 'daily-min') {
-      const min     = successCs.choreMin   || 0;
+      const min     = successCs.choreMinForFullDay || successCs.choreMin || 0;
       const pay     = successCs.fullDayPay || 0;
       const goalMet = min > 0 && dailyDoneCount >= min;
       earnedLabel   = `${dailyDoneCount}/${min} chores`;
@@ -1128,9 +1130,7 @@ window.cancelClaim = async () => {
     try {
       const today     = getToday();
       const weekStart = getWeekStart();
-      const claimDocId = currentChore.type === 'daily'
-        ? `daily_${householdId}_${today}`
-        : `weekly_${householdId}_${weekStart}`;
+      const claimDocId = getClaimDocIdForChore(currentChore);
       const { updateDoc } = await import('https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore.js');
       await updateDoc(doc(db, 'chore_claims', claimDocId), {
         [`${currentChore.id}_status`]:    'available',
@@ -1177,11 +1177,49 @@ function formatDateKey(date) {
   return `${date.getFullYear()}-${pad(date.getMonth()+1)}-${pad(date.getDate())}`;
 }
 function getToday()  { return formatDateKey(new Date()); }
+function getDailyChoreTarget(totalDailyChores, kidCount) {
+  const cs = household?.compSettings || {};
+  const configured = cs.choreMinForFullDay || cs.choreMin || cs.dailyChoreTarget;
+  if (configured && configured > 0) return configured;
+  return Math.ceil((totalDailyChores || 0) / (kidCount || 1));
+}
 function isWeekend() { const d = new Date().getDay(); return d === 0 || d === 6; }
 function getWeekStart() {
   const d = new Date(); const day = d.getDay();
   const diff = d.getDate() - day + (day === 0 ? -6 : 1);
   return formatDateKey(new Date(new Date(d).setDate(diff)));
+}
+function addDays(dateStr, days) {
+  const d = new Date(dateStr + 'T00:00:00');
+  d.setDate(d.getDate() + days);
+  return formatDateKey(d);
+}
+function getRollingPeriodStart(todayStr, days) {
+  const anchorStr = '2026-01-05';
+  const anchor = new Date(anchorStr + 'T00:00:00');
+  const today = new Date(todayStr + 'T00:00:00');
+  const diff = Math.floor((today - anchor) / 86400000);
+  const num = Math.floor(Math.max(diff, 0) / days);
+  return addDays(anchorStr, num * days);
+}
+function getClaimDocIdForChore(chore) {
+  const today = getToday();
+  const freq = (chore.freq || chore.type || 'daily').replace('_', '-');
+  if (freq === 'daily') return `daily_${householdId}_${today}`;
+  if (freq === 'weekly') return `weekly_${householdId}_${getWeekStart()}`;
+  if (freq === 'biweekly') return `biweekly_${householdId}_${getRollingPeriodStart(today, 14)}`;
+  if (freq === 'monthly') return `monthly_${householdId}_${today.slice(0, 8)}01`;
+  if (freq === 'quarterly') {
+    const month = Number(today.slice(5, 7));
+    const startMonth = String(Math.floor((month - 1) / 3) * 3 + 1).padStart(2, '0');
+    return `quarterly_${householdId}_${today.slice(0, 5)}${startMonth}-01`;
+  }
+  if (freq === 'biannual') {
+    const startMonth = Number(today.slice(5, 7)) <= 6 ? '01' : '07';
+    return `biannual_${householdId}_${today.slice(0, 5)}${startMonth}-01`;
+  }
+  if (freq === 'annual') return `annual_${householdId}_${today.slice(0, 4)}-01-01`;
+  return `weekly_${householdId}_${getWeekStart()}`;
 }
 function getPayPeriod() {
   if (!household) return '';

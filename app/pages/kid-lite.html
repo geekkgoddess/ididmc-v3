@@ -428,7 +428,7 @@ function getModelExplanation() {
       '<p style="font-size:12px;margin:0;color:var(--text)">Each chore shows what it earns. Submit the chore and your parent approves it.</p>';
   }
   if (model === 'daily-min') {
-    var min = settings.choreMin || 0;
+    var min = settings.choreMinForFullDay || settings.choreMin || 0;
     var pay = settings.fullDayPay || 0;
     return '<div style="font-size:13px;font-weight:800;color:var(--gold);margin-bottom:3px">Daily Goal</div>' +
       '<p style="font-size:12px;margin:0;color:var(--text)">Finish at least ' + min + ' chore' + (min === 1 ? '' : 's') +

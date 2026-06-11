@@ -158,12 +158,16 @@ exports.claimChore = functions.https.onRequest(async (req, res) => {
 
   const {householdId, choreId, choreType, kidName} = req.body;
 
-  // Build the document path based on whether it's a daily or weekly chore
-  const today = new Date().toISOString().split("T")[0];
-  const weekStart = getWeekStart();
-  const claimDocId = choreType === "daily" ?
-    `daily_${householdId}_${today}` :
-    `weekly_${householdId}_${weekStart}`;
+  const today = getTodayEt();
+  let chore = {id: choreId, freq: choreType === "daily" ? "daily" : "weekly"};
+  try {
+    const hSnap = await db.collection("households").doc(householdId).get();
+    const household = hSnap.exists ? hSnap.data() : {};
+    chore = (household.chores || []).find((c) => c.id === choreId) || chore;
+  } catch (err) {
+    console.warn("Could not load household chore frequency, using request type:", err.message);
+  }
+  const claimDocId = getClaimDocIdForChore(householdId, chore, today);
 
   const claimRef = db.collection("chore_claims").doc(claimDocId);
 
@@ -306,7 +310,7 @@ exports.sendDailySummary = onSchedule({schedule:"0 22 * * *",timeZone:"America/N
         // K = number of kids
         const K = household.kids?.length || 1;
         // Q = individual daily quota
-        const Q = Math.ceil(T / K);
+        const Q = getDailyChoreTarget(household, T, K);
 
         // Build per-kid stats
         const kidStats = {};
@@ -686,11 +690,15 @@ exports.getKidLiteDashboard = functions.https.onRequest(async (req, res) => {
     }
 
     const today = getTodayEt();
-    const weekStart = getWeekStartForDate(today);
     const payPeriod = getPayPeriodForHousehold(household, today);
-    const [dailySnap, weeklySnap, subsSnap] = await Promise.all([
-      db.collection("chore_claims").doc(`daily_${householdId}_${today}`).get(),
-      db.collection("chore_claims").doc(`weekly_${householdId}_${weekStart}`).get(),
+    const visibleChores = (household.chores || [])
+      .filter((chore) => chore && (chore.assignedTo === "any" || chore.assignedTo === kidName))
+      .map((chore) => sanitizeChore(chore));
+    const claimDocIds = [...new Set(visibleChores.map((chore) =>
+      getClaimDocIdForChore(householdId, chore, today)
+    ))];
+    const [claimSnaps, subsSnap] = await Promise.all([
+      Promise.all(claimDocIds.map((id) => db.collection("chore_claims").doc(id).get())),
       db.collection("submissions")
         .where("householdId", "==", householdId)
         .where("kidName", "==", kidName)
@@ -699,21 +707,26 @@ exports.getKidLiteDashboard = functions.https.onRequest(async (req, res) => {
         .get(),
     ]);
 
-    const dailyClaimed = dailySnap.exists ? dailySnap.data() : {};
-    const weeklyClaimed = weeklySnap.exists ? weeklySnap.data() : {};
+    const dailyClaimed = {};
+    const weeklyClaimed = {};
+    claimSnaps.forEach((snap) => {
+      if (!snap.exists) return;
+      const data = snap.data();
+      if (snap.id.startsWith("daily_")) {
+        Object.assign(dailyClaimed, data);
+      } else {
+        Object.assign(weeklyClaimed, data);
+      }
+    });
     const submissions = subsSnap.docs.map((d) => ({id: d.id, ...d.data()}));
     const stats = calculateKidStats(submissions, today);
-
-    const visibleChores = (household.chores || [])
-      .filter((chore) => chore && (chore.assignedTo === "any" || chore.assignedTo === kidName))
-      .map((chore) => sanitizeChore(chore));
 
     res.json({
       householdName: household.name || "I Did My Chores",
       kid: {name: kid.name, color: kid.color || "#f5c842"},
       kids,
       today,
-      weekStart,
+      weekStart: getWeekStartForDate(today),
       payPeriod,
       compModel: household.compModel || "points",
       compSettings: household.compSettings || {},
@@ -781,12 +794,10 @@ exports.submitKidLiteChore = functions.https.onRequest(async (req, res) => {
     }
 
     const today = getTodayEt();
-    const weekStart = getWeekStartForDate(today);
     const payPeriod = getPayPeriodForHousehold(household, today);
-    const type = choreType === "daily" ? "daily" : "weekly";
-    const claimDocId = type === "daily" ?
-      `daily_${householdId}_${today}` :
-      `weekly_${householdId}_${weekStart}`;
+    const type = chore.freq || (choreType === "daily" ? "daily" : "weekly");
+    const weekStart = getWeekStartForDate(today);
+    const claimDocId = getClaimDocIdForChore(householdId, chore, today);
     const claimRef = db.collection("chore_claims").doc(claimDocId);
 
     await db.runTransaction(async (transaction) => {
@@ -919,6 +930,35 @@ function getWeekStartForDate(dateStr) {
   return new Date(new Date(d).setDate(diff)).toISOString().split("T")[0];
 }
 
+function getClaimDocIdForChore(householdId, chore, todayStr) {
+  const freq = (chore.freq || "daily").replace("_", "-");
+  if (freq === "daily") return `daily_${householdId}_${todayStr}`;
+  if (freq === "weekly") return `weekly_${householdId}_${getWeekStartForDate(todayStr)}`;
+  if (freq === "biweekly") return `biweekly_${householdId}_${getRollingPeriodStart(todayStr, 14)}`;
+  if (freq === "monthly") return `monthly_${householdId}_${todayStr.slice(0, 8)}01`;
+  if (freq === "quarterly") {
+    const month = Number(todayStr.slice(5, 7));
+    const quarterStartMonth = String(Math.floor((month - 1) / 3) * 3 + 1).padStart(2, "0");
+    return `quarterly_${householdId}_${todayStr.slice(0, 5)}${quarterStartMonth}-01`;
+  }
+  if (freq === "biannual") {
+    const month = Number(todayStr.slice(5, 7));
+    const halfStartMonth = month <= 6 ? "01" : "07";
+    return `biannual_${householdId}_${todayStr.slice(0, 5)}${halfStartMonth}-01`;
+  }
+  if (freq === "annual") return `annual_${householdId}_${todayStr.slice(0, 4)}-01-01`;
+  return `weekly_${householdId}_${getWeekStartForDate(todayStr)}`;
+}
+
+function getRollingPeriodStart(todayStr, days) {
+  const anchorStr = "2026-01-05"; // Monday anchor for stable biweekly buckets.
+  const anchor = new Date(`${anchorStr}T00:00:00`);
+  const today = new Date(`${todayStr}T00:00:00`);
+  const diff = Math.floor((today - anchor) / 86400000);
+  const num = Math.floor(Math.max(diff, 0) / days);
+  return addDays(anchorStr, num * days);
+}
+
 function getPayPeriodForHousehold(household, todayStr) {
   const freq = household.payCycle || household.payFrequency || "weekly";
   if (freq === "monthly") return todayStr.slice(0, 8) + "01";
@@ -957,6 +997,13 @@ function calculateKidStats(submissions, today) {
     }
   });
   return stats;
+}
+
+function getDailyChoreTarget(household, totalDailyChores, kidCount) {
+  const cs = household.compSettings || {};
+  const configured = cs.choreMinForFullDay || cs.choreMin || cs.dailyChoreTarget;
+  if (configured && configured > 0) return configured;
+  return Math.ceil((totalDailyChores || 0) / (kidCount || 1));
 }
 
 function sanitizeChore(chore) {
