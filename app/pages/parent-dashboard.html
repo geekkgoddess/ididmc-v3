@@ -1111,6 +1111,7 @@ let household        = null;
 let submissionsCache = [];
 let pendingExceeded  = null;
 let editingChoreId   = null; // null = adding new, string = editing existing
+let editingPastWorkId = null;
 let subTaskRows      = [];   // local state for the sub-task editor
 
 // ── Auth ──────────────────────────────────────────────────────
@@ -1310,6 +1311,12 @@ function renderOverview() {
               <span class="tag tag-${s.status==='approved'?'green':(s.status==='rejected'||s.status==='rejected_fraud')?'red':'gold'}">
                 ${s.status==='rejected_fraud'?'⚠ fraud':s.status}
               </span>
+              ${s.source === 'parent-manual' ? `
+                <button onclick="openPastWorkModal('${s.id}')"
+                        style="background:none;border:1px solid var(--border);border-radius:6px;
+                               color:var(--muted);font-size:11px;padding:4px 7px;cursor:pointer">
+                  Edit
+                </button>` : ''}
             </div>
           </div>`}).join('') + `</div>`;
   }
@@ -1801,14 +1808,21 @@ function renderHistory() {
   const kids    = household?.kids || [];
   const ptoSched = household?.ptoSchedule || {};
 
-  // Build last 7 days (oldest → newest)
-  const days = [];
+  // Build last 7 days, plus manual work/PTO correction dates that need visibility.
+  const daySet = new Set();
   const now  = new Date();
   for (let i = 6; i >= 0; i--) {
     const d = new Date(now);
     d.setDate(now.getDate() - i);
-    days.push(formatDateKey(d));
+    daySet.add(formatDateKey(d));
   }
+  submissionsCache
+    .filter(s => s.source === 'parent-manual')
+    .forEach(s => { if (s.date) daySet.add(s.date); });
+  Object.values(ptoSched).flat().forEach(date => {
+    if (date) daySet.add(date);
+  });
+  const days = [...daySet].sort();
 
   // Individual daily quota per kid
   const T = (household?.chores || []).filter(c => c.freq === 'daily').length;
@@ -1844,8 +1858,8 @@ function renderHistory() {
       ).length;
       const pct    = Q > 0 ? Math.min(Math.round((done / Q) * 100), 100) : 0;
 
-      if (hasPto) {
-        // PTO day — show beach badge instead of bar
+      if (hasPto && done === 0) {
+        // PTO-only day — show beach badge instead of bar
         return `
           <div style="display:flex;align-items:center;gap:8px;margin-bottom:5px">
             <div style="width:20px;height:20px;border-radius:50%;flex-shrink:0;
@@ -1876,9 +1890,12 @@ function renderHistory() {
                         border-radius:4px;transition:width 0.5s ease;
                         opacity:${pct === 0 ? 0.2 : 1}"></div>
           </div>
-          <span style="font-size:10px;color:var(--muted);width:28px;text-align:right">${pct}%</span>
+          <span style="font-size:10px;color:var(--muted);width:44px;text-align:right">${hasPto ? 'PTO + ' : ''}${pct}%</span>
         </div>`;
     }).join('');
+    const manualItems = submissionsCache
+      .filter(s => s.date === date && s.source === 'parent-manual')
+      .sort((a, b) => (a.kidName || '').localeCompare(b.kidName || ''));
 
     return `
       <div style="margin-bottom:14px;padding-bottom:14px;
@@ -1893,12 +1910,25 @@ function renderHistory() {
           ${isToday ? '<span style="font-size:10px;background:var(--gold-dim);color:var(--gold);padding:2px 7px;border-radius:99px">today</span>' : ''}
         </div>
         ${kidBars || '<span style="font-size:12px;color:var(--muted)">No kids set up yet</span>'}
+        ${manualItems.length ? `
+          <div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border)">
+            ${manualItems.map(s => `
+              <div style="display:flex;align-items:center;justify-content:space-between;
+                          gap:10px;font-size:11px;color:var(--muted);padding:3px 0">
+                <span>${s.kidName} · ${s.choreName} · ${s.status}</span>
+                <button onclick="openPastWorkModal('${s.id}')"
+                        style="background:none;border:1px solid var(--border);border-radius:6px;
+                               color:var(--muted);font-size:10px;padding:3px 7px;cursor:pointer">
+                  Edit
+                </button>
+              </div>`).join('')}
+          </div>` : ''}
       </div>`;
   }).join('');
 
   histEl.innerHTML = `
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
-      <div class="page-label" style="margin-bottom:0">Completion — Last 7 Days</div>
+      <div class="page-label" style="margin-bottom:0">Completion — Recent + Current Period Corrections</div>
     </div>
     ${legend}
     <div class="card" style="padding:16px 16px 2px">
@@ -2252,11 +2282,18 @@ window.savePayCycleSettings = async () => {
     showToast('Please set the current period start and end dates'); return;
   }
 
-  const updates = { payFrequency: freq };
+  const payPeriodDaysMap = { weekly: 7, biweekly: 14, monthly: 30, semimonthly: 15, asneeded: 0 };
+  const updates = {
+    payFrequency: freq,
+    payPeriodDays: payPeriodDaysMap[freq] ?? 7,
+  };
   if (start)    updates.payPeriodStart = start;
   if (freq === 'asneeded') {
     updates.currentPeriodStart = curStart;
     updates.currentPeriodEnd   = curEnd;
+  } else {
+    updates.currentPeriodStart = '';
+    updates.currentPeriodEnd   = '';
   }
 
   await updateDoc(doc(db, 'households', currentUser.uid), updates);
@@ -2264,31 +2301,34 @@ window.savePayCycleSettings = async () => {
   // renderPeriodBadge() fires automatically via the household onSnapshot listener
 };
 
-window.openPastWorkModal = () => {
+window.openPastWorkModal = (submissionId = null) => {
   if (!household?.kids?.length || !household?.chores?.length) {
     showToast('Add kids and chores first'); return;
   }
-  document.getElementById('past-date').value = getToday();
-  document.getElementById('past-status').value = 'approved';
-  document.getElementById('past-note').value = '';
+  editingPastWorkId = submissionId;
+  const existing = submissionId ? submissionsCache.find(s => s.id === submissionId) : null;
+  document.getElementById('past-date').value = existing?.date || getToday();
+  document.getElementById('past-status').value = existing?.status || 'approved';
+  document.getElementById('past-note').value = existing?.parentNote || '';
   document.getElementById('past-kid').innerHTML = household.kids.map(k =>
-    `<option value="${escapeAttr(k.name)}">${k.name}</option>`
+    `<option value="${escapeAttr(k.name)}" ${existing?.kidName === k.name ? 'selected' : ''}>${k.name}</option>`
   ).join('');
-  renderPastWorkChores();
+  renderPastWorkChores(existing?.choreId);
   document.getElementById('modal-past-work').style.display = 'flex';
 };
 
 window.closePastWorkModal = () => {
+  editingPastWorkId = null;
   document.getElementById('modal-past-work').style.display = 'none';
 };
 
-window.renderPastWorkChores = () => {
+window.renderPastWorkChores = (selectedChoreId = '') => {
   const kidName = document.getElementById('past-kid')?.value;
   const chores = (household.chores || []).filter(c =>
     c.assignedTo === 'any' || c.assignedTo === kidName
   );
   document.getElementById('past-chore').innerHTML = chores.map(c =>
-    `<option value="${escapeAttr(c.id)}">${c.name} (${c.freq || 'daily'})</option>`
+    `<option value="${escapeAttr(c.id)}" ${selectedChoreId === c.id ? 'selected' : ''}>${c.name} (${c.freq || 'daily'})</option>`
   ).join('');
 };
 
@@ -2303,7 +2343,7 @@ window.savePastWork = async () => {
     showToast('Choose a kid, date, and chore'); return;
   }
   const weekStart = getWeekStartForDate(date);
-  await addDoc(collection(db, 'submissions'), {
+  const payload = {
     householdId: currentUser.uid,
     kidName,
     choreId: chore.id,
@@ -2321,9 +2361,15 @@ window.savePastWork = async () => {
     timestamp: new Date(`${date}T12:00:00`).toISOString(),
     source: 'parent-manual',
     parentNote: note,
-  });
+  };
+  const wasEditing = !!editingPastWorkId;
+  if (editingPastWorkId) {
+    await updateDoc(doc(db, 'submissions', editingPastWorkId), payload);
+  } else {
+    await addDoc(collection(db, 'submissions'), payload);
+  }
   closePastWorkModal();
-  showToast('✅ Past work added');
+  showToast(wasEditing ? '✅ Past work updated' : '✅ Past work added');
 };
 
 window.resetPinPrompt = async (idx) => {
@@ -2482,7 +2528,7 @@ function renderPtoSettings() {
   if (ptoPerYear > 0) {
     html += household.kids.map(k => {
       const used      = schedule[k.name] || [];
-      const upcoming  = used.filter(d => d >= todayStr).sort();
+      const scheduled = [...used].sort();
       const usedCount = used.filter(d => d <= todayStr).length;
       const remaining = Math.max(0, ptoPerYear - usedCount);
       return `
@@ -2500,7 +2546,6 @@ function renderPtoSettings() {
             </div>
             <div style="display:flex;align-items:center;gap:6px">
               <input type="date" id="pto-date-${k.name.replace(/\s+/g,'_')}"
-                     min="${todayStr}"
                      style="background:var(--card2);border:1px solid var(--border);
                             border-radius:8px;padding:6px 8px;color:var(--text);
                             font-family:inherit;font-size:12px">
@@ -2510,14 +2555,19 @@ function renderPtoSettings() {
                              font-size:12px;cursor:pointer;white-space:nowrap">+ Day Off</button>
             </div>
           </div>
-          ${upcoming.length
-            ? upcoming.map(d => `
+          ${scheduled.length
+            ? scheduled.map(d => `
                 <div style="display:flex;align-items:center;justify-content:space-between;
                             padding:5px 0;font-size:12px">
                   <span>🏖️ ${formatDate(d)}</span>
-                  <button onclick="removePtoDay('${k.name.replace(/'/g,"\\'")}','${d}')"
-                          style="background:none;border:none;color:var(--muted);
-                                 cursor:pointer;font-size:11px;padding:2px 4px">✕ Cancel</button>
+                  <div style="display:flex;gap:6px">
+                    <button onclick="changePtoDay('${k.name.replace(/'/g,"\\'")}','${d}')"
+                            style="background:none;border:1px solid var(--border);border-radius:6px;
+                                   color:var(--muted);cursor:pointer;font-size:11px;padding:2px 6px">Change</button>
+                    <button onclick="removePtoDay('${k.name.replace(/'/g,"\\'")}','${d}')"
+                            style="background:none;border:none;color:var(--muted);
+                                   cursor:pointer;font-size:11px;padding:2px 4px">✕ Cancel</button>
+                  </div>
                 </div>`).join('')
             : `<div style="font-size:12px;color:var(--muted);padding:2px 0">No days scheduled</div>`}
         </div>`;
@@ -2558,6 +2608,24 @@ window.removePtoDay = async (kidName, dateVal) => {
   await updateDoc(doc(db, 'households', currentUser.uid), { ptoSchedule: schedule });
   renderSettings();
   showToast('Day off cancelled');
+};
+
+window.changePtoDay = async (kidName, oldDate) => {
+  const nextDate = prompt(`New PTO date for ${kidName}:`, oldDate);
+  if (!nextDate) return;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(nextDate)) {
+    showToast('Use YYYY-MM-DD format'); return;
+  }
+  const schedule = household.ptoSchedule || {};
+  const days = (schedule[kidName] || []).filter(d => d !== oldDate);
+  if (!days.includes(nextDate)) days.push(nextDate);
+  days.sort();
+  schedule[kidName] = days;
+  household.ptoSchedule = schedule;
+  await updateDoc(doc(db, 'households', currentUser.uid), { ptoSchedule: schedule });
+  renderSettings();
+  renderHistory();
+  showToast('✅ PTO date updated');
 };
 
 // ── Email Notifications Settings ───────────────────────────────
