@@ -1298,7 +1298,7 @@ window.confirmPayOut = async () => {
       // asneeded — advance to today, parent sets end later
       return today;
     }
-    return d.toISOString().split('T')[0];
+    return formatDateKey(d);
   }
 
   const newStart = nextPeriodStart(period);
@@ -1722,7 +1722,7 @@ function renderHistory() {
   for (let i = 6; i >= 0; i--) {
     const d = new Date(now);
     d.setDate(now.getDate() - i);
-    days.push(d.toISOString().split('T')[0]);
+    days.push(formatDateKey(d));
   }
 
   // Individual daily quota per kid
@@ -2246,7 +2246,7 @@ document.addEventListener('keydown', (e) => {
 function renderPtoSettings() {
   const ptoPerYear = household.ptoDaysPerYear || 0;
   const schedule   = household.ptoSchedule   || {};
-  const todayStr   = new Date().toISOString().split('T')[0];
+  const todayStr   = getToday();
 
   let html = `<div style="padding:14px 0">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
@@ -2772,7 +2772,11 @@ document.addEventListener('click', (e) => {
 });
 
 // ── Helpers ───────────────────────────────────────────────────
-function getToday()  { return new Date().toISOString().split('T')[0]; }
+function formatDateKey(date) {
+  const pad = n => String(n).padStart(2, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth()+1)}-${pad(date.getDate())}`;
+}
+function getToday()  { return formatDateKey(new Date()); }
 function getPayPeriod() {
   if (!household) return '';
   const freq  = household.payFrequency ||
@@ -2794,16 +2798,16 @@ function getPayPeriod() {
     // Parent sets dates manually; use stored currentPeriodStart
     return household.currentPeriodStart ||
            household.payPeriodStart     ||
-           today.toISOString().split('T')[0];
+           getToday();
   }
   // weekly (7 days) or biweekly (14 days) — anchor-date rolling window
   const days  = freq === 'biweekly' ? 14 : 7;
-  const start = new Date((household.payPeriodStart || today.toISOString().split('T')[0]) + 'T00:00:00');
+  const start = new Date((household.payPeriodStart || getToday()) + 'T00:00:00');
   const diff  = Math.floor((today - start) / 86400000);
   const num   = Math.floor(Math.max(diff, 0) / days);
   const ps    = new Date(start);
   ps.setDate(start.getDate() + num * days);
-  return ps.toISOString().split('T')[0];
+  return formatDateKey(ps);
 }
 function formatDate(str) {
   const d = new Date(str + 'T00:00:00');

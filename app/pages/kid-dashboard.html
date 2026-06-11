@@ -1172,12 +1172,16 @@ document.addEventListener('keydown', (e) => {
 });
 
 // ── Date helpers ──────────────────────────────────────────────
-function getToday()  { return new Date().toISOString().split('T')[0]; }
+function formatDateKey(date) {
+  const pad = n => String(n).padStart(2, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth()+1)}-${pad(date.getDate())}`;
+}
+function getToday()  { return formatDateKey(new Date()); }
 function isWeekend() { const d = new Date().getDay(); return d === 0 || d === 6; }
 function getWeekStart() {
   const d = new Date(); const day = d.getDay();
   const diff = d.getDate() - day + (day === 0 ? -6 : 1);
-  return new Date(new Date(d).setDate(diff)).toISOString().split('T')[0];
+  return formatDateKey(new Date(new Date(d).setDate(diff)));
 }
 function getPayPeriod() {
   if (!household) return '';
@@ -1197,16 +1201,16 @@ function getPayPeriod() {
   if (freq === 'asneeded') {
     return household.currentPeriodStart ||
            household.payPeriodStart     ||
-           today.toISOString().split('T')[0];
+           getToday();
   }
   // weekly (7 days) or biweekly (14 days)
   const days  = freq === 'biweekly' ? 14 : 7;
-  const start = new Date((household.payPeriodStart || today.toISOString().split('T')[0]) + 'T00:00:00');
+  const start = new Date((household.payPeriodStart || getToday()) + 'T00:00:00');
   const diff  = Math.floor((today - start) / 86400000);
   const num   = Math.floor(Math.max(diff, 0) / days);
   const ps    = new Date(start);
   ps.setDate(start.getDate() + num * days);
-  return ps.toISOString().split('T')[0];
+  return formatDateKey(ps);
 }
 
 function showScreen(id) {
