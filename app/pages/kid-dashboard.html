@@ -412,6 +412,22 @@
 
 </div><!-- /app -->
 
+<script>
+// ── Theme toggle ──────────────────────────────────────────────────
+var APP_THEME_KEY = 'app-theme';
+function applyTheme(t) {
+  if (t === 'light') document.documentElement.setAttribute('data-theme', 'light');
+  else document.documentElement.removeAttribute('data-theme');
+  localStorage.setItem(APP_THEME_KEY, t);
+  const btn = document.getElementById('theme-toggle');
+  if (btn) btn.textContent = t === 'light' ? '🌙' : '☀️';
+}
+function toggleTheme() {
+  applyTheme((localStorage.getItem(APP_THEME_KEY) || 'dark') === 'light' ? 'dark' : 'light');
+}
+applyTheme(localStorage.getItem(APP_THEME_KEY) || 'dark');
+</script>
+
 <script type="module">
 import { db } from '../../app/js/firebase.js';
 import {
@@ -697,7 +713,13 @@ function renderDashboard() {
                      color:var(--muted);font-size:12px;cursor:pointer;
                      font-family:inherit;padding:5px 10px"
               onclick="switchKid()">Switch</button>
+      <button id="theme-toggle" onclick="toggleTheme()"
+        style="background:var(--card);border:1px solid var(--border);border-radius:8px;
+               padding:6px 9px;font-size:16px;cursor:pointer;line-height:1;flex-shrink:0">☀️</button>
     </div>`;
+
+  // Sync theme-toggle icon now that the button exists in the DOM
+  applyTheme(localStorage.getItem(APP_THEME_KEY) || 'dark');
 
   // Date label
   const d = new Date();
