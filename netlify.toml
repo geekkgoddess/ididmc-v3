@@ -25,6 +25,10 @@
     X-Content-Type-Options = "nosniff"
     Referrer-Policy = "strict-origin-when-cross-origin"
     Cache-Control = "no-cache"
+    # CSP: allow Firebase SDK + our own Cloud Functions; block everything else
+    # 'unsafe-inline' is required because all pages use inline <script type="module">
+    # The real XSS protection is the esc() sanitizer on all user data in innerHTML
+    Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline' https://www.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://firebasestorage.googleapis.com; connect-src 'self' https://*.googleapis.com https://*.firebaseio.com https://us-central1-i-did-my-chores.cloudfunctions.net https://firebasestorage.googleapis.com wss://*.firebaseio.com; frame-ancestors 'none'; object-src 'none'; base-uri 'self'"
 
 # Never cache HTML
 [[headers]]

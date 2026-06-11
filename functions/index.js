@@ -156,17 +156,41 @@ exports.claimChore = functions.https.onRequest(async (req, res) => {
     return;
   }
 
-  const {householdId, choreId, choreType, kidName} = req.body;
+  const {householdId, choreId, choreType, kidName, pin} = req.body;
+
+  if (!householdId || !choreId || !kidName || !pin) {
+    return res.status(400).json({error: "missing-fields"});
+  }
 
   const today = getTodayEt();
   let chore = {id: choreId, freq: choreType === "daily" ? "daily" : "weekly"};
+  let household = {};
   try {
     const hSnap = await db.collection("households").doc(householdId).get();
-    const household = hSnap.exists ? hSnap.data() : {};
+    if (!hSnap.exists) return res.status(404).json({error: "household-not-found"});
+    household = hSnap.data();
     chore = (household.chores || []).find((c) => c.id === choreId) || chore;
   } catch (err) {
-    console.warn("Could not load household chore frequency, using request type:", err.message);
+    console.warn("Could not load household:", err.message);
+    return res.status(500).json({error: "internal"});
   }
+
+  // PIN validation + brute-force protection
+  try {
+    await assertPinNotThrottled(householdId, kidName);
+  } catch (err) {
+    if (err.message === "THROTTLED") {
+      return res.status(429).json({error: "too-many-attempts", retryAfterSec: err.retryAfterSec || 300});
+    }
+    throw err;
+  }
+  const kid = (household.kids || []).find((k) => k.name === kidName);
+  if (!kid || String(kid.pin) !== String(pin)) {
+    await recordPinFailure(householdId, kidName);
+    return res.status(403).json({error: "bad-pin"});
+  }
+  await clearPinAttempts(householdId, kidName);
+
   const claimDocId = getClaimDocIdForChore(householdId, chore, today);
 
   const claimRef = db.collection("chore_claims").doc(claimDocId);
@@ -684,10 +708,13 @@ exports.getKidLiteDashboard = functions.https.onRequest(async (req, res) => {
       });
     }
 
+    await assertPinNotThrottled(householdId, kidName);
     const kid = (household.kids || []).find((k) => k.name === kidName);
     if (!kid || String(kid.pin) !== String(pin)) {
+      await recordPinFailure(householdId, kidName);
       return res.status(403).json({error: "bad-pin"});
     }
+    await clearPinAttempts(householdId, kidName);
 
     const today = getTodayEt();
     const payPeriod = getPayPeriodForHousehold(household, today);
@@ -752,6 +779,9 @@ exports.getKidLiteDashboard = functions.https.onRequest(async (req, res) => {
         })),
     });
   } catch (err) {
+    if (err.message === "THROTTLED") {
+      return res.status(429).json({error: "too-many-attempts", retryAfterSec: err.retryAfterSec || 300});
+    }
     console.error("getKidLiteDashboard error:", err);
     res.status(500).json({error: "internal", message: err.message});
   }
@@ -782,10 +812,13 @@ exports.submitKidLiteChore = functions.https.onRequest(async (req, res) => {
     if (!hSnap.exists) return res.status(404).json({error: "household-not-found"});
 
     const household = hSnap.data();
+    await assertPinNotThrottled(householdId, kidName);
     const kid = (household.kids || []).find((k) => k.name === kidName);
     if (!kid || String(kid.pin) !== String(pin)) {
+      await recordPinFailure(householdId, kidName);
       return res.status(403).json({error: "bad-pin"});
     }
+    await clearPinAttempts(householdId, kidName);
 
     const chore = (household.chores || []).find((c) => c.id === choreId);
     if (!chore) return res.status(404).json({error: "chore-not-found"});
@@ -891,6 +924,9 @@ exports.submitKidLiteChore = functions.https.onRequest(async (req, res) => {
     if (err.message === "ALREADY_SUBMITTED") {
       return res.status(409).json({error: "already-submitted", message: "This chore was already submitted."});
     }
+    if (err.message === "THROTTLED") {
+      return res.status(429).json({error: "too-many-attempts", retryAfterSec: err.retryAfterSec || 300});
+    }
     res.status(500).json({error: "internal", message: err.message});
   }
 });
@@ -904,6 +940,53 @@ function setCors(res) {
   res.set("Access-Control-Allow-Origin", "*");
   res.set("Access-Control-Allow-Methods", "POST, OPTIONS");
   res.set("Access-Control-Allow-Headers", "Content-Type");
+}
+
+// ── PIN brute-force protection ────────────────────────────────────
+// Tracks failed PIN attempts per household+kid in Firestore.
+// After 5 failures in a 5-minute window the endpoint returns 429.
+const PIN_MAX_ATTEMPTS = 5;
+const PIN_WINDOW_MS    = 5 * 60 * 1000; // 5 minutes
+
+/**
+ * Throws if this household+kid has exceeded the failed-attempt limit.
+ * Call this BEFORE doing the PIN comparison.
+ */
+async function assertPinNotThrottled(householdId, kidName) {
+  const ref  = db.collection("pin_attempts").doc(`${householdId}_${kidName}`);
+  const snap = await ref.get();
+  if (!snap.exists) return;
+  const {count = 0, windowStart} = snap.data();
+  const windowStartMs = windowStart ? windowStart.toMillis() : 0;
+  if (Date.now() - windowStartMs < PIN_WINDOW_MS && count >= PIN_MAX_ATTEMPTS) {
+    const retryAfterSec = Math.ceil((PIN_WINDOW_MS - (Date.now() - windowStartMs)) / 1000);
+    const err = new Error("THROTTLED");
+    err.retryAfterSec = retryAfterSec;
+    throw err;
+  }
+}
+
+/** Increment the failure counter (or reset + start a fresh window). */
+async function recordPinFailure(householdId, kidName) {
+  const ref  = db.collection("pin_attempts").doc(`${householdId}_${kidName}`);
+  const snap = await ref.get();
+  const now  = admin.firestore.Timestamp.now();
+  if (!snap.exists) {
+    await ref.set({count: 1, windowStart: now});
+    return;
+  }
+  const {count = 0, windowStart} = snap.data();
+  const windowStartMs = windowStart ? windowStart.toMillis() : 0;
+  if (Date.now() - windowStartMs >= PIN_WINDOW_MS) {
+    await ref.set({count: 1, windowStart: now});   // window expired — fresh start
+  } else {
+    await ref.update({count: count + 1});
+  }
+}
+
+/** Call this after a successful PIN check to clear the failure counter. */
+async function clearPinAttempts(householdId, kidName) {
+  await db.collection("pin_attempts").doc(`${householdId}_${kidName}`).delete();
 }
 
 function getTodayEt() {

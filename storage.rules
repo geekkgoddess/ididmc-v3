@@ -3,7 +3,8 @@ service firebase.storage {
   match /b/{bucket}/o {
     // Photos: anyone can upload (kids submit without auth), only auth users can read
     match /photos/{householdId}/{allPaths=**} {
-      allow write: if true;
+      allow write: if request.resource.size < 5 * 1024 * 1024   // max 5 MB
+                  && request.resource.contentType.matches('image/.*'); // images only
       allow read: if request.auth != null && request.auth.uid == householdId;
     }
     // Default: deny all

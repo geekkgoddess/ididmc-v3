@@ -1109,6 +1109,17 @@ import {
   query, where, getDocs, onSnapshot, addDoc, serverTimestamp
 } from 'https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore.js';
 
+// ── XSS sanitizer — wrap all user-controlled data inserted into innerHTML ──
+// Converts <, >, &, ", ' to HTML entities so they render as text, not markup.
+function esc(str) {
+  return String(str ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 let currentUser      = null;
 let household        = null;
 let submissionsCache = [];
@@ -1258,8 +1269,8 @@ function renderOverview() {
             <div style="width:36px;height:36px;border-radius:50%;
                         background:${kid.color}22;color:${kid.color};
                         display:flex;align-items:center;justify-content:center;
-                        font-weight:800;font-size:15px">${kid.name.charAt(0)}</div>
-            <div style="font-size:15px;font-weight:700">${kid.name}</div>
+                        font-weight:800;font-size:15px">${esc(kid.name.charAt(0))}</div>
+            <div style="font-size:15px;font-weight:700">${esc(kid.name)}</div>
           </div>
           <div style="text-align:right">
             <div style="font-family:'DM Mono',monospace;font-size:20px;
@@ -1302,9 +1313,9 @@ function renderOverview() {
             <div style="width:34px;height:34px;border-radius:50%;flex-shrink:0;
                         background:${kid?.color || '#666'}22;color:${kid?.color || '#666'};
                         display:flex;align-items:center;justify-content:center;
-                        font-weight:800;font-size:13px">${s.kidName.charAt(0)}</div>
+                        font-weight:800;font-size:13px">${esc(s.kidName.charAt(0))}</div>
             <div class="list-info">
-              <div class="list-name">${s.kidName} — ${s.choreName}</div>
+              <div class="list-name">${esc(s.kidName)} — ${esc(s.choreName)}</div>
               <div class="list-sub">${formatTime(s.timestamp)}</div>
             </div>
             <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
@@ -1355,9 +1366,9 @@ window.openPaydayModal = () => {
         <div style="width:34px;height:34px;border-radius:50%;
                     background:${kid.color}22;color:${kid.color};
                     display:flex;align-items:center;justify-content:center;
-                    font-weight:800;font-size:14px">${kid.name.charAt(0)}</div>
+                    font-weight:800;font-size:14px">${esc(kid.name.charAt(0))}</div>
         <div>
-          <div style="font-size:14px;font-weight:600">${kid.name}</div>
+          <div style="font-size:14px;font-weight:600">${esc(kid.name)}</div>
           <div style="font-size:11px;color:var(--muted)">${pts} pts this period</div>
         </div>
       </div>
@@ -1460,11 +1471,11 @@ function renderApprovals() {
             : `<div class="approval-placeholder">📷</div>`}
           <div style="padding:14px">
             <div style="display:flex;justify-content:space-between;align-items:center">
-              <h3>${s.choreName}</h3>
+              <h3>${esc(s.choreName)}</h3>
               <span class="tag tag-red">⚠ fraud</span>
             </div>
             <div style="font-size:12px;color:var(--muted);margin-top:4px">
-              ${s.kidName} · ${formatDate(s.date)} · ${formatTime(s.timestamp)}
+              ${esc(s.kidName)} · ${formatDate(s.date)} · ${formatTime(s.timestamp)}
             </div>
             <div style="font-size:12px;color:var(--muted);margin-top:6px;font-style:italic">
               ${s.fraudReason || 'Photo failed fraud check (duplicate or backdated EXIF date)'}
@@ -1502,13 +1513,13 @@ function renderApprovals() {
           : `<div class="approval-placeholder">📷</div>`}
         <div style="padding:14px">
           <div style="display:flex;justify-content:space-between;align-items:center">
-            <h3>${s.choreName}</h3>
+            <h3>${esc(s.choreName)}</h3>
             <span style="font-family:'DM Mono',monospace;color:var(--gold)">
               ${s.points || 0} pts
             </span>
           </div>
           <div style="font-size:12px;color:var(--muted);margin-top:4px">
-            ${s.kidName} · ${formatDate(s.date)} · ${formatTime(s.timestamp)}
+            ${esc(s.kidName)} · ${formatDate(s.date)} · ${formatTime(s.timestamp)}
           </div>
           ${subTaskHtml}
           <div class="approval-actions">
@@ -1597,7 +1608,7 @@ function renderChoresAdmin() {
           <div style="width:8px;height:8px;border-radius:50%;
                       background:${freqColor};flex-shrink:0"></div>
           <div class="list-info">
-            <div style="font-size:14px;font-weight:700">${chore.name}</div>
+            <div style="font-size:14px;font-weight:700">${esc(chore.name)}</div>
             <div style="font-size:11px;color:var(--muted)">
               ${household.compModel === 'flat'
                   ? `$${(chore.flatPayValue || 0).toFixed(2)}`
@@ -1606,7 +1617,7 @@ function renderChoresAdmin() {
                     : `${chore.pointValue || 0} pts`
                } · ${freqLabel}
               ${subCount ? ` · ${subCount} sub-tasks` : ''}
-              ${chore.assignedTo !== 'any' ? ` · ${chore.assignedTo} only` : ''}
+              ${chore.assignedTo !== 'any' ? ` · ${esc(chore.assignedTo)} only` : ''}
             </div>
           </div>
           <div style="display:flex;align-items:center;gap:8px">
@@ -1622,11 +1633,11 @@ function renderChoresAdmin() {
           </div>
         </div>
         <div class="chore-admin-body">
-          ${chore.desc ? `<p style="font-size:13px;color:var(--muted);margin:10px 0">"${chore.desc}"</p>` : ''}
+          ${chore.desc ? `<p style="font-size:13px;color:var(--muted);margin:10px 0">"${esc(chore.desc)}"</p>` : ''}
           ${subCount ? `
             <div class="page-label" style="margin:10px 0 6px">Sub-tasks</div>
             <div>${(chore.subTasks || []).sort((a,b) => (a.order||0)-(b.order||0)).map(t =>
-              `<div style="font-size:13px;padding:4px 0;color:var(--muted)">☐ ${t.label}</div>`
+              `<div style="font-size:13px;padding:4px 0;color:var(--muted)">☐ ${esc(t.label)}</div>`
             ).join('')}</div>` : '<p style="font-size:13px;color:var(--muted);margin-top:10px">No sub-tasks</p>'}
         </div>
       </div>`;

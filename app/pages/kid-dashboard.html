@@ -417,6 +417,16 @@ import {
   doc, getDoc, collection, query,
   where, getDocs, setDoc, addDoc, onSnapshot
 } from 'https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore.js';
+
+// ── XSS sanitizer ──────────────────────────────────────────────
+function esc(str) {
+  return String(str ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
 import {
   getStorage, ref, uploadBytesResumable, getDownloadURL
 } from 'https://www.gstatic.com/firebasejs/10.11.0/firebase-storage.js';
@@ -492,10 +502,10 @@ function renderKidSelect() {
         <div style="width:48px;height:48px;border-radius:50%;background:${kid.color}22;
                     color:${kid.color};display:flex;align-items:center;justify-content:center;
                     font-size:20px;font-weight:800;flex-shrink:0">
-          ${kid.name.charAt(0)}
+          ${esc(kid.name.charAt(0))}
         </div>
         <div>
-          <div style="font-size:18px;font-weight:800;color:${kid.color}">${kid.name}</div>
+          <div style="font-size:18px;font-weight:800;color:${kid.color}">${esc(kid.name)}</div>
           <div style="font-size:12px;color:var(--muted)">Tap to enter your PIN</div>
         </div>
       </button>`).join('');
@@ -679,7 +689,7 @@ function renderDashboard() {
           ${currentKid.name.charAt(0)}
         </div>
         <div style="font-size:16px;font-weight:700;color:${currentKid.color}">
-          ${currentKid.name}
+          ${esc(currentKid.name)}
         </div>
       </div>
       <button style="background:none;border:1px solid var(--border);border-radius:8px;
@@ -800,7 +810,7 @@ function renderChoreList(type) {
 
     const sub = (status === 'submitted' || (isMine && isPending))
                   ? '✓ Submitted'
-                  : isOther ? `✗ Claimed by ${claimedBy}`
+                  : isOther ? `✗ Claimed by ${esc(claimedBy)}`
                   : isPending ? '⏳ Someone is claiming…'
                   : 'Tap to claim';
 
@@ -828,7 +838,7 @@ function renderChoreList(type) {
         <div class="chore-dot" style="background:${dotColor}"></div>
         <div class="list-info">
           <div style="font-size:14px;font-weight:700">
-            ${chore.name}${subTaskBadge}
+            ${esc(chore.name)}${subTaskBadge}
           </div>
           <div style="font-size:11px;color:var(--muted);margin-top:2px">${sub}</div>
         </div>
@@ -873,7 +883,7 @@ window.openClaim = async (choreId, type) => {
     const response = await fetch('https://us-central1-i-did-my-chores.cloudfunctions.net/claimChore', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ householdId, choreId, choreType: type, kidName: currentKid.name })
+      body: JSON.stringify({ householdId, choreId, choreType: type, kidName: currentKid.name, pin: currentKid.pin })
     });
 
     const data = await response.json();
@@ -933,7 +943,7 @@ function renderSubTasks(subTasks) {
         <div class="subtask-check">
           ${checkedSubTasks.has(task.id) ? '✓' : ''}
         </div>
-        <div class="subtask-label">${task.label}</div>
+        <div class="subtask-label">${esc(task.label)}</div>
       </div>`).join('');
 
   const total = subTasks.length;
@@ -1108,7 +1118,7 @@ window.submitClaim = async () => {
 
     document.getElementById('success-pts').textContent = earnedLabel;
     document.getElementById('success-msg').innerHTML =
-      `<strong>${currentChore.name}</strong> logged!<br><br>
+      `<strong>${esc(currentChore.name)}</strong> logged!<br><br>
        ${status === 'pending' ? 'Waiting for parent approval.' : 'Auto-approved ⚡'}<br><br>
        ${todayLine}`;
 
