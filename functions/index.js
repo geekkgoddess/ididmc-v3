@@ -650,8 +650,326 @@ exports.sendWeeklyPayday = onSchedule({schedule:"0 18 * * *",timeZone:"America/N
 
 
 // ================================================================
+//  KID LITE API
+//  Plain HTTP endpoints for the fallback kid dashboard. These avoid
+//  the Firebase browser SDK on older iOS/iPadOS devices.
+// ================================================================
+
+exports.getKidLiteDashboard = functions.https.onRequest(async (req, res) => {
+  setCors(res);
+  if (req.method === "OPTIONS") return res.status(204).send("");
+  if (req.method !== "POST") return res.status(405).json({error: "method-not-allowed"});
+
+  try {
+    const {householdId, kidName, pin} = req.body || {};
+    if (!householdId) return res.status(400).json({error: "missing-household"});
+
+    const hSnap = await db.collection("households").doc(householdId).get();
+    if (!hSnap.exists) return res.status(404).json({error: "household-not-found"});
+
+    const household = hSnap.data();
+    const kids = (household.kids || []).map((kid) => ({
+      name: kid.name,
+      color: kid.color || "#f5c842",
+    }));
+
+    if (!kidName || !pin) {
+      return res.json({
+        householdName: household.name || "I Did My Chores",
+        kids,
+      });
+    }
+
+    const kid = (household.kids || []).find((k) => k.name === kidName);
+    if (!kid || String(kid.pin) !== String(pin)) {
+      return res.status(403).json({error: "bad-pin"});
+    }
+
+    const today = getTodayEt();
+    const weekStart = getWeekStartForDate(today);
+    const payPeriod = getPayPeriodForHousehold(household, today);
+    const [dailySnap, weeklySnap, subsSnap] = await Promise.all([
+      db.collection("chore_claims").doc(`daily_${householdId}_${today}`).get(),
+      db.collection("chore_claims").doc(`weekly_${householdId}_${weekStart}`).get(),
+      db.collection("submissions")
+        .where("householdId", "==", householdId)
+        .where("kidName", "==", kidName)
+        .where("payPeriod", "==", payPeriod)
+        .where("status", "in", ["approved", "pending"])
+        .get(),
+    ]);
+
+    const dailyClaimed = dailySnap.exists ? dailySnap.data() : {};
+    const weeklyClaimed = weeklySnap.exists ? weeklySnap.data() : {};
+    const stats = calculateKidStats(subsSnap.docs.map((d) => d.data()), today);
+
+    const visibleChores = (household.chores || [])
+      .filter((chore) => chore && (chore.assignedTo === "any" || chore.assignedTo === kidName))
+      .map((chore) => sanitizeChore(chore));
+
+    res.json({
+      householdName: household.name || "I Did My Chores",
+      kid: {name: kid.name, color: kid.color || "#f5c842"},
+      kids,
+      today,
+      weekStart,
+      payPeriod,
+      compModel: household.compModel || "points",
+      compSettings: household.compSettings || {},
+      approvalMode: household.approvalMode || "manual",
+      pointMultiplier: household.pointMultiplier || 5,
+      ptoToday: ((household.ptoSchedule || {})[kidName] || []).includes(today),
+      chores: visibleChores,
+      dailyClaimed,
+      weeklyClaimed,
+      stats,
+    });
+  } catch (err) {
+    console.error("getKidLiteDashboard error:", err);
+    res.status(500).json({error: "internal", message: err.message});
+  }
+});
+
+exports.submitKidLiteChore = functions.https.onRequest(async (req, res) => {
+  setCors(res);
+  if (req.method === "OPTIONS") return res.status(204).send("");
+  if (req.method !== "POST") return res.status(405).json({error: "method-not-allowed"});
+
+  try {
+    const {
+      householdId,
+      kidName,
+      pin,
+      choreId,
+      choreType,
+      completedSubTasks,
+      photoDataUrl,
+    } = req.body || {};
+
+    if (!householdId || !kidName || !pin || !choreId || !photoDataUrl) {
+      return res.status(400).json({error: "missing-fields"});
+    }
+
+    const hRef = db.collection("households").doc(householdId);
+    const hSnap = await hRef.get();
+    if (!hSnap.exists) return res.status(404).json({error: "household-not-found"});
+
+    const household = hSnap.data();
+    const kid = (household.kids || []).find((k) => k.name === kidName);
+    if (!kid || String(kid.pin) !== String(pin)) {
+      return res.status(403).json({error: "bad-pin"});
+    }
+
+    const chore = (household.chores || []).find((c) => c.id === choreId);
+    if (!chore) return res.status(404).json({error: "chore-not-found"});
+    if (chore.assignedTo !== "any" && chore.assignedTo !== kidName) {
+      return res.status(403).json({error: "not-assigned"});
+    }
+
+    const today = getTodayEt();
+    const weekStart = getWeekStartForDate(today);
+    const payPeriod = getPayPeriodForHousehold(household, today);
+    const type = choreType === "daily" ? "daily" : "weekly";
+    const claimDocId = type === "daily" ?
+      `daily_${householdId}_${today}` :
+      `weekly_${householdId}_${weekStart}`;
+    const claimRef = db.collection("chore_claims").doc(claimDocId);
+
+    await db.runTransaction(async (transaction) => {
+      const claimSnap = await transaction.get(claimRef);
+      const existing = claimSnap.exists ? claimSnap.data() : {};
+      const status = existing[`${choreId}_status`];
+      const claimedBy = existing[`${choreId}_claimedBy`];
+      if (status && status !== "available" && status !== "rejected" && claimedBy !== kidName) {
+        throw new Error(`CLAIMED_BY:${claimedBy || "someone else"}`);
+      }
+      if (status === "submitted" || status === "approved") {
+        throw new Error("ALREADY_SUBMITTED");
+      }
+      transaction.set(claimRef, {
+        [`${choreId}_status`]: "pending",
+        [`${choreId}_claimedBy`]: kidName,
+        [`${choreId}_pendingAt`]: admin.firestore.Timestamp.now(),
+      }, {merge: true});
+    });
+
+    const photo = parsePhotoDataUrl(photoDataUrl);
+    if (!photo.contentType.startsWith("image/")) {
+      return res.status(400).json({error: "photo-type"});
+    }
+    if (photo.buffer.length > 6 * 1024 * 1024) {
+      return res.status(400).json({error: "photo-too-large"});
+    }
+
+    const ext = photo.contentType.includes("png") ? "png" : "jpg";
+    const timestamp = Date.now();
+    const storagePath = `photos/${householdId}/${kidName}/${choreId}/${today}_${timestamp}.${ext}`;
+    const token = crypto.randomUUID();
+    const bucket = admin.storage().bucket();
+    await bucket.file(storagePath).save(photo.buffer, {
+      metadata: {
+        contentType: photo.contentType,
+        metadata: {
+          firebaseStorageDownloadTokens: token,
+        },
+      },
+    });
+
+    const photoDownloadUrl =
+      `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/` +
+      `${encodeURIComponent(storagePath)}?alt=media&token=${token}`;
+    const status = household.approvalMode === "auto" ? "approved" : "pending";
+
+    await db.collection("submissions").add({
+      householdId,
+      kidName,
+      choreId,
+      choreName: chore.name,
+      points: chore.pointValue || 0,
+      bonusPoints: 0,
+      freq: type,
+      status,
+      exceeded: false,
+      bonusAmount: 0,
+      flatPayValue: chore.flatPayValue || 0,
+      photoStoragePath: storagePath,
+      photoDownloadUrl,
+      completedSubTasks: Array.isArray(completedSubTasks) ? completedSubTasks : [],
+      date: today,
+      weekStart,
+      payPeriod,
+      timestamp: new Date().toISOString(),
+      source: "kid-lite",
+    });
+
+    await claimRef.set({
+      [`${choreId}_status`]: "submitted",
+      [`${choreId}_claimedBy`]: kidName,
+      [`${choreId}_submittedAt`]: admin.firestore.Timestamp.now(),
+    }, {merge: true});
+
+    res.json({
+      success: true,
+      status,
+      points: chore.pointValue || 0,
+      flatPayValue: chore.flatPayValue || 0,
+      choreName: chore.name,
+    });
+  } catch (err) {
+    console.error("submitKidLiteChore error:", err);
+    if (err.message && err.message.startsWith("CLAIMED_BY:")) {
+      return res.status(409).json({
+        error: "already-claimed",
+        message: `This chore was already claimed by ${err.message.replace("CLAIMED_BY:", "")}.`,
+      });
+    }
+    if (err.message === "ALREADY_SUBMITTED") {
+      return res.status(409).json({error: "already-submitted", message: "This chore was already submitted."});
+    }
+    res.status(500).json({error: "internal", message: err.message});
+  }
+});
+
+
+// ================================================================
 //  HELPER FUNCTIONS
 // ================================================================
+
+function setCors(res) {
+  res.set("Access-Control-Allow-Origin", "*");
+  res.set("Access-Control-Allow-Methods", "POST, OPTIONS");
+  res.set("Access-Control-Allow-Headers", "Content-Type");
+}
+
+function getTodayEt() {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/New_York",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(new Date());
+  const values = Object.fromEntries(parts.map((p) => [p.type, p.value]));
+  return `${values.year}-${values.month}-${values.day}`;
+}
+
+function addDays(dateStr, days) {
+  const d = new Date(`${dateStr}T00:00:00`);
+  d.setDate(d.getDate() + days);
+  return d.toISOString().split("T")[0];
+}
+
+function getWeekStartForDate(dateStr) {
+  const d = new Date(`${dateStr}T00:00:00`);
+  const day = d.getDay();
+  const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+  return new Date(new Date(d).setDate(diff)).toISOString().split("T")[0];
+}
+
+function getPayPeriodForHousehold(household, todayStr) {
+  const freq = household.payCycle || household.payFrequency || "weekly";
+  if (freq === "monthly") return todayStr.slice(0, 8) + "01";
+  if (freq === "semimonthly") {
+    return `${todayStr.slice(0, 8)}${Number(todayStr.slice(8, 10)) <= 15 ? "01" : "16"}`;
+  }
+  if (freq === "asneeded") {
+    return household.currentPeriodStart || household.payPeriodStart || todayStr;
+  }
+  const days = freq === "biweekly" ? 14 : 7;
+  const startStr = household.payPeriodStart || todayStr;
+  const start = new Date(`${startStr}T00:00:00`);
+  const today = new Date(`${todayStr}T00:00:00`);
+  const diff = Math.floor((today - start) / 86400000);
+  const num = Math.floor(Math.max(diff, 0) / days);
+  return addDays(startStr, num * days);
+}
+
+function calculateKidStats(submissions, today) {
+  const stats = {
+    pointsToday: 0,
+    pointsPeriod: 0,
+    flatToday: 0,
+    flatPeriod: 0,
+    dailyDoneCount: 0,
+  };
+  submissions.forEach((s) => {
+    const pts = (s.points || 0) + (s.bonusPoints || 0);
+    const flat = s.flatPayValue || 0;
+    stats.pointsPeriod += pts;
+    stats.flatPeriod += flat;
+    if (s.date === today) {
+      stats.pointsToday += pts;
+      stats.flatToday += flat;
+      stats.dailyDoneCount++;
+    }
+  });
+  return stats;
+}
+
+function sanitizeChore(chore) {
+  return {
+    id: chore.id,
+    name: chore.name || "Chore",
+    desc: chore.desc || "",
+    freq: chore.freq || "daily",
+    assignedTo: chore.assignedTo || "any",
+    pointValue: chore.pointValue || 0,
+    flatPayValue: chore.flatPayValue || 0,
+    subTasks: Array.isArray(chore.subTasks) ? chore.subTasks.map((task) => ({
+      id: task.id,
+      label: task.label || "",
+      order: task.order || 0,
+    })) : [],
+  };
+}
+
+function parsePhotoDataUrl(dataUrl) {
+  const match = String(dataUrl).match(/^data:([^;]+);base64,(.+)$/);
+  if (!match) throw new Error("Invalid photo data.");
+  return {
+    contentType: match[1],
+    buffer: Buffer.from(match[2], "base64"),
+  };
+}
 
 function getWeekStart() {
   const d = new Date();

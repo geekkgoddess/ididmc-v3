@@ -4,7 +4,7 @@
 import { initializeApp }          from 'https://www.gstatic.com/firebasejs/10.11.0/firebase-app.js';
 import { getAuth, GoogleAuthProvider }
                                   from 'https://www.gstatic.com/firebasejs/10.11.0/firebase-auth.js';
-import { getFirestore }           from 'https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore.js';
+import { initializeFirestore }    from 'https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore.js';
 
 const firebaseConfig = {
   apiKey:            "AIzaSyDN0k7B09CatV2cDziBoNpXC5VHTj8TkpI",
@@ -17,6 +17,8 @@ const firebaseConfig = {
 
 export const app       = initializeApp(firebaseConfig);
 export const auth      = getAuth(app);
-export const db        = getFirestore(app);
+export const db        = initializeFirestore(app, {
+  experimentalAutoDetectLongPolling: true,
+  useFetchStreams: false,
+});
 export const googleProvider = new GoogleAuthProvider();
-

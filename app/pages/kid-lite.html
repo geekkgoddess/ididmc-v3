@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>I Did My Chores - Kid Lite</title>
+  <link rel="stylesheet" href="../../css/app.css">
+  <style>
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    .avatar {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      flex-shrink: 0;
+    }
+    .kid-choice {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 18px;
+      margin-bottom: 10px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      color: var(--text);
+      font: inherit;
+      text-align: left;
+    }
+    .summary-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 18px;
+    }
+    .summary-tile {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 14px;
+    }
+    .summary-value {
+      font-family: 'DM Mono', monospace;
+      font-size: 28px;
+      color: var(--gold);
+      line-height: 1;
+    }
+    .chore-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      width: 100%;
+      padding: 14px 0;
+      background: none;
+      border: 0;
+      border-bottom: 1px solid var(--border);
+      color: var(--text);
+      font: inherit;
+      text-align: left;
+    }
+    .chore-row:last-child { border-bottom: 0; }
+    .chore-row.locked { opacity: 0.45; }
+    .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .chore-main { flex: 1; min-width: 0; }
+    .chore-name { font-size: 14px; font-weight: 800; }
+    .chore-sub { font-size: 11px; color: var(--muted); margin-top: 3px; }
+    .value-pill {
+      font-family: 'DM Mono', monospace;
+      font-size: 12px;
+      color: var(--gold);
+      white-space: nowrap;
+    }
+    .pin-actions {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      width: 100%;
+      max-width: 280px;
+      margin-top: 14px;
+    }
+    .photo-preview {
+      width: 100%;
+      max-height: 180px;
+      object-fit: cover;
+      border-radius: 8px;
+      display: block;
+      margin-bottom: 8px;
+    }
+    .subtask {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .subtask:last-child { border-bottom: 0; }
+    .subtask input {
+      width: 22px;
+      height: 22px;
+      accent-color: var(--gold);
+      flex-shrink: 0;
+    }
+    .error-box {
+      background: var(--red-dim);
+      border: 1px solid rgba(248,113,113,0.35);
+      border-radius: 12px;
+      color: var(--red);
+      font-size: 13px;
+      line-height: 1.5;
+      padding: 12px 14px;
+      margin-top: 14px;
+    }
+  </style>
+</head>
+<body>
+<div id="app">
+  <div id="toast"></div>
+
+  <div id="screen-loading" class="screen active" style="align-items:center;justify-content:center;text-align:center">
+    <div class="spinner" style="width:32px;height:32px;margin-bottom:14px"></div>
+    <p id="loading-text">Loading chores...</p>
+  </div>
+
+  <div id="screen-select" class="screen">
+    <div style="flex:1;display:flex;flex-direction:column;justify-content:center">
+      <div style="font-size:44px;text-align:center;margin-bottom:14px">🧹</div>
+      <h1 style="text-align:center;margin-bottom:4px">I Did My Chores</h1>
+      <p id="household-name" style="text-align:center;margin-bottom:28px">Who are you?</p>
+      <div id="kid-buttons"></div>
+      <div id="select-error"></div>
+    </div>
+  </div>
+
+  <div id="screen-pin" class="screen">
+    <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center">
+      <div id="pin-avatar" class="avatar" style="width:64px;height:64px;font-size:24px;margin-bottom:14px"></div>
+      <h2 id="pin-name" style="margin-bottom:6px"></h2>
+      <p>Enter your PIN</p>
+      <div class="pin-row" id="pin-row">
+        <input class="pin-digit" maxlength="1" type="tel" inputmode="numeric">
+        <input class="pin-digit" maxlength="1" type="tel" inputmode="numeric">
+        <input class="pin-digit" maxlength="1" type="tel" inputmode="numeric">
+        <input class="pin-digit" maxlength="1" type="tel" inputmode="numeric">
+      </div>
+      <div id="pin-error" style="color:var(--red);font-size:13px;height:18px;margin-top:4px"></div>
+      <div class="pin-actions">
+        <button class="btn btn-ghost" onclick="showScreen('screen-select')">Switch</button>
+        <button class="btn btn-primary" style="grid-column:span 2" onclick="submitPin()">Open</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="screen-dashboard" class="screen" style="padding-top:20px">
+    <div class="topbar">
+      <div style="display:flex;align-items:center;gap:10px;min-width:0">
+        <div id="dash-avatar" class="avatar"></div>
+        <div style="min-width:0">
+          <h2 id="dash-name" style="margin:0"></h2>
+          <p id="dash-date" style="font-size:12px;margin:2px 0 0"></p>
+        </div>
+      </div>
+      <button class="btn btn-ghost" style="width:auto;padding:9px 12px;font-size:12px" onclick="switchKid()">Switch</button>
+    </div>
+
+    <div id="dayoff-card" class="card" style="display:none;text-align:center;margin-bottom:16px">
+      <div style="font-size:48px;margin-bottom:8px">🏖️</div>
+      <h2>Day Off!</h2>
+      <p>Your parent gave you a day off today.</p>
+    </div>
+
+    <div class="summary-grid">
+      <div class="summary-tile">
+        <div class="page-label" id="today-label">Today</div>
+        <div class="summary-value" id="today-value">0</div>
+        <p id="today-sub" style="font-size:11px;margin-top:5px">pts today</p>
+      </div>
+      <div class="summary-tile">
+        <div class="page-label">This Period</div>
+        <div class="summary-value" id="period-value">0</div>
+        <p id="period-sub" style="font-size:11px;margin-top:5px">pts pending/approved</p>
+      </div>
+    </div>
+
+    <div class="section-header">
+      <div>
+        <div class="page-label">Daily Chores</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px">Tap a chore to submit proof</div>
+      </div>
+    </div>
+    <div class="card" style="padding:4px 16px;margin-bottom:18px">
+      <div id="daily-list"></div>
+    </div>
+
+    <div class="section-header">
+      <div>
+        <div class="page-label">Weekly Bonus</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px">First to claim wins</div>
+      </div>
+    </div>
+    <div class="card" style="padding:4px 16px;margin-bottom:32px">
+      <div id="weekly-list"></div>
+    </div>
+  </div>
+
+  <div id="screen-success" class="screen" style="align-items:center;justify-content:center;text-align:center">
+    <div style="font-size:68px;margin-bottom:18px">🎉</div>
+    <h1>Submitted!</h1>
+    <div class="summary-value" id="success-value" style="font-size:44px;margin:14px 0 8px"></div>
+    <p id="success-message" style="max-width:280px;margin-bottom:28px"></p>
+    <button class="btn btn-primary" onclick="returnToDashboard()">Back to Chores</button>
+  </div>
+
+  <div class="modal-overlay" id="modal-claim">
+    <div class="modal-sheet">
+      <div class="modal-handle"></div>
+      <div class="page-label">Complete Chore</div>
+      <h2 id="claim-name" style="margin:6px 0 4px"></h2>
+      <p id="claim-desc" style="margin-bottom:14px"></p>
+
+      <div id="subtasks-section" style="display:none;margin-bottom:14px">
+        <div class="page-label">Checklist</div>
+        <div class="card" style="padding:4px 14px">
+          <div id="subtask-list"></div>
+        </div>
+      </div>
+
+      <div class="page-label">Proof Photo</div>
+      <div class="photo-zone" id="photo-zone" onclick="document.getElementById('photo-input').click()">
+        <input type="file" id="photo-input" accept="image/*" capture="environment" style="display:none" onchange="onPhotoSelected(this)">
+        <div id="photo-content">
+          <div style="font-size:34px;margin-bottom:8px">📷</div>
+          <div style="font-size:14px;font-weight:800">Tap to take photo</div>
+          <div style="font-size:12px;color:var(--muted);margin-top:4px">A smaller copy will be uploaded</div>
+        </div>
+      </div>
+
+      <button class="btn btn-primary" id="submit-btn" onclick="submitChore()" disabled style="opacity:0.35">Submit</button>
+      <button class="btn btn-ghost mt-8" onclick="closeClaim()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<script>
+var API_BASE = 'https://us-central1-i-did-my-chores.cloudfunctions.net';
+var householdId = new URLSearchParams(window.location.search).get('h') || localStorage.getItem('householdId');
+var household = null;
+var currentKid = null;
+var currentPin = '';
+var currentChore = null;
+var currentPhotoDataUrl = '';
+var checkedSubTasks = {};
+
+function api(name, payload) {
+  return fetch(API_BASE + '/' + name, {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify(payload || {})
+  }).then(function(res) {
+    return res.json().then(function(data) {
+      if (!res.ok) {
+        var err = new Error(data.message || data.error || 'Request failed');
+        err.status = res.status;
+        throw err;
+      }
+      return data;
+    });
+  });
+}
+
+function boot() {
+  if (!householdId) {
+    showScreen('screen-select');
+    document.getElementById('kid-buttons').innerHTML =
+      '<div class="empty-state"><p>No household linked. Ask your parent for the link.</p></div>';
+    return;
+  }
+  localStorage.setItem('householdId', householdId);
+  api('getKidLiteDashboard', {householdId: householdId})
+    .then(function(data) {
+      household = data;
+      renderKidSelect();
+      showScreen('screen-select');
+    })
+    .catch(function(err) {
+      showScreen('screen-select');
+      document.getElementById('select-error').innerHTML =
+        '<div class="error-box">Could not load this household. Check the link and try again.</div>';
+      console.error(err);
+    });
+}
+
+function renderKidSelect() {
+  document.getElementById('household-name').textContent = household.householdName || 'Who are you?';
+  document.getElementById('kid-buttons').innerHTML = (household.kids || []).map(function(kid) {
+    return '<button class="kid-choice" onclick="selectKid(\'' + escapeJs(kid.name) + '\')">' +
+      '<div class="avatar" style="background:' + kid.color + '22;color:' + kid.color + '">' + kid.name.charAt(0) + '</div>' +
+      '<div><div style="font-size:18px;font-weight:800;color:' + kid.color + '">' + escapeHtml(kid.name) + '</div>' +
+      '<div style="font-size:12px;color:var(--muted)">Tap to enter PIN</div></div></button>';
+  }).join('');
+}
+
+function selectKid(name) {
+  currentKid = (household.kids || []).filter(function(kid) { return kid.name === name; })[0];
+  document.getElementById('pin-name').textContent = currentKid.name;
+  document.getElementById('pin-avatar').textContent = currentKid.name.charAt(0);
+  document.getElementById('pin-avatar').style.background = currentKid.color + '22';
+  document.getElementById('pin-avatar').style.color = currentKid.color;
+  document.getElementById('pin-error').textContent = '';
+  [].forEach.call(document.querySelectorAll('#pin-row .pin-digit'), function(input) { input.value = ''; });
+  showScreen('screen-pin');
+  setTimeout(function() { document.querySelector('#pin-row .pin-digit').focus(); }, 120);
+}
+
+function submitPin() {
+  currentPin = [].map.call(document.querySelectorAll('#pin-row .pin-digit'), function(input) {
+    return input.value;
+  }).join('');
+  if (currentPin.length < 4) return;
+  loadDashboard();
+}
+
+function loadDashboard() {
+  showScreen('screen-loading');
+  document.getElementById('loading-text').textContent = 'Loading chores...';
+  api('getKidLiteDashboard', {
+    householdId: householdId,
+    kidName: currentKid.name,
+    pin: currentPin
+  }).then(function(data) {
+    household = data;
+    currentKid = data.kid;
+    renderDashboard();
+    showScreen('screen-dashboard');
+  }).catch(function(err) {
+    console.error(err);
+    showScreen('screen-pin');
+    document.getElementById('pin-error').textContent =
+      err.status === 403 ? 'Wrong PIN - try again' : 'Could not load chores';
+  });
+}
+
+function renderDashboard() {
+  document.getElementById('dash-avatar').textContent = currentKid.name.charAt(0);
+  document.getElementById('dash-avatar').style.background = currentKid.color + '22';
+  document.getElementById('dash-avatar').style.color = currentKid.color;
+  document.getElementById('dash-name').textContent = currentKid.name;
+  document.getElementById('dash-date').textContent = formatDate(household.today);
+  document.getElementById('dayoff-card').style.display = household.ptoToday ? 'block' : 'none';
+
+  var stats = household.stats || {};
+  var model = household.compModel || 'points';
+  if (model === 'flat') {
+    document.getElementById('today-value').textContent = '$' + Number(stats.flatToday || 0).toFixed(2);
+    document.getElementById('period-value').textContent = '$' + Number(stats.flatPeriod || 0).toFixed(2);
+    document.getElementById('today-sub').textContent = 'earned today';
+    document.getElementById('period-sub').textContent = 'this period';
+  } else {
+    document.getElementById('today-value').textContent = stats.pointsToday || 0;
+    document.getElementById('period-value').textContent = stats.pointsPeriod || 0;
+    document.getElementById('today-sub').textContent = 'pts today';
+    document.getElementById('period-sub').textContent = 'pts pending/approved';
+  }
+
+  renderChoreList('daily');
+  renderChoreList('weekly');
+}
+
+function renderChoreList(type) {
+  var chores = (household.chores || []).filter(function(chore) {
+    return type === 'daily' ? chore.freq === 'daily' : chore.freq !== 'daily';
+  });
+  var claimed = type === 'daily' ? (household.dailyClaimed || {}) : (household.weeklyClaimed || {});
+  var html = chores.map(function(chore) {
+    var status = claimed[chore.id + '_status'];
+    var claimedBy = claimed[chore.id + '_claimedBy'];
+    var mine = claimedBy === currentKid.name;
+    var locked = status && status !== 'available' && status !== 'rejected' && !mine;
+    var done = mine && (status === 'submitted' || status === 'approved');
+    var sub = done ? 'Submitted' : locked ? 'Claimed by ' + claimedBy : 'Tap to submit';
+    var value = household.compModel === 'flat' ? '$' + Number(chore.flatPayValue || 0).toFixed(2) : (chore.pointValue || 0) + ' pts';
+    return '<button class="chore-row ' + (locked || done ? 'locked' : '') + '" ' +
+      (locked || done || household.ptoToday ? '' : 'onclick="openClaim(\'' + escapeJs(chore.id) + '\',\'' + type + '\')"') + '>' +
+      '<span class="dot" style="background:' + (done ? 'var(--green)' : currentKid.color) + '"></span>' +
+      '<span class="chore-main"><span class="chore-name">' + escapeHtml(chore.name) + '</span>' +
+      '<span class="chore-sub">' + escapeHtml(sub) + '</span></span>' +
+      '<span class="value-pill">' + value + '</span></button>';
+  }).join('');
+  if (!chores.length) html = '<div style="padding:18px;text-align:center;color:var(--muted);font-size:13px">No ' + type + ' chores assigned</div>';
+  document.getElementById(type + '-list').innerHTML = html;
+}
+
+function openClaim(choreId, type) {
+  currentChore = (household.chores || []).filter(function(chore) { return chore.id === choreId; })[0];
+  currentChore.type = type;
+  currentPhotoDataUrl = '';
+  checkedSubTasks = {};
+  document.getElementById('claim-name').textContent = currentChore.name;
+  document.getElementById('claim-desc').textContent = currentChore.desc || '';
+  document.getElementById('photo-input').value = '';
+  document.getElementById('photo-content').innerHTML =
+    '<div style="font-size:34px;margin-bottom:8px">📷</div><div style="font-size:14px;font-weight:800">Tap to take photo</div><div style="font-size:12px;color:var(--muted);margin-top:4px">A smaller copy will be uploaded</div>';
+  renderSubTasks();
+  updateSubmit();
+  document.getElementById('modal-claim').classList.add('active');
+}
+
+function renderSubTasks() {
+  var tasks = (currentChore.subTasks || []).slice().sort(function(a, b) { return (a.order || 0) - (b.order || 0); });
+  document.getElementById('subtasks-section').style.display = tasks.length ? 'block' : 'none';
+  document.getElementById('subtask-list').innerHTML = tasks.map(function(task) {
+    return '<label class="subtask"><input type="checkbox" onchange="toggleSubTask(\'' + escapeJs(task.id) + '\', this.checked)">' +
+      '<span style="font-size:14px;font-weight:600">' + escapeHtml(task.label) + '</span></label>';
+  }).join('');
+}
+
+function toggleSubTask(id, checked) {
+  checkedSubTasks[id] = checked;
+  updateSubmit();
+}
+
+function onPhotoSelected(input) {
+  if (!input.files || !input.files[0]) return;
+  document.getElementById('photo-content').innerHTML =
+    '<div class="spinner" style="width:28px;height:28px;margin:0 auto 10px"></div><div style="font-size:13px;color:var(--muted)">Preparing photo...</div>';
+  compressImage(input.files[0], function(dataUrl) {
+    currentPhotoDataUrl = dataUrl;
+    document.getElementById('photo-content').innerHTML =
+      '<img class="photo-preview" src="' + dataUrl + '"><div style="font-size:13px;font-weight:800;color:var(--green)">Photo ready</div>';
+    updateSubmit();
+  }, function() {
+    showToast('Could not read photo. Try another one.');
+    currentPhotoDataUrl = '';
+    updateSubmit();
+  });
+}
+
+function compressImage(file, done, fail) {
+  var reader = new FileReader();
+  reader.onerror = fail;
+  reader.onload = function(e) {
+    var img = new Image();
+    img.onerror = fail;
+    img.onload = function() {
+      var max = 1280;
+      var w = img.width;
+      var h = img.height;
+      if (w > h && w > max) { h = Math.round(h * max / w); w = max; }
+      if (h >= w && h > max) { w = Math.round(w * max / h); h = max; }
+      var canvas = document.createElement('canvas');
+      canvas.width = w;
+      canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      done(canvas.toDataURL('image/jpeg', 0.75));
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+function updateSubmit() {
+  var tasks = currentChore ? (currentChore.subTasks || []) : [];
+  var tasksDone = tasks.every(function(task) { return checkedSubTasks[task.id]; });
+  var ready = !!currentPhotoDataUrl && tasksDone;
+  var btn = document.getElementById('submit-btn');
+  btn.disabled = !ready;
+  btn.style.opacity = ready ? '1' : '0.35';
+}
+
+function submitChore() {
+  if (!currentChore || !currentPhotoDataUrl) return;
+  var btn = document.getElementById('submit-btn');
+  btn.disabled = true;
+  btn.textContent = 'Submitting...';
+  api('submitKidLiteChore', {
+    householdId: householdId,
+    kidName: currentKid.name,
+    pin: currentPin,
+    choreId: currentChore.id,
+    choreType: currentChore.type,
+    completedSubTasks: Object.keys(checkedSubTasks).filter(function(id) { return checkedSubTasks[id]; }),
+    photoDataUrl: currentPhotoDataUrl
+  }).then(function(data) {
+    closeClaim();
+    document.getElementById('success-value').textContent =
+      household.compModel === 'flat' ? '+$' + Number(data.flatPayValue || 0).toFixed(2) : '+' + (data.points || 0) + ' pts';
+    document.getElementById('success-message').innerHTML =
+      '<strong>' + escapeHtml(data.choreName) + '</strong> logged.<br>' +
+      (data.status === 'pending' ? 'Waiting for parent approval.' : 'Auto-approved.');
+    showScreen('screen-success');
+  }).catch(function(err) {
+    console.error(err);
+    showToast(err.message || 'Could not submit. Try again.');
+  }).then(function() {
+    btn.disabled = false;
+    btn.textContent = 'Submit';
+    updateSubmit();
+  });
+}
+
+function returnToDashboard() {
+  loadDashboard();
+}
+
+function closeClaim() {
+  document.getElementById('modal-claim').classList.remove('active');
+}
+
+function switchKid() {
+  currentKid = null;
+  currentPin = '';
+  renderKidSelect();
+  showScreen('screen-select');
+}
+
+function showScreen(id) {
+  [].forEach.call(document.querySelectorAll('.screen'), function(screen) {
+    screen.classList.remove('active');
+  });
+  document.getElementById(id).classList.add('active');
+}
+
+function showToast(msg) {
+  var t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(function() { t.classList.remove('show'); }, 3500);
+}
+
+function formatDate(str) {
+  var d = new Date(str + 'T00:00:00');
+  return d.toLocaleDateString('en-US', {weekday:'short', month:'short', day:'numeric'});
+}
+
+function escapeHtml(str) {
+  return String(str || '').replace(/[&<>"']/g, function(ch) {
+    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch];
+  });
+}
+
+function escapeJs(str) {
+  return String(str || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+}
+
+document.addEventListener('input', function(e) {
+  if (!e.target.classList.contains('pin-digit')) return;
+  var inputs = [].slice.call(e.target.closest('.pin-row').querySelectorAll('.pin-digit'));
+  var idx = inputs.indexOf(e.target);
+  e.target.value = e.target.value.replace(/\D/g, '').slice(0, 1);
+  if (e.target.value && idx < inputs.length - 1) inputs[idx + 1].focus();
+  if (idx === inputs.length - 1 && e.target.value) submitPin();
+});
+
+document.addEventListener('keydown', function(e) {
+  if (!e.target.classList.contains('pin-digit')) return;
+  if (e.key === 'Backspace' && !e.target.value) {
+    var inputs = [].slice.call(e.target.closest('.pin-row').querySelectorAll('.pin-digit'));
+    var idx = inputs.indexOf(e.target);
+    if (idx > 0) inputs[idx - 1].focus();
+  }
+});
+
+boot();
+</script>
+</body>
+</html>

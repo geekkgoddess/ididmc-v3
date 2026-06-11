@@ -533,7 +533,11 @@ function checkPin() {
 async function loadDashboard() {
   showScreen('screen-loading');
   try {
-    await Promise.all([loadClaimedState(), loadPoints()]);
+    await withTimeout(
+      Promise.all([loadClaimedState(), loadPoints()]),
+      12000,
+      'Dashboard data request timed out'
+    );
   } catch(e) {
     console.error('Dashboard load failed:', e);
     // Show a friendly error instead of hanging on the loading screen forever
@@ -548,6 +552,14 @@ async function loadDashboard() {
   renderDashboard();
   showScreen('screen-dashboard');
   setupRealtimeKid(); // keep point totals live after parent approvals
+}
+
+function withTimeout(promise, ms, message) {
+  let timer;
+  const timeout = new Promise((_, reject) => {
+    timer = setTimeout(() => reject(new Error(message)), ms);
+  });
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
 }
 
 async function loadClaimedState() {
