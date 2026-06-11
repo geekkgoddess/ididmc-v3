@@ -336,13 +336,21 @@
     <!-- Kid balances / points -->
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
       <div class="page-label" style="margin-bottom:0">This Period</div>
-      <button id="payday-btn" onclick="openPaydayModal()"
-              style="background:linear-gradient(90deg,#f5c842,#fb923c);color:#111;
-                     border:none;border-radius:20px;padding:7px 16px;
-                     font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;
-                     display:none">
-        💰 Pay Out
-      </button>
+      <div style="display:flex;gap:8px">
+        <button onclick="openPastWorkModal()"
+                style="background:var(--card);color:var(--text);border:1px solid var(--border);
+                       border-radius:20px;padding:7px 12px;font-family:inherit;
+                       font-size:12px;font-weight:700;cursor:pointer">
+          + Past Work
+        </button>
+        <button id="payday-btn" onclick="openPaydayModal()"
+                style="background:linear-gradient(90deg,#f5c842,#fb923c);color:#111;
+                       border:none;border-radius:20px;padding:7px 16px;
+                       font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;
+                       display:none">
+          💰 Pay Out
+        </button>
+      </div>
     </div>
     <div id="kid-balances"></div>
 
@@ -511,6 +519,8 @@
 
         <!-- Plan card — rendered by renderPlanCard() -->
         <div id="plan-card" style="margin-bottom:4px"></div>
+
+        <div id="contact-card" style="margin-bottom:8px"></div>
 
         <div style="border-top:1px solid var(--border)"></div>
         <div style="display:flex;align-items:center;justify-content:space-between;
@@ -819,6 +829,67 @@
     </div>
   </div>
 
+  <!-- Add Past Work Modal -->
+  <div id="modal-past-work" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;
+                                  background:rgba(0,0,0,0.75);z-index:3000;
+                                  align-items:center;justify-content:center;padding:20px"
+       onclick="if(event.target===this)closePastWorkModal()">
+    <div style="background:var(--bg);border:1px solid var(--border);border-radius:16px;
+                padding:24px;width:100%;max-width:380px;position:relative">
+      <button onclick="closePastWorkModal()"
+              style="position:absolute;top:14px;right:14px;background:none;border:none;
+                     color:var(--muted);font-size:22px;line-height:1;cursor:pointer">×</button>
+      <h3 style="margin:0 0 18px;font-size:18px;font-weight:700;color:var(--gold)">Add Past Work</h3>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+        <div>
+          <label style="font-size:12px;color:var(--muted);display:block;margin-bottom:6px">Kid</label>
+          <select id="past-kid" onchange="renderPastWorkChores()"
+                  style="width:100%;background:var(--card2);border:1px solid var(--border);
+                         border-radius:8px;padding:10px;color:var(--text);font-family:inherit"></select>
+        </div>
+        <div>
+          <label style="font-size:12px;color:var(--muted);display:block;margin-bottom:6px">Date</label>
+          <input id="past-date" type="date"
+                 style="width:100%;background:var(--card2);border:1px solid var(--border);
+                        border-radius:8px;padding:10px;color:var(--text);font-family:inherit">
+        </div>
+      </div>
+
+      <div style="margin-bottom:12px">
+        <label style="font-size:12px;color:var(--muted);display:block;margin-bottom:6px">Chore</label>
+        <select id="past-chore"
+                style="width:100%;background:var(--card2);border:1px solid var(--border);
+                       border-radius:8px;padding:10px;color:var(--text);font-family:inherit"></select>
+      </div>
+
+      <div style="margin-bottom:12px">
+        <label style="font-size:12px;color:var(--muted);display:block;margin-bottom:6px">Status</label>
+        <select id="past-status"
+                style="width:100%;background:var(--card2);border:1px solid var(--border);
+                       border-radius:8px;padding:10px;color:var(--text);font-family:inherit">
+          <option value="approved">Approved</option>
+          <option value="pending">Pending review</option>
+        </select>
+      </div>
+
+      <div style="margin-bottom:18px">
+        <label style="font-size:12px;color:var(--muted);display:block;margin-bottom:6px">Note</label>
+        <textarea id="past-note" rows="3" placeholder="Optional note"
+                  style="width:100%;background:var(--card2);border:1px solid var(--border);
+                         border-radius:8px;padding:10px;color:var(--text);
+                         font-family:inherit;resize:vertical"></textarea>
+      </div>
+
+      <button onclick="savePastWork()"
+              style="width:100%;padding:13px;background:var(--gold);color:#111;
+                     border:none;border-radius:8px;font-weight:700;font-size:15px;
+                     cursor:pointer;font-family:inherit">
+        Save Work
+      </button>
+    </div>
+  </div>
+
   <!-- Add Kid Modal -->
   <div id="modal-add-kid" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;
                                   background:rgba(0,0,0,0.75);z-index:3000;
@@ -834,6 +905,14 @@
       <div style="margin-bottom:14px">
         <label style="font-size:12px;color:var(--muted);display:block;margin-bottom:6px">Name</label>
         <input id="add-kid-name" type="text" placeholder="Kid's name"
+               style="width:100%;box-sizing:border-box;background:var(--card2);
+                      border:1px solid var(--border);border-radius:8px;
+                      padding:10px 12px;color:var(--text);font-family:inherit;font-size:14px">
+      </div>
+
+      <div style="margin-bottom:14px">
+        <label style="font-size:12px;color:var(--muted);display:block;margin-bottom:6px">Phone (optional)</label>
+        <input id="add-kid-phone" type="tel" placeholder="Kid or caregiver phone"
                style="width:100%;box-sizing:border-box;background:var(--card2);
                       border:1px solid var(--border);border-radius:8px;
                       padding:10px 12px;color:var(--text);font-family:inherit;font-size:14px">
@@ -1095,6 +1174,8 @@ function setupRealtime() {
     renderPeriodBadge();
     renderSettings();
     renderChoresAdmin();
+    renderOverview();
+    renderHistory();
   });
 
   // Submissions listener — approvals, pending counts, history all update live
@@ -1156,15 +1237,15 @@ function renderOverview() {
     const todayDone = submissionsCache
       .filter(s => s.kidName === kid.name && s.date === today).length;
 
-    // completionPct = (done today / Q) * 100
-    const pct = Q > 0 ? Math.min(Math.round((todayDone / Q) * 100), 100) : 0;
+    // Today's completion and period cap progress are different signals.
+    const todayPct = Q > 0 ? Math.min(Math.round((todayDone / Q) * 100), 100) : 0;
 
     // Payout formula: (points / pointsPerDollar) capped at capPerKid
     const ptsPerDollar = household.pointMultiplier || 100;
-    const payout = Math.min(
-      (periodPts / ptsPerDollar).toFixed(2),
-      household.capPerKid || 120
-    );
+    const cap = household.capPerKid || 120;
+    const payoutRaw = periodPts / ptsPerDollar;
+    const payout = Math.min(payoutRaw, cap);
+    const periodPct = cap > 0 ? Math.min(Math.round((payout / cap) * 100), 100) : 0;
 
     return `
       <div class="kid-balance">
@@ -1179,15 +1260,19 @@ function renderOverview() {
           <div style="text-align:right">
             <div style="font-family:'DM Mono',monospace;font-size:20px;
                         color:var(--gold)">${periodPts} pts</div>
-            <div style="font-size:11px;color:var(--muted)">~$${payout} payout</div>
+            <div style="font-size:11px;color:var(--muted)">~$${payout.toFixed(2)} payout</div>
           </div>
         </div>
+        <div style="display:flex;justify-content:space-between;margin-bottom:6px">
+          <span style="font-size:11px;color:var(--muted)">Period: $${payout.toFixed(2)} of $${cap}</span>
+          <span style="font-size:11px;color:var(--muted)">${periodPct}%</span>
+        </div>
         <div class="balance-bar">
-          <div class="balance-fill" style="width:${pct}%"></div>
+          <div class="balance-fill" style="width:${periodPct}%"></div>
         </div>
         <div style="display:flex;justify-content:space-between;margin-top:6px">
-          <span style="font-size:11px;color:var(--muted)">Today: ${todayDone}/${Q} chores (${pct}%)</span>
-          <span style="font-size:11px;color:var(--muted)">Cap: $${household.capPerKid}</span>
+          <span style="font-size:11px;color:var(--muted)">Today: ${todayDone}/${Q} chores (${todayPct}%)</span>
+          <span style="font-size:11px;color:var(--muted)">Pay period</span>
         </div>
       </div>`;
   }).join('');
@@ -1913,9 +1998,16 @@ function renderSettings() {
           <div>
             <div style="font-size:14px;font-weight:600">${k.name}</div>
             <div style="font-size:11px;color:var(--muted)">PIN: ${k.pin}</div>
+            <div style="font-size:11px;color:var(--muted)">Phone: ${k.phone || 'Not set'}</div>
           </div>
         </div>
         <div style="display:flex;gap:6px">
+          <button onclick="setKidPhonePrompt(${i})"
+                  style="background:none;border:1px solid var(--border);
+                         border-radius:6px;padding:5px 10px;color:var(--muted);
+                         font-family:inherit;font-size:11px;cursor:pointer">
+            Phone
+          </button>
           <button onclick="resetPinPrompt(${i})"
                   style="background:none;border:1px solid var(--border);
                          border-radius:6px;padding:5px 10px;color:var(--muted);
@@ -1939,6 +2031,7 @@ function renderSettings() {
 
   // Plan tier card in Account section
   renderPlanCard();
+  renderContactCard();
 
   // Restore open/closed state after content is populated
   restoreSAccState();
@@ -2018,10 +2111,55 @@ function renderPlanCard() {
     </div>`;
 }
 
+function renderContactCard() {
+  const el = document.getElementById('contact-card');
+  if (!el) return;
+  const email = household.ownerEmail || currentUser?.email || '';
+  const phone = household.parentPhone || '';
+  el.innerHTML = `
+    <div style="padding:14px 0 12px">
+      <div style="font-size:11px;font-weight:700;letter-spacing:.08em;color:var(--muted);text-transform:uppercase;margin-bottom:10px">Contact Info</div>
+      <div style="display:grid;gap:10px">
+        <div>
+          <label style="font-size:12px;color:var(--muted);display:block;margin-bottom:5px">Parent email</label>
+          <input id="contact-email" type="email" value="${escapeAttr(email)}"
+                 style="width:100%;background:var(--card2);border:1px solid var(--border);
+                        border-radius:8px;padding:10px 12px;color:var(--text);
+                        font-family:inherit;font-size:13px;box-sizing:border-box">
+        </div>
+        <div>
+          <label style="font-size:12px;color:var(--muted);display:block;margin-bottom:5px">Parent phone</label>
+          <input id="contact-phone" type="tel" value="${escapeAttr(phone)}" placeholder="Optional"
+                 style="width:100%;background:var(--card2);border:1px solid var(--border);
+                        border-radius:8px;padding:10px 12px;color:var(--text);
+                        font-family:inherit;font-size:13px;box-sizing:border-box">
+        </div>
+      </div>
+      <button onclick="saveContactInfo()"
+              style="width:100%;padding:10px;border:1px solid var(--border);border-radius:10px;
+                     background:var(--card);color:var(--text);font-weight:700;
+                     font-size:13px;cursor:pointer;margin-top:10px">
+        Save Contact Info
+      </button>
+    </div>`;
+}
+
 // Stub: swap to real Stripe/payment flow when billing is wired up
 window.changePlan = (targetPlan) => {
   const labels = { free: 'Free', family: 'Family ($2.99/mo)', household_plus: 'Household+ ($4.99/mo)' };
   showToast(`💳 Billing coming soon — ${labels[targetPlan] || targetPlan}`);
+};
+
+window.saveContactInfo = async () => {
+  const ownerEmail = document.getElementById('contact-email')?.value.trim();
+  const parentPhone = document.getElementById('contact-phone')?.value.trim();
+  if (ownerEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(ownerEmail)) {
+    showToast('Enter a valid email'); return;
+  }
+  await updateDoc(doc(db, 'households', currentUser.uid), { ownerEmail, parentPhone });
+  household.ownerEmail = ownerEmail;
+  household.parentPhone = parentPhone;
+  showToast('✅ Contact info saved');
 };
 
 // ── Pay Cycle Settings ─────────────────────────────────────────
@@ -2126,6 +2264,68 @@ window.savePayCycleSettings = async () => {
   // renderPeriodBadge() fires automatically via the household onSnapshot listener
 };
 
+window.openPastWorkModal = () => {
+  if (!household?.kids?.length || !household?.chores?.length) {
+    showToast('Add kids and chores first'); return;
+  }
+  document.getElementById('past-date').value = getToday();
+  document.getElementById('past-status').value = 'approved';
+  document.getElementById('past-note').value = '';
+  document.getElementById('past-kid').innerHTML = household.kids.map(k =>
+    `<option value="${escapeAttr(k.name)}">${k.name}</option>`
+  ).join('');
+  renderPastWorkChores();
+  document.getElementById('modal-past-work').style.display = 'flex';
+};
+
+window.closePastWorkModal = () => {
+  document.getElementById('modal-past-work').style.display = 'none';
+};
+
+window.renderPastWorkChores = () => {
+  const kidName = document.getElementById('past-kid')?.value;
+  const chores = (household.chores || []).filter(c =>
+    c.assignedTo === 'any' || c.assignedTo === kidName
+  );
+  document.getElementById('past-chore').innerHTML = chores.map(c =>
+    `<option value="${escapeAttr(c.id)}">${c.name} (${c.freq || 'daily'})</option>`
+  ).join('');
+};
+
+window.savePastWork = async () => {
+  const kidName = document.getElementById('past-kid')?.value;
+  const date = document.getElementById('past-date')?.value;
+  const choreId = document.getElementById('past-chore')?.value;
+  const status = document.getElementById('past-status')?.value || 'approved';
+  const note = document.getElementById('past-note')?.value.trim();
+  const chore = (household.chores || []).find(c => c.id === choreId);
+  if (!kidName || !date || !chore) {
+    showToast('Choose a kid, date, and chore'); return;
+  }
+  const weekStart = getWeekStartForDate(date);
+  await addDoc(collection(db, 'submissions'), {
+    householdId: currentUser.uid,
+    kidName,
+    choreId: chore.id,
+    choreName: chore.name,
+    points: chore.pointValue || 0,
+    bonusPoints: 0,
+    flatPayValue: chore.flatPayValue || 0,
+    freq: chore.freq || 'daily',
+    status,
+    exceeded: false,
+    bonusAmount: 0,
+    date,
+    weekStart,
+    payPeriod: getPayPeriodForDate(date),
+    timestamp: new Date(`${date}T12:00:00`).toISOString(),
+    source: 'parent-manual',
+    parentNote: note,
+  });
+  closePastWorkModal();
+  showToast('✅ Past work added');
+};
+
 window.resetPinPrompt = async (idx) => {
   const pin = prompt(`New 4-digit PIN for ${household.kids[idx].name}:`);
   if (!pin || !/^\d{4}$/.test(pin)) { showToast('Invalid PIN — must be 4 digits'); return; }
@@ -2133,6 +2333,17 @@ window.resetPinPrompt = async (idx) => {
   await updateDoc(doc(db, 'households', currentUser.uid), { kids: household.kids });
   renderSettings();
   showToast('✅ PIN updated');
+};
+
+window.setKidPhonePrompt = async (idx) => {
+  const kid = household.kids[idx];
+  if (!kid) return;
+  const phone = prompt(`Phone number for ${kid.name}:`, kid.phone || '');
+  if (phone === null) return;
+  household.kids[idx] = { ...kid, phone: phone.trim() };
+  await updateDoc(doc(db, 'households', currentUser.uid), { kids: household.kids });
+  renderSettings();
+  showToast('✅ Kid phone saved');
 };
 
 window.removeKidConfirm = async (idx) => {
@@ -2164,6 +2375,7 @@ const ADD_KID_COLORS = [
 window.openAddKidModal = () => {
   // Clear inputs
   document.getElementById('add-kid-name').value = '';
+  document.getElementById('add-kid-phone').value = '';
   document.querySelectorAll('#add-kid-pin-row .pin-digit').forEach(d => d.value = '');
 
   // Build color picker — auto-select first color not already used by a kid
@@ -2202,6 +2414,7 @@ window.addKidSelectColor = (el) => {
 
 window.saveNewKid = async () => {
   const name    = document.getElementById('add-kid-name').value.trim();
+  const phone   = document.getElementById('add-kid-phone').value.trim();
   const pins    = [...document.querySelectorAll('#add-kid-pin-row .pin-digit')].map(d => d.value);
   const pin     = pins.join('');
   const colorEl = document.querySelector('#add-kid-color-picker .sel');
@@ -2213,7 +2426,7 @@ window.saveNewKid = async () => {
     showToast('A kid with that name already exists'); return;
   }
 
-  const newKid     = { name, pin, color, id: Date.now().toString() };
+  const newKid     = { name, pin, color, phone, id: Date.now().toString() };
   const updatedKids = [...(household.kids || []), newKid];
 
   await updateDoc(doc(db, 'households', currentUser.uid), { kids: updatedKids });
@@ -2777,37 +2990,40 @@ function formatDateKey(date) {
   return `${date.getFullYear()}-${pad(date.getMonth()+1)}-${pad(date.getDate())}`;
 }
 function getToday()  { return formatDateKey(new Date()); }
-function getPayPeriod() {
+function getWeekStartForDate(dateStr) {
+  const d = new Date(dateStr + 'T00:00:00');
+  const day = d.getDay();
+  const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+  return formatDateKey(new Date(new Date(d).setDate(diff)));
+}
+function getPayPeriodForDate(dateStr) {
   if (!household) return '';
   const freq  = household.payFrequency ||
                 (household.payPeriodDays === 14 ? 'biweekly' :
                  household.payPeriodDays === 30 ? 'monthly'  : 'weekly');
-  const today = new Date(); today.setHours(0,0,0,0);
+  const today = new Date(dateStr + 'T00:00:00');
   const pad   = n => String(n).padStart(2, '0');
 
   if (freq === 'monthly') {
-    // Period always starts on the 1st of the current month
     return `${today.getFullYear()}-${pad(today.getMonth()+1)}-01`;
   }
   if (freq === 'semimonthly') {
-    // Period 1: 1st–15th → starts on 1st | Period 2: 16th–end → starts on 16th
     const startDay = today.getDate() <= 15 ? '01' : '16';
     return `${today.getFullYear()}-${pad(today.getMonth()+1)}-${startDay}`;
   }
   if (freq === 'asneeded') {
-    // Parent sets dates manually; use stored currentPeriodStart
-    return household.currentPeriodStart ||
-           household.payPeriodStart     ||
-           getToday();
+    return household.currentPeriodStart || household.payPeriodStart || dateStr;
   }
-  // weekly (7 days) or biweekly (14 days) — anchor-date rolling window
   const days  = freq === 'biweekly' ? 14 : 7;
-  const start = new Date((household.payPeriodStart || getToday()) + 'T00:00:00');
+  const start = new Date((household.payPeriodStart || dateStr) + 'T00:00:00');
   const diff  = Math.floor((today - start) / 86400000);
   const num   = Math.floor(Math.max(diff, 0) / days);
   const ps    = new Date(start);
   ps.setDate(start.getDate() + num * days);
   return formatDateKey(ps);
+}
+function getPayPeriod() {
+  return getPayPeriodForDate(getToday());
 }
 function formatDate(str) {
   const d = new Date(str + 'T00:00:00');
@@ -2821,6 +3037,11 @@ function showToast(msg) {
   const t = document.getElementById('toast');
   t.textContent = msg; t.classList.add('show');
   setTimeout(() => t.classList.remove('show'), 3000);
+}
+function escapeAttr(str) {
+  return String(str || '').replace(/[&<>"']/g, ch => ({
+    '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;'
+  }[ch]));
 }
 </script>
 </body>

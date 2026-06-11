@@ -125,6 +125,32 @@
       padding: 12px 14px;
       margin-top: 14px;
     }
+    .model-card {
+      background: var(--gold-dim);
+      border: 1px solid rgba(245,200,66,0.24);
+      border-radius: 12px;
+      padding: 12px 14px;
+      margin-bottom: 14px;
+    }
+    .work-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 12px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .work-row:last-child { border-bottom: 0; }
+    .status-pill {
+      border-radius: 99px;
+      border: 1px solid var(--border);
+      padding: 3px 8px;
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
   </style>
 </head>
 <body>
@@ -183,6 +209,8 @@
       <p>Your parent gave you a day off today.</p>
     </div>
 
+    <div class="model-card" id="model-explain"></div>
+
     <div class="summary-grid">
       <div class="summary-tile">
         <div class="page-label" id="today-label">Today</div>
@@ -214,6 +242,16 @@
     </div>
     <div class="card" style="padding:4px 16px;margin-bottom:32px">
       <div id="weekly-list"></div>
+    </div>
+
+    <div class="section-header">
+      <div>
+        <div class="page-label">My Work</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px">Recent submissions this pay period</div>
+      </div>
+    </div>
+    <div class="card" style="padding:4px 16px;margin-bottom:32px">
+      <div id="work-list"></div>
     </div>
   </div>
 
@@ -361,6 +399,7 @@ function renderDashboard() {
   document.getElementById('dash-name').textContent = currentKid.name;
   document.getElementById('dash-date').textContent = formatDate(household.today);
   document.getElementById('dayoff-card').style.display = household.ptoToday ? 'block' : 'none';
+  document.getElementById('model-explain').innerHTML = getModelExplanation();
 
   var stats = household.stats || {};
   var model = household.compModel || 'points';
@@ -378,6 +417,25 @@ function renderDashboard() {
 
   renderChoreList('daily');
   renderChoreList('weekly');
+  renderWorkList();
+}
+
+function getModelExplanation() {
+  var model = household.compModel || 'points';
+  var settings = household.compSettings || {};
+  if (model === 'flat') {
+    return '<div style="font-size:13px;font-weight:800;color:var(--gold);margin-bottom:3px">Flat Pay</div>' +
+      '<p style="font-size:12px;margin:0;color:var(--text)">Each chore shows what it earns. Submit the chore and your parent approves it.</p>';
+  }
+  if (model === 'daily-min') {
+    var min = settings.choreMin || 0;
+    var pay = settings.fullDayPay || 0;
+    return '<div style="font-size:13px;font-weight:800;color:var(--gold);margin-bottom:3px">Daily Goal</div>' +
+      '<p style="font-size:12px;margin:0;color:var(--text)">Finish at least ' + min + ' chore' + (min === 1 ? '' : 's') +
+      ' today to earn $' + pay + '.</p>';
+  }
+  return '<div style="font-size:13px;font-weight:800;color:var(--gold);margin-bottom:3px">Points</div>' +
+    '<p style="font-size:12px;margin:0;color:var(--text)">Each chore earns points. Your parent decides how points turn into rewards.</p>';
 }
 
 function renderChoreList(type) {
@@ -402,6 +460,27 @@ function renderChoreList(type) {
   }).join('');
   if (!chores.length) html = '<div style="padding:18px;text-align:center;color:var(--muted);font-size:13px">No ' + type + ' chores assigned</div>';
   document.getElementById(type + '-list').innerHTML = html;
+}
+
+function renderWorkList() {
+  var items = household.recentSubmissions || [];
+  if (!items.length) {
+    document.getElementById('work-list').innerHTML =
+      '<div style="padding:18px;text-align:center;color:var(--muted);font-size:13px">No work submitted yet this period</div>';
+    return;
+  }
+  document.getElementById('work-list').innerHTML = items.map(function(item) {
+    var value = household.compModel === 'flat'
+      ? '$' + Number(item.flatPayValue || 0).toFixed(2)
+      : '+' + ((item.points || 0) + (item.bonusPoints || 0)) + ' pts';
+    var color = item.status === 'approved' ? 'var(--green)' :
+      item.status === 'rejected' || item.status === 'rejected_fraud' ? 'var(--red)' : 'var(--gold)';
+    return '<div class="work-row"><div style="min-width:0">' +
+      '<div style="font-size:13px;font-weight:800">' + escapeHtml(item.choreName) + '</div>' +
+      '<div style="font-size:11px;color:var(--muted);margin-top:2px">' + formatDate(item.date) + ' · ' + value + '</div>' +
+      '</div><span class="status-pill" style="color:' + color + ';border-color:' + color + '55">' +
+      escapeHtml(item.status.replace(/_/g, ' ')) + '</span></div>';
+  }).join('');
 }
 
 function openClaim(choreId, type) {

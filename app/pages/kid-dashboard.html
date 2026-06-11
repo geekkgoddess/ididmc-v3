@@ -1028,7 +1028,7 @@ window.submitClaim = async () => {
     });
 
     // ── STEP 2: Save submission to Firestore ──────────────────
-    const status = household.approvalMode === 'auto' ? 'approved' : 'pending';
+    const status = (household.approvalMode === 'automatic' || household.approvalMode === 'auto') ? 'approved' : 'pending';
     await addDoc(collection(db, 'submissions'), {
       householdId,
       kidName:          currentKid.name,

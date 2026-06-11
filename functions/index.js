@@ -701,7 +701,8 @@ exports.getKidLiteDashboard = functions.https.onRequest(async (req, res) => {
 
     const dailyClaimed = dailySnap.exists ? dailySnap.data() : {};
     const weeklyClaimed = weeklySnap.exists ? weeklySnap.data() : {};
-    const stats = calculateKidStats(subsSnap.docs.map((d) => d.data()), today);
+    const submissions = subsSnap.docs.map((d) => ({id: d.id, ...d.data()}));
+    const stats = calculateKidStats(submissions, today);
 
     const visibleChores = (household.chores || [])
       .filter((chore) => chore && (chore.assignedTo === "any" || chore.assignedTo === kidName))
@@ -723,6 +724,19 @@ exports.getKidLiteDashboard = functions.https.onRequest(async (req, res) => {
       dailyClaimed,
       weeklyClaimed,
       stats,
+      recentSubmissions: submissions
+        .sort((a, b) => String(b.timestamp || "").localeCompare(String(a.timestamp || "")))
+        .slice(0, 20)
+        .map((s) => ({
+          id: s.id,
+          choreName: s.choreName || "Chore",
+          date: s.date || "",
+          status: s.status || "pending",
+          points: s.points || 0,
+          bonusPoints: s.bonusPoints || 0,
+          flatPayValue: s.flatPayValue || 0,
+          timestamp: s.timestamp || "",
+        })),
     });
   } catch (err) {
     console.error("getKidLiteDashboard error:", err);
@@ -818,7 +832,7 @@ exports.submitKidLiteChore = functions.https.onRequest(async (req, res) => {
     const photoDownloadUrl =
       `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/` +
       `${encodeURIComponent(storagePath)}?alt=media&token=${token}`;
-    const status = household.approvalMode === "auto" ? "approved" : "pending";
+    const status = (household.approvalMode === "automatic" || household.approvalMode === "auto") ? "approved" : "pending";
 
     await db.collection("submissions").add({
       householdId,
