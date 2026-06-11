@@ -1,0 +1,10 @@
+User-agent: *
+
+# Block all app pages — these are private household dashboards, not public content
+Disallow: /app/
+Disallow: /admin/
+
+# Allow the public marketing site
+Allow: /
+
+Sitemap: https://ididmc.com/sitemap.xml
