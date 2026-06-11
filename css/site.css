@@ -51,7 +51,7 @@
 }
 
 @media (prefers-color-scheme: light) {
-  :root {
+  :root:not([data-theme]) {
     --bg:        #faf9f7;
     --bg2:       #f3f0eb;
     --surface:   #ffffff;

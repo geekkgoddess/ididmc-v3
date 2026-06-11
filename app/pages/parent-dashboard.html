@@ -1162,7 +1162,7 @@ let subTaskRows      = [];   // local state for the sub-task editor
 
 // ── Auth ──────────────────────────────────────────────────────
 onAuthStateChanged(auth, async (user) => {
-  if (!user) { window.location.href = '../../login.html'; return; }
+  if (!user) { window.location.href = '../../login.html?signedout=1'; return; }
   currentUser = user;
   await loadHousehold();
   setupRealtime();
