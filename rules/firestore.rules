@@ -22,14 +22,14 @@ service cloud.firestore {
     }
 
     // ── Submissions ─────────────────────────────────────────────
-    // PUBLIC CREATE: Kids submit chore completions without an auth session.
-    // Read/update restricted to the authenticated household owner (parent).
-    //
-    // WHY: Kids use a PIN, not Google Auth. They must be able to create
-    // submissions directly from the client. Write abuse is limited because
-    // each submission requires a valid householdId that matches a real doc.
+    // Kids submit chore completions through Cloud Functions, where the PIN,
+    // household, chore assignment, photo, and claim state are validated before
+    // the Admin SDK writes the submission.
+    // Browser clients may only create manual parent-entered records for their
+    // own household. This blocks unauthenticated fake submissions.
     match /submissions/{submissionId} {
-      allow create: if true;                                       // Kids submit without auth
+      allow create: if request.auth != null
+                    && request.auth.uid == request.resource.data.householdId;
       allow read:   if request.auth != null;                      // Only parent can read
       allow update: if request.auth != null
                     && request.auth.uid == resource.data.householdId;
