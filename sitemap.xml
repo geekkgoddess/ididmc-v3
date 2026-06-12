@@ -20,6 +20,12 @@
   </url>
 
   <url>
+    <loc>https://ididmc.com/pages/help.html</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+
+  <url>
     <loc>https://ididmc.com/pages/known-issues.html</loc>
     <changefreq>weekly</changefreq>
     <priority>0.5</priority>
