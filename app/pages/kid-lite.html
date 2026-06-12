@@ -133,6 +133,29 @@
       padding: 12px 14px;
       margin-bottom: 14px;
     }
+    .kid-guide-card {
+      background: var(--card);
+      border: 1px solid rgba(245,200,66,0.24);
+      border-radius: 14px;
+      padding: 14px;
+      margin-bottom: 14px;
+    }
+    .kid-guide-card h3 {
+      font-size: 15px;
+      margin: 0 0 8px;
+    }
+    .kid-guide-card ol {
+      margin: 0;
+      padding-left: 18px;
+      color: var(--text);
+      font-size: 12px;
+      line-height: 1.6;
+    }
+    .kid-guide-actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 12px;
+    }
     .work-row {
       display: flex;
       align-items: center;
@@ -208,6 +231,8 @@
         <button class="btn btn-ghost" style="width:auto;padding:9px 12px;font-size:12px" onclick="switchKid()">Switch</button>
       </div>
     </div>
+
+    <div id="kid-guide-card" class="kid-guide-card" style="display:none"></div>
 
     <div id="dayoff-card" class="card" style="display:none;text-align:center;margin-bottom:16px">
       <div style="font-size:48px;margin-bottom:8px">🏖️</div>
@@ -440,6 +465,7 @@ function renderDashboard() {
   document.getElementById('dash-avatar').style.color = currentKid.color;
   document.getElementById('dash-name').textContent = currentKid.name;
   document.getElementById('dash-date').textContent = formatDate(household.today);
+  renderKidGuide();
   var isDayOff    = household.ptoToday || false;
   var isBirthday  = household.birthdayToday || false;
   document.getElementById('dayoff-card').style.display    = isDayOff    ? 'block' : 'none';
@@ -478,6 +504,35 @@ function renderDashboard() {
   renderChoreList('daily');
   renderChoreList('weekly');
   renderWorkList();
+}
+
+function renderKidGuide() {
+  var guide = document.getElementById('kid-guide-card');
+  if (!guide || !currentKid) return;
+  var key = 'kidGuideSeen:' + householdId + ':' + currentKid.name;
+  if (localStorage.getItem(key) === 'yes') {
+    guide.style.display = 'none';
+    return;
+  }
+  guide.style.display = 'block';
+  guide.innerHTML =
+    '<h3>Welcome, ' + escapeHtml(currentKid.name) + '!</h3>' +
+    '<ol>' +
+      '<li>Look at today&#39;s chores.</li>' +
+      '<li>Tap a chore when you finish it.</li>' +
+      '<li>Add a photo if asked.</li>' +
+      '<li>Wait for parent approval.</li>' +
+      '<li>Watch your points or earnings update.</li>' +
+    '</ol>' +
+    '<div class="kid-guide-actions">' +
+      '<button class="btn btn-primary" style="flex:1" onclick="dismissKidGuide()">Got It</button>' +
+    '</div>';
+}
+
+function dismissKidGuide() {
+  if (!currentKid) return;
+  localStorage.setItem('kidGuideSeen:' + householdId + ':' + currentKid.name, 'yes');
+  renderKidGuide();
 }
 
 function getModelExplanation() {

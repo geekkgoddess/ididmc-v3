@@ -207,6 +207,13 @@
       line-height: 1.6;
       margin-top: 14px;
     }
+    .workflow-list {
+      margin: 10px 0 0;
+      padding-left: 18px;
+      color: var(--text2);
+      font-size: 13px;
+      line-height: 1.6;
+    }
     .field { margin-bottom: 14px; }
     .field-row {
       display: grid;
@@ -486,6 +493,15 @@ function renderWelcome(el) {
     <h1>Let's set up your household.</h1>
     <p>This works like setting up a new device: one simple screen at a time, with the important choices explained as you go.</p>
     <div class="note-box">
+      <strong>How it works each day:</strong>
+      <ol class="workflow-list">
+        <li>You create the household, kids, chores, and pay rules.</li>
+        <li>Kids open their own dashboard link on their device and enter their PIN.</li>
+        <li>Kids tap chores, submit proof when needed, and wait for approval.</li>
+        <li>You review submissions and pay out at the end of the pay period.</li>
+      </ol>
+    </div>
+    <div class="note-box">
       <strong>Beta note:</strong> You are helping test the site. If anything looks confusing or breaks, screenshots and short videos are very helpful.
       <button class="info-btn" style="margin-left:6px" onclick="openInfo('beta')">i</button>
     </div>
@@ -598,6 +614,10 @@ function renderFinal(el) {
     <div class="setup-hero-icon">✅</div>
     <h1>Ready to start.</h1>
     <p>Your dashboard will show what still needs attention and give you the link to share with kids.</p>
+    <div class="note-box">
+      <strong>Next step: share the kid dashboard link.</strong><br>
+      Children do not need your parent login. They use one household link and their own 4-digit PIN to open chores on their device.
+    </div>
     <div class="summary-list">
       <div class="summary-item"><div><div class="summary-name">${esc(household.name || 'Household')}</div><div class="summary-sub">Household</div></div></div>
       <div class="summary-item"><div><div class="summary-name">${kids.length}</div><div class="summary-sub">Children added</div></div></div>
@@ -606,6 +626,7 @@ function renderFinal(el) {
     </div>
     <div class="setup-actions">
       <button class="btn btn-primary" id="finish-btn" onclick="finishOnboarding()">Launch Dashboard</button>
+      <button class="btn btn-secondary" id="copy-kid-link-btn" onclick="copyKidLinkFromOnboarding()">Copy Kid Link</button>
       <button class="btn btn-ghost" onclick="goBack()">Back</button>
     </div>
   `);
@@ -807,6 +828,34 @@ window.finishOnboarding = async () => {
     showToast('Setup could not be saved. Check your connection.');
     btn.disabled = false;
     btn.textContent = 'Launch Dashboard';
+  }
+};
+
+window.copyKidLinkFromOnboarding = async () => {
+  const btn = document.getElementById('copy-kid-link-btn');
+  const householdId = currentUser?.uid;
+  if (!householdId) { showToast('Unable to create kid link. Please refresh and try again.'); return; }
+  const kidUrl = `${window.location.origin}/app/pages/kid-lite.html?h=${householdId}`;
+  try {
+    await saveHousehold(true, false);
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(kidUrl);
+    } else {
+      const ta = document.createElement('textarea');
+      ta.value = kidUrl;
+      ta.style.cssText = 'position:fixed;top:-9999px;left:-9999px;opacity:0';
+      document.body.appendChild(ta);
+      ta.focus();
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+    }
+    btn.textContent = 'Copied!';
+    showToast('Kid dashboard link copied');
+    setTimeout(() => { btn.textContent = 'Copy Kid Link'; }, 2000);
+  } catch (err) {
+    console.error(err);
+    window.prompt('Copy this link and send it to your kids:', kidUrl);
   }
 };
 
