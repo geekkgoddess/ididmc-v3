@@ -304,6 +304,7 @@
       .chore-admin-header .btn-sm { padding: 6px 10px; font-size: 12px; }
     }
   </style>
+  <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
 </head>
 <body>
 <div id="app">
@@ -520,8 +521,7 @@
         <!-- QR Code -->
         <div style="text-align:center">
           <p style="font-size:12px;color:var(--muted);margin:0 0 10px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em">Or scan to open on a phone</p>
-          <img id="kid-link-qr" src="" alt="QR code for kid dashboard"
-               style="display:none;width:160px;height:160px;border-radius:12px;border:4px solid #fff;background:#fff">
+          <canvas id="kid-link-qr" style="display:none;border-radius:10px;border:6px solid #fff"></canvas>
         </div>
       </div>
     </div>
@@ -3169,16 +3169,23 @@ window.copyKidLink = async () => {
   }
 };
 
-// Render QR code for the kid link — no library needed, uses free QR Server API
+// Render QR code client-side — uses qrcode.js (canvas, no external API calls)
 window.renderKidQR = () => {
   const householdId = auth.currentUser?.uid;
   if (!householdId) return;
-  const img = document.getElementById('kid-link-qr');
-  if (!img || img.dataset.loaded) return; // already rendered
-  const url = encodeURIComponent(`${window.location.origin}/app/pages/kid-lite.html?h=${householdId}`);
-  img.src = `https://api.qrserver.com/v1/create-qr-code/?size=160x160&margin=8&bgcolor=ffffff&color=090909&data=${url}`;
-  img.dataset.loaded = '1';
-  img.style.display = 'inline-block';
+  const canvas = document.getElementById('kid-link-qr');
+  if (!canvas || canvas.dataset.loaded) return; // already rendered
+  if (!window.QRCode) { setTimeout(renderKidQR, 400); return; } // wait for lib
+  const url = `${window.location.origin}/app/pages/kid-lite.html?h=${householdId}`;
+  QRCode.toCanvas(canvas, url, {
+    width: 160,
+    margin: 2,
+    color: { dark: '#111111', light: '#ffffff' }
+  }, (err) => {
+    if (err) { console.error('QR render error:', err); return; }
+    canvas.dataset.loaded = '1';
+    canvas.style.display = 'inline-block';
+  });
 };
 
 window.openDeleteAccountModal = () => {
