@@ -304,7 +304,7 @@
       .chore-admin-header .btn-sm { padding: 6px 10px; font-size: 12px; }
     }
   </style>
-  <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+  <script src="/app/js/vendor/qrcode-generator-1.4.4.js"></script>
 </head>
 <body>
 <div id="app">
@@ -3169,23 +3169,34 @@ window.copyKidLink = async () => {
   }
 };
 
-// Render QR code client-side — uses qrcode.js (canvas, no external API calls)
+// Render QR code client-side with a local vendored library (no CDN or external API calls)
 window.renderKidQR = () => {
   const householdId = auth.currentUser?.uid;
   if (!householdId) return;
   const canvas = document.getElementById('kid-link-qr');
   if (!canvas || canvas.dataset.loaded) return; // already rendered
-  if (!window.QRCode) { setTimeout(renderKidQR, 400); return; } // wait for lib
+  if (!window.qrcode) { setTimeout(renderKidQR, 400); return; } // wait for lib
   const url = `${window.location.origin}/app/pages/kid-lite.html?h=${householdId}`;
-  QRCode.toCanvas(canvas, url, {
-    width: 160,
-    margin: 2,
-    color: { dark: '#111111', light: '#ffffff' }
-  }, (err) => {
-    if (err) { console.error('QR render error:', err); return; }
-    canvas.dataset.loaded = '1';
-    canvas.style.display = 'inline-block';
-  });
+  try {
+    const qr = qrcode(0, 'M');
+    qr.addData(url);
+    qr.make();
+    const img = new Image();
+    img.onload = () => {
+      canvas.width = 160;
+      canvas.height = 160;
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      canvas.dataset.loaded = '1';
+      canvas.style.display = 'inline-block';
+    };
+    img.onerror = () => console.error('QR render error: image decode failed');
+    img.src = qr.createDataURL(5, 2);
+  } catch (err) {
+    console.error('QR render error:', err);
+  }
 };
 
 window.openDeleteAccountModal = () => {
