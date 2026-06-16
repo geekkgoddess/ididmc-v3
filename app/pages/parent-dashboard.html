@@ -3174,9 +3174,10 @@ window.renderKidQR = () => {
   const householdId = auth.currentUser?.uid;
   if (!householdId) return;
   const img = document.getElementById('kid-link-qr');
-  if (!img || img.src) return; // already set
+  if (!img || img.dataset.loaded) return; // already rendered
   const url = encodeURIComponent(`${window.location.origin}/app/pages/kid-lite.html?h=${householdId}`);
   img.src = `https://api.qrserver.com/v1/create-qr-code/?size=160x160&margin=6&data=${url}`;
+  img.dataset.loaded = '1';
   img.style.display = 'block';
 };
 
