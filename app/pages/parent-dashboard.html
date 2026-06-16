@@ -52,6 +52,34 @@
       border-top: 1px solid var(--border);
     }
     .chore-admin-card.expanded .chore-admin-body { display: block; }
+    .template-grid {
+      display: grid; grid-template-columns: repeat(2,minmax(0,1fr));
+      gap: 10px;
+    }
+    .template-card {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: var(--radius-lg); padding: 14px;
+    }
+    .template-card-header {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 10px; margin-bottom: 8px;
+    }
+    .template-card-title {
+      font-size: 14px; font-weight: 800; color: var(--text);
+      display: flex; align-items: center; gap: 8px;
+    }
+    .template-card-meta { font-size: 11px; color: var(--muted); margin-bottom: 10px; }
+    .template-chore-list {
+      list-style: none; padding: 0; margin: 0 0 12px;
+      display: grid; gap: 5px;
+    }
+    .template-chore-list li {
+      font-size: 12px; color: var(--text2);
+      display: flex; gap: 6px; align-items: flex-start;
+    }
+    .template-chore-list li::before {
+      content: '＋'; color: var(--gold); font-weight: 800; line-height: 1.3;
+    }
 
     /* ── Info icons & tooltips ── */
     .info-icon {
@@ -300,6 +328,8 @@
       /* Page label */
       .page-label { font-size: 10px; }
 
+      .template-grid { grid-template-columns: 1fr; }
+
       /* Chore card action buttons on mobile — icon only for ✕ */
       .chore-admin-header .btn-sm { padding: 6px 10px; font-size: 12px; }
     }
@@ -393,7 +423,10 @@
         <div class="page-label">Chore Manager</div>
         <h1 style="font-size:22px">Chores</h1>
       </div>
-      <button class="btn btn-primary btn-sm" onclick="openAddChore()">+ Add</button>
+      <div style="display:flex;gap:8px;align-items:center">
+        <button class="btn btn-secondary btn-sm" onclick="openChoreTemplates()">Templates</button>
+        <button class="btn btn-primary btn-sm" onclick="openAddChore()">+ Add</button>
+      </div>
     </div>
 
     <div id="chores-admin-list">
@@ -1068,6 +1101,19 @@
     </div>
   </div>
 
+  <!-- ── Chore Template Library Modal ── -->
+  <div class="modal-overlay" id="modal-chore-templates">
+    <div class="modal-sheet" style="max-height:88vh;overflow-y:auto">
+      <div class="modal-handle"></div>
+      <h2 style="margin-bottom:8px">Add From Templates</h2>
+      <p style="font-size:13px;color:var(--muted);line-height:1.5;margin-bottom:16px">
+        Add common chore bundles anytime. Existing chores with the same name are skipped.
+      </p>
+      <div id="chore-template-list" class="template-grid"></div>
+      <button class="btn btn-ghost mt-8" onclick="closeModal('modal-chore-templates')">Close</button>
+    </div>
+  </div>
+
 </div><!-- /app -->
 
 <script>
@@ -1639,6 +1685,83 @@ window.saveExceeded = async () => {
 };
 
 // ── Chores admin ──────────────────────────────────────────────
+const CHORE_TEMPLATE_GROUPS = [
+  {
+    id: 'kitchen',
+    icon: '🍽️',
+    label: 'Kitchen',
+    chores: [
+      { name: 'Wash dishes', desc: 'Load or wash dishes, clear the sink, and wipe splashes.' },
+      { name: 'Wipe counters', desc: 'Clear items, wipe crumbs and spills, and put supplies away.' },
+      { name: 'Clean sink', desc: 'Rinse the basin, wipe faucet handles, and remove food scraps.' },
+      { name: 'Take out trash', desc: 'Tie the bag, replace the liner, and put trash where it belongs.' },
+    ],
+  },
+  {
+    id: 'bedroom',
+    icon: '🛏️',
+    label: 'Bedroom',
+    chores: [
+      { name: 'Make bed', desc: 'Straighten sheets, blanket, and pillows.' },
+      { name: 'Pick up clothes', desc: 'Put dirty clothes in laundry and clean clothes away.' },
+      { name: 'Tidy floor', desc: 'Clear toys, books, and trash from the floor.' },
+      { name: 'Clear nightstand', desc: 'Throw away trash and return dishes or cups to the kitchen.' },
+    ],
+  },
+  {
+    id: 'bathroom',
+    icon: '🚿',
+    label: 'Bathroom',
+    chores: [
+      { name: 'Clean toilet', desc: 'Wipe the seat and outside, then use cleaner inside the bowl.' },
+      { name: 'Wipe sink', desc: 'Wipe toothpaste, soap, counter, faucet, and mirror splashes.' },
+      { name: 'Sweep floor', desc: 'Pick up items first, then sweep corners and visible dirt.' },
+      { name: 'Restock bathroom', desc: 'Replace toilet paper, towels, soap, or other basics.' },
+    ],
+  },
+  {
+    id: 'laundry',
+    icon: '🧺',
+    label: 'Laundry',
+    chores: [
+      { name: 'Sort laundry', desc: 'Sort clothes into the correct loads or baskets.' },
+      { name: 'Move to dryer', desc: 'Move clean wet clothes to the dryer and start it.' },
+      { name: 'Fold & put away', desc: 'Fold clean clothes and put them in drawers or closet.' },
+      { name: 'Collect towels', desc: 'Gather used towels and put them in the laundry area.' },
+    ],
+  },
+  {
+    id: 'living',
+    icon: '🛋️',
+    label: 'Living Areas',
+    chores: [
+      { name: 'Reset living room', desc: 'Put away toys, straighten pillows, and clear surfaces.' },
+      { name: 'Vacuum rug', desc: 'Pick up items first, then vacuum the main rug or carpet.' },
+      { name: 'Dust surfaces', desc: 'Wipe tables, shelves, and entertainment surfaces.' },
+      { name: 'Straighten shoes', desc: 'Line up or put away shoes near the entry.' },
+    ],
+  },
+  {
+    id: 'school',
+    icon: '🎒',
+    label: 'School Routine',
+    chores: [
+      { name: 'Pack backpack', desc: 'Pack homework, folders, laptop or tablet, and needed supplies.' },
+      { name: 'Homework check', desc: 'Finish homework and place it where it can be reviewed.' },
+      { name: 'Read 20 minutes', desc: 'Read for 20 minutes and be ready to share what you read.' },
+      { name: 'Prepare clothes', desc: 'Choose and lay out clothes for the next day.' },
+    ],
+  },
+];
+
+function getTemplateDefaults() {
+  const cs = household?.compSettings || {};
+  return {
+    pointValue: household?.compModel === 'points' ? (cs.pointsPerChore || 10) : 0,
+    flatPayValue: household?.compModel === 'flat' ? (cs.flatPayPerChore || 2) : 0,
+  };
+}
+
 function renderChoresAdmin() {
   if (!household) return;
   const list = document.getElementById('chores-admin-list');
@@ -1711,6 +1834,78 @@ function renderChoresAdmin() {
 window.toggleChoreCard = (id) => {
   const card = document.getElementById(`chore-card-${id}`);
   card.classList.toggle('expanded');
+};
+
+window.openChoreTemplates = () => {
+  renderChoreTemplates();
+  document.getElementById('modal-chore-templates').classList.add('active');
+};
+
+function renderChoreTemplates() {
+  const container = document.getElementById('chore-template-list');
+  if (!container) return;
+  const existingNames = new Set((household?.chores || []).map(c => String(c.name || '').trim().toLowerCase()));
+
+  container.innerHTML = CHORE_TEMPLATE_GROUPS.map(group => {
+    const available = group.chores.filter(chore => !existingNames.has(chore.name.toLowerCase())).length;
+    return `
+      <div class="template-card">
+        <div class="template-card-header">
+          <div>
+            <div class="template-card-title"><span>${group.icon}</span><span>${esc(group.label)}</span></div>
+            <div class="template-card-meta">${available}/${group.chores.length} available</div>
+          </div>
+          <button class="btn btn-sm ${available ? 'btn-primary' : 'btn-secondary'}"
+                  onclick="addTemplateGroup('${group.id}')"
+                  ${available ? '' : 'disabled'}>
+            ${available ? 'Add' : 'Added'}
+          </button>
+        </div>
+        <ul class="template-chore-list">
+          ${group.chores.map(chore => `
+            <li style="${existingNames.has(chore.name.toLowerCase()) ? 'opacity:0.45' : ''}">
+              <span>${esc(chore.name)}</span>
+            </li>
+          `).join('')}
+        </ul>
+      </div>`;
+  }).join('');
+}
+
+window.addTemplateGroup = async (groupId) => {
+  const group = CHORE_TEMPLATE_GROUPS.find(g => g.id === groupId);
+  if (!group || !currentUser) return;
+
+  const currentChores = household.chores || [];
+  const existingNames = new Set(currentChores.map(c => String(c.name || '').trim().toLowerCase()));
+  const defaults = getTemplateDefaults();
+  const now = Date.now();
+
+  const newChores = group.chores
+    .filter(chore => !existingNames.has(chore.name.toLowerCase()))
+    .map((chore, i) => ({
+      id: `chore_${now}_${group.id}_${i}`,
+      name: chore.name,
+      desc: chore.desc || '',
+      freq: 'daily',
+      assignedTo: 'any',
+      subTasks: [],
+      pointValue: defaults.pointValue,
+      flatPayValue: defaults.flatPayValue,
+    }));
+
+  if (!newChores.length) {
+    showToast(`${group.label} templates are already added`);
+    renderChoreTemplates();
+    return;
+  }
+
+  const updatedChores = [...currentChores, ...newChores];
+  await updateDoc(doc(db, 'households', currentUser.uid), { chores: updatedChores });
+  household.chores = updatedChores;
+  renderChoresAdmin();
+  renderChoreTemplates();
+  showToast(`✅ Added ${newChores.length} ${group.label} chore${newChores.length === 1 ? '' : 's'}`);
 };
 
 // ── Add / Edit chore modal ────────────────────────────────────
