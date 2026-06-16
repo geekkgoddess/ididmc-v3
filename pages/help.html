@@ -149,6 +149,8 @@
   <h2>Important Product Note</h2>
   <p>The app now uses a guided setup assistant with a visible <strong>Set Up Later</strong> option.</p>
   <p>If a parent skips setup, the parent dashboard shows a setup checklist so they can continue later.</p>
+  <p>The parent Chores tab now includes <strong>Templates</strong> so parents can add common chore bundles after onboarding.</p>
+  <p>The Share with Kids section now supports both a copied kid dashboard link and an on-screen QR code for phone/tablet setup.</p>
 </div>
 
 <div class="category-label">Getting Started</div>
@@ -230,7 +232,7 @@
         <li>Select <strong>Continue</strong> to return to guided setup.</li>
         <li>Complete missing items: parent/family details, child, compensation model, pay cycle, approval mode, and chore.</li>
         <li>When all checklist items are complete, select <strong>Mark Setup Complete</strong> or finish the guided setup flow.</li>
-        <li>Open <strong>Settings → Share with Kids</strong>, copy the kid dashboard link, and send it to the children.</li>
+        <li>Open <strong>Settings → Share with Kids</strong>, then copy the kid dashboard link or have each child scan the QR code.</li>
       </ol>
       <div class="note"><strong>Minimum usable setup:</strong> one kid, one chore, a pay cycle, a compensation model, an approval mode, and the kid dashboard link.</div>
     </div>
@@ -250,7 +252,7 @@
         <li>Start on <strong>Overview</strong> to check today's submissions, pending items, and approved work.</li>
         <li>If the pending alert appears, open <strong>Approvals</strong> and review submissions.</li>
         <li>If your household needs changes, use <strong>Chores</strong> for chore edits or <strong>Settings</strong> for household rules.</li>
-        <li>Open <strong>Settings → Share with Kids</strong> to copy the kid dashboard link for each child's device.</li>
+        <li>Open <strong>Settings → Share with Kids</strong> to copy the kid dashboard link or show the QR code for each child's device.</li>
         <li>Use <strong>History</strong> to review completion patterns and parent-entered corrections.</li>
         <li>When there are earnings to settle, use the <strong>Pay Out</strong> button in Overview.</li>
       </ol>
@@ -269,7 +271,7 @@
       <ol class="steps">
         <li><strong>Overview:</strong> shows today's submissions, pending count, approved count, kid balances, payout estimates, and today's activity.</li>
         <li><strong>Approvals:</strong> shows submitted chores that need parent review, plus any fraud-flagged items.</li>
-        <li><strong>Chores:</strong> where parents add, edit, expand, and delete chore cards.</li>
+        <li><strong>Chores:</strong> where parents add chores manually, add chore bundles from Templates, edit, expand, and delete chore cards.</li>
         <li><strong>History:</strong> shows recent completion bars, PTO markers, manual corrections, and the payday formula.</li>
         <li><strong>Settings:</strong> where parents manage compensation, pay cycle, approval mode, kids, PTO, email notifications, sharing, account, legal, and help.</li>
       </ol>
@@ -317,7 +319,30 @@
         <li>Add optional sub-tasks if the chore needs a checklist.</li>
         <li>Select <strong>Save Chore</strong>.</li>
       </ol>
+      <div class="note"><strong>Faster option:</strong> select <strong>Templates</strong> in the Chores tab to add common chore bundles without building every chore manually.</div>
       <div class="shot"><strong>Screenshot needed</strong><p>Add/Edit Chore modal showing name, standards, points/flat pay, frequency, assignment, sub-task editor, and Save Chore.</p></div>
+    </div>
+  </div>
+</div>
+
+<div class="acc">
+  <div class="acc-hdr" onclick="toggleAcc(this)">
+    <div class="acc-hdr-left"><span class="acc-icon">8A</span><span class="acc-title">Add Chores From Templates</span></div>
+    <span class="acc-chev">›</span>
+  </div>
+  <div class="acc-body">
+    <div class="step-block">
+      <ol class="steps">
+        <li>Open the <strong>Chores</strong> tab from the parent dashboard.</li>
+        <li>Select <strong>Templates</strong> next to the <strong>+ Add</strong> button.</li>
+        <li>Review the available template groups: Kitchen, Bedroom, Bathroom, Laundry, Living Areas, and School Routine.</li>
+        <li>Select <strong>Add</strong> on the group you want.</li>
+        <li>The app adds only chores that do not already exist in the household.</li>
+        <li>After adding a group, review the new chore cards and edit names, standards, values, frequency, assignment, or sub-tasks as needed.</li>
+      </ol>
+      <div class="note"><strong>Duplicate protection:</strong> if a chore with the same name already exists, the template skips it instead of creating a duplicate.</div>
+      <div class="decision"><strong>Compensation behavior:</strong> template chores use the household's current compensation defaults. Points households get the default points value, flat-pay households get the default flat amount, and daily-min households add chores with no per-chore value.</div>
+      <div class="shot"><strong>Screenshot needed</strong><p>Chores tab with the Templates button, plus the Add From Templates modal showing template groups and Add buttons.</p></div>
     </div>
   </div>
 </div>
@@ -530,11 +555,12 @@
       <ol class="steps">
         <li>Open <strong>Settings</strong>.</li>
         <li>Expand <strong>Share with Kids</strong>.</li>
-        <li>Select <strong>Copy Kid Dashboard Link</strong>.</li>
-        <li>Send the copied link to your kids by text, email, or another family channel.</li>
+        <li>Use <strong>Copy Kid Dashboard Link</strong> if you want to send the link by text, email, or another family channel.</li>
+        <li>Use the QR code if the child has the phone or tablet nearby. Open the device camera, scan the QR code, and open the kid dashboard link.</li>
         <li>Give each child their own 4-digit PIN.</li>
       </ol>
-      <div class="note"><strong>Kids do not need a parent password.</strong> The shared link identifies the household; the PIN identifies the child.</div>
+      <div class="note"><strong>Kids do not need a parent password.</strong> The shared link or QR code identifies the household; the PIN identifies the child.</div>
+      <div class="decision"><strong>QR behavior:</strong> the QR code is generated inside the app from a local script, not from an outside QR website. This keeps sharing free and avoids loosening the site's security policy.</div>
     </div>
   </div>
 </div>
@@ -790,6 +816,25 @@
         <li>If needed, select <strong>Reset PIN</strong> and give the child the new 4-digit PIN.</li>
         <li>If the dashboard still does not load, refresh the page and try again.</li>
       </ol>
+    </div>
+  </div>
+</div>
+
+<div class="acc">
+  <div class="acc-hdr" onclick="toggleAcc(this)">
+    <div class="acc-hdr-left"><span class="acc-icon">32A</span><span class="acc-title">The Share QR Code Does Not Show</span></div>
+    <span class="acc-chev">›</span>
+  </div>
+  <div class="acc-body">
+    <div class="step-block">
+      <ol class="steps">
+        <li>Open <strong>Settings → Share with Kids</strong>.</li>
+        <li>Wait a moment after expanding the section; the QR code is generated when the section opens.</li>
+        <li>If the QR code does not appear, refresh the parent dashboard and open <strong>Share with Kids</strong> again.</li>
+        <li>If the QR still does not appear, use <strong>Copy Kid Dashboard Link</strong> as the backup sharing method.</li>
+        <li>Report the issue with the parent email, browser/device, and a screenshot of the Share with Kids section.</li>
+      </ol>
+      <div class="note"><strong>Backup path:</strong> the copied kid dashboard link and QR code open the same kid dashboard. The QR code is only a convenience for getting the link onto another device faster.</div>
     </div>
   </div>
 </div>
