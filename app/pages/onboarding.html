@@ -2,7 +2,10 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧹</text></svg>">
+  <link rel="icon" href="/images/favicon.ico" sizes="any">
+  <link rel="icon" href="/images/icon-192.png" type="image/png">
+  <link rel="apple-touch-icon" href="/images/icon-192.png">
+  <link rel="manifest" href="/manifest.json">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
   <meta name="theme-color" content="#090909">
   <title>Setup — I Did My Chores</title>
@@ -242,6 +245,29 @@
       cursor: pointer;
     }
     .add-btn:hover { border-color: var(--gold); color: var(--gold); }
+    .preset-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+    .preset-card {
+      background: var(--card2);
+      border: 2px solid var(--border);
+      border-radius: 12px;
+      padding: 12px;
+      cursor: pointer;
+      font-family: inherit;
+      color: var(--text);
+      text-align: left;
+      transition: border-color 0.15s;
+    }
+    .preset-card:hover { border-color: var(--gold); }
+    .preset-card.added { border-color: var(--green); background: var(--green-dim); }
+    .preset-card .preset-icon { font-size: 22px; display: block; margin-bottom: 4px; }
+    .preset-card .preset-label { font-size: 13px; font-weight: 800; display: block; }
+    .preset-card .preset-count { font-size: 11px; color: var(--muted); display: block; margin-top: 2px; }
+    .preset-card.added .preset-count { color: var(--green); }
     .modal-overlay.active { align-items: center; justify-content: center; }
     .modal-sheet {
       width: min(100%, 390px);
@@ -598,12 +624,61 @@ function renderApproval(el) {
   `);
 }
 
+// ── Preset chore rooms ────────────────────────────────────────────
+const PRESET_ROOMS = [
+  { id: 'kitchen',  icon: '🍽️', label: 'Kitchen',  chores: ['Wash dishes', 'Wipe counters', 'Clean sink', 'Take out trash'] },
+  { id: 'bedroom',  icon: '🛏️', label: 'Bedroom',  chores: ['Make bed', 'Pick up clothes', 'Tidy floor'] },
+  { id: 'bathroom', icon: '🚿', label: 'Bathroom', chores: ['Clean toilet', 'Wipe sink', 'Sweep floor'] },
+  { id: 'laundry',  icon: '🧺', label: 'Laundry',  chores: ['Sort laundry', 'Move to dryer', 'Fold & put away'] },
+];
+
+window.togglePresetRoom = (roomId) => {
+  const room = PRESET_ROOMS.find(r => r.id === roomId);
+  if (!room) return;
+  const existingNames = chores.map(c => c.name.toLowerCase());
+  const allAdded = room.chores.every(name => existingNames.includes(name.toLowerCase()));
+  if (allAdded) {
+    // Remove this room's chores
+    chores = chores.filter(c => !room.chores.some(n => n.toLowerCase() === c.name.toLowerCase()));
+  } else {
+    // Add missing chores from this room
+    room.chores.forEach(name => {
+      if (!existingNames.includes(name.toLowerCase())) {
+        const cs = household.compSettings || {};
+        chores.push({
+          id: 'chore_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7),
+          name,
+          desc: '',
+          freq: 'daily',
+          assignedTo: 'any',
+          pointValue:   household.compModel === 'points'   ? (cs.pointsPerChore || 10) : 0,
+          flatPayValue: household.compModel === 'flat'     ? (cs.flatPayPerChore || 2)  : 0,
+          subTasks: [],
+        });
+      }
+    });
+  }
+  renderChores(document.getElementById('step-content'));
+};
+
 function renderChores(el) {
+  const existingNames = chores.map(c => c.name.toLowerCase());
+  const presetCards = PRESET_ROOMS.map(room => {
+    const allAdded = room.chores.every(n => existingNames.includes(n.toLowerCase()));
+    return `<button class="preset-card ${allAdded ? 'added' : ''}" onclick="togglePresetRoom('${room.id}')">
+      <span class="preset-icon">${room.icon}</span>
+      <span class="preset-label">${room.label}</span>
+      <span class="preset-count">${allAdded ? '✓ Added' : room.chores.length + ' chores'}</span>
+    </button>`;
+  }).join('');
+
   el.innerHTML = card(`
-    <h1>Add one or two chores</h1>
-    <p>Start small so you can test the full flow. You can build the full chore list later. <button class="info-btn" onclick="openInfo('chores')">i</button></p>
+    <h1>Add starter chores</h1>
+    <p>Pick a room to add common chores, or add your own. You can edit or remove any of them. <button class="info-btn" onclick="openInfo('chores')">i</button></p>
+    <p style="font-size:12px;color:var(--muted);margin-bottom:10px">Quick-add by room:</p>
+    <div class="preset-grid">${presetCards}</div>
     <div id="chores-list"></div>
-    <button class="add-btn" onclick="openAddChore()">+ Add Chore</button>
+    <button class="add-btn" onclick="openAddChore()">+ Add Custom Chore</button>
     ${navButtons({ next: chores.length ? 'Continue' : 'Skip for Now' })}
   `);
   renderChoresList();

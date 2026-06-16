@@ -2,7 +2,10 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧹</text></svg>">
+  <link rel="icon" href="/images/favicon.ico" sizes="any">
+  <link rel="icon" href="/images/icon-192.png" type="image/png">
+  <link rel="apple-touch-icon" href="/images/icon-192.png">
+  <link rel="manifest" href="/manifest.json">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
   <title>I Did My Chores - Kid Lite</title>
   <link rel="stylesheet" href="../../css/app.css">
@@ -558,23 +561,47 @@ function renderChoreList(type) {
     return type === 'daily' ? chore.freq === 'daily' : chore.freq !== 'daily';
   });
   var claimed = type === 'daily' ? (household.dailyClaimed || {}) : (household.weeklyClaimed || {});
+
+  // Daily Min: grey out remaining chores once the kid has hit the minimum chore count
+  var cs = household.compSettings || {};
+  var choreTarget = cs.choreMinForFullDay || cs.choreMin || cs.dailyChoreTarget || 0;
+  var doneCount = (household.stats || {}).dailyDoneCount || 0;
+  var dailyMinMet = type === 'daily'
+    && household.compModel === 'daily-min'
+    && choreTarget > 0
+    && doneCount >= choreTarget;
+
+  var banner = '';
+  if (dailyMinMet) {
+    banner = '<div style="display:flex;align-items:center;gap:8px;padding:10px 14px;margin-bottom:6px;' +
+      'background:var(--green-dim);border:1px solid var(--green);border-radius:8px;font-size:13px;font-weight:700;color:var(--green)">' +
+      '✅ You hit your ' + choreTarget + '-chore goal — you\'re done for today!' +
+      '</div>';
+  }
+
   var html = chores.map(function(chore) {
     var status = claimed[chore.id + '_status'];
     var claimedBy = claimed[chore.id + '_claimedBy'];
     var mine = claimedBy === currentKid.name;
     var locked = status && status !== 'available' && status !== 'rejected' && !mine;
     var done = mine && (status === 'submitted' || status === 'approved');
-    var sub = done ? 'Submitted' : locked ? 'Claimed by ' + claimedBy : 'Tap to submit';
+    // Grey out unclaimed chores when daily min is met — kids know they're done
+    var minGreyed = dailyMinMet && !done && !mine;
+    var sub = done ? 'Submitted'
+      : minGreyed ? 'Daily min met ✓'
+      : locked ? 'Claimed by ' + claimedBy
+      : 'Tap to submit';
     var value = household.compModel === 'flat' ? '$' + Number(chore.flatPayValue || 0).toFixed(2) : (chore.pointValue || 0) + ' pts';
-    return '<button class="chore-row ' + (locked || done ? 'locked' : '') + '" ' +
-      (locked || done || household.ptoToday || household.birthdayToday ? '' : 'onclick="openClaim(\'' + escapeJs(chore.id) + '\',\'' + type + '\')"') + '>' +
-      '<span class="dot" style="background:' + (done ? 'var(--green)' : currentKid.color) + '"></span>' +
+    var isBlocked = locked || done || minGreyed || household.ptoToday || household.birthdayToday;
+    return '<button class="chore-row ' + (locked || done || minGreyed ? 'locked' : '') + '" ' +
+      (isBlocked ? '' : 'onclick="openClaim(\'' + escapeJs(chore.id) + '\',\'' + type + '\')"') + '>' +
+      '<span class="dot" style="background:' + (done ? 'var(--green)' : minGreyed ? 'var(--muted)' : currentKid.color) + '"></span>' +
       '<span class="chore-main"><span class="chore-name">' + escapeHtml(chore.name) + '</span>' +
       '<span class="chore-sub">' + escapeHtml(sub) + '</span></span>' +
       '<span class="value-pill">' + value + '</span></button>';
   }).join('');
   if (!chores.length) html = '<div style="padding:18px;text-align:center;color:var(--muted);font-size:13px">No ' + type + ' chores assigned</div>';
-  document.getElementById(type + '-list').innerHTML = html;
+  document.getElementById(type + '-list').innerHTML = banner + html;
 }
 
 function renderWorkList() {

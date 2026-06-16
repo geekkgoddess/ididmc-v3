@@ -2,7 +2,10 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧹</text></svg>">
+  <link rel="icon" href="/images/favicon.ico" sizes="any">
+  <link rel="icon" href="/images/icon-192.png" type="image/png">
+  <link rel="apple-touch-icon" href="/images/icon-192.png">
+  <link rel="manifest" href="/manifest.json">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
   <title>Parent Dashboard — I Did My Chores</title>
   <link rel="stylesheet" href="../../css/app.css">
@@ -301,6 +304,7 @@
       .chore-admin-header .btn-sm { padding: 6px 10px; font-size: 12px; }
     }
   </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 </head>
 <body>
 <div id="app">
@@ -511,9 +515,14 @@
                 onclick="copyKidLink()">
           📋 Copy Kid Dashboard Link
         </button>
-        <p style="font-size:12px;color:var(--muted);margin:0;text-align:center">
+        <p style="font-size:12px;color:var(--muted);margin:0 0 16px;text-align:center">
           Share this link with your kids to let them log in and complete chores
         </p>
+        <!-- QR Code -->
+        <div style="text-align:center">
+          <p style="font-size:12px;color:var(--muted);margin:0 0 10px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em">Or scan to open on a phone</p>
+          <div id="kid-link-qr" style="display:inline-block;background:#fff;border-radius:12px;padding:10px;line-height:0"></div>
+        </div>
       </div>
     </div>
 
@@ -2043,6 +2052,8 @@ window.toggleSAcc = (id) => {
   if (chev) chev.classList.toggle('open', !isOpen);
   if (isOpen) _saccOpen.delete(id); else _saccOpen.add(id);
   localStorage.setItem('saccOpen', JSON.stringify([..._saccOpen]));
+  // Generate QR code when the Share with Kids section is opened
+  if (id === 'share-kids' && !isOpen) renderKidQR();
 };
 
 // Restore previously-open sections on page load (called from setupRealtime after household loads)
@@ -3158,6 +3169,25 @@ window.copyKidLink = async () => {
   }
 };
 
+// Render QR code for the kid link — called after auth + household load
+window.renderKidQR = () => {
+  const householdId = auth.currentUser?.uid;
+  if (!householdId) return;
+  const el = document.getElementById('kid-link-qr');
+  if (!el || !window.QRCode) return;
+  // Only generate once; if it already has content, skip
+  if (el.childElementCount > 0) return;
+  const url = `${window.location.origin}/app/pages/kid-lite.html?h=${householdId}`;
+  new QRCode(el, {
+    text: url,
+    width: 160,
+    height: 160,
+    colorDark: '#090909',
+    colorLight: '#ffffff',
+    correctLevel: QRCode.CorrectLevel.M,
+  });
+};
+
 window.openDeleteAccountModal = () => {
   const modal = document.getElementById('modal-delete-account');
   modal.style.display = 'flex';
@@ -3211,6 +3241,7 @@ window.displayHouseholdId = () => {
   if (el && householdId) {
     el.textContent = householdId;
   }
+  renderKidQR();
 };
 
 window.closeModal = (id) => document.getElementById(id).classList.remove('active');
