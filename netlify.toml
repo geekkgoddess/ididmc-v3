@@ -24,6 +24,12 @@
   to   = "/unsubscribe.html"
   status = 200
 
+# Invitation-only beta tester landing page
+[[redirects]]
+  from = "/beta"
+  to   = "/pages/beta.html"
+  status = 200
+
 # Keep everything else working
 [[redirects]]
   from = "/*"

@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="robots" content="noindex,nofollow,noarchive">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Invitation-only beta testing for I Did My Chores.">
+  <link rel="icon" href="../images/favicon.ico" sizes="any">
+  <link rel="icon" href="../images/icon-192.png" type="image/png">
+  <link rel="apple-touch-icon" href="../images/icon-192.png">
+  <link rel="manifest" href="../manifest.json">
+  <title>Beta Testing - I Did My Chores</title>
+  <link rel="stylesheet" href="../css/site.css">
+  <style>
+    .beta-hero {
+      position: relative; min-height: min(720px, 78svh); margin-top: 64px;
+      display: flex; align-items: flex-end; isolation: isolate; overflow: hidden;
+      background: url('../images/hero-mom-daughter.png') center 38% / cover no-repeat;
+    }
+    .beta-hero::before {
+      content: ''; position: absolute; inset: 0; z-index: -1;
+      background: rgba(0,0,0,0.58);
+    }
+    .beta-hero-inner {
+      width: min(1100px, calc(100% - 40px)); margin: 0 auto; padding: 72px 0 60px;
+      color: #fff;
+    }
+    .beta-kicker {
+      display: inline-flex; align-items: center; gap: 8px; margin-bottom: 16px;
+      font-size: 12px; font-weight: 800; text-transform: uppercase;
+      border: 1px solid rgba(255,255,255,0.45); padding: 7px 10px; border-radius: 6px;
+      background: rgba(0,0,0,0.28);
+    }
+    .beta-hero h1 {
+      max-width: 760px; font-size: clamp(38px,7vw,72px); line-height: 1.02;
+      letter-spacing: 0; margin: 0 0 18px; color: #fff;
+    }
+    .beta-hero p { max-width: 660px; color: rgba(255,255,255,0.88); font-size: 18px; line-height: 1.65; }
+    .beta-actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 28px; }
+    .beta-actions .btn { min-height: 48px; }
+    .beta-actions .btn-secondary { color: #fff; border-color: rgba(255,255,255,0.55); background: rgba(0,0,0,0.28); }
+    .beta-band { padding: 68px 20px; }
+    .beta-band.alt { background: var(--bg2); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+    .beta-inner { max-width: 920px; margin: 0 auto; }
+    .beta-intro { max-width: 740px; }
+    .beta-intro h2 { font-size: clamp(28px,4vw,42px); line-height: 1.15; margin-bottom: 16px; }
+    .beta-intro p { color: var(--text2); font-size: 16px; line-height: 1.75; }
+    .beta-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 24px 48px; margin-top: 36px; }
+    .beta-point { border-top: 2px solid var(--gold); padding-top: 14px; }
+    .beta-point h3 { font-size: 17px; margin-bottom: 7px; }
+    .beta-point p { color: var(--text2); font-size: 14px; line-height: 1.65; }
+    .test-list { list-style: none; counter-reset: beta-step; display: grid; gap: 0; margin-top: 30px; }
+    .test-list li {
+      counter-increment: beta-step; display: grid; grid-template-columns: 38px 1fr;
+      gap: 14px; padding: 17px 0; border-bottom: 1px solid var(--border);
+      color: var(--text2); font-size: 15px; line-height: 1.6;
+    }
+    .test-list li::before {
+      content: counter(beta-step); width: 32px; height: 32px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      background: var(--gold); color: #000; font-weight: 800; font-size: 12px;
+    }
+    .report-strip {
+      display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 24px;
+      padding: 28px 0; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border);
+    }
+    .report-strip p { color: var(--text2); font-size: 14px; line-height: 1.6; margin-top: 4px; }
+    .beta-note { border-left: 3px solid var(--gold); padding: 4px 0 4px 16px; margin-top: 28px; color: var(--text2); font-size: 14px; line-height: 1.7; }
+    .final-cta { text-align: center; max-width: 680px; margin: 0 auto; }
+    .final-cta h2 { font-size: clamp(30px,5vw,48px); line-height: 1.12; margin-bottom: 14px; }
+    .final-cta p { color: var(--text2); font-size: 16px; line-height: 1.7; }
+    @media (max-width: 680px) {
+      .nav-inner { padding: 0 14px; }
+      .nav-logo { white-space: nowrap; font-size: 15px; gap: 5px; }
+      .nav-right a { display: none; }
+      .beta-hero { min-height: 72svh; background-position: 58% center; }
+      .beta-hero-inner { width: min(100% - 28px, 1100px); padding: 54px 0 42px; }
+      .beta-hero p { font-size: 16px; }
+      .beta-actions { flex-direction: column; }
+      .beta-actions .btn { width: 100%; justify-content: center; }
+      .beta-band { padding: 52px 18px; }
+      .beta-grid { grid-template-columns: 1fr; gap: 22px; }
+      .report-strip { grid-template-columns: 1fr; }
+      .report-strip .btn { width: 100%; justify-content: center; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <section class="beta-hero">
+      <div class="beta-hero-inner">
+        <div class="beta-kicker">Invitation-only beta · 3–7 days</div>
+        <h1>I Did My Chores Beta</h1>
+        <p>
+          I built a real-job-style chore system for families, and I need a small group of parents to use it before I share it more widely. Your honest feedback will help me find what is confusing, broken, or missing.
+        </p>
+        <div class="beta-actions">
+          <a href="/login.html?signup=true" class="btn btn-primary">Start Beta Testing</a>
+          <a href="/pages/contact.html" class="btn btn-secondary">Send Feedback</a>
+        </div>
+      </div>
+    </section>
+
+    <section class="beta-band">
+      <div class="beta-inner">
+        <div class="beta-intro">
+          <div class="section-label" style="margin-bottom:12px">Why I Built It</div>
+          <h2>Accountability without another round of nagging.</h2>
+          <p>
+            It started as a way to show my own kids what needs to be done, what “done” actually means, and how approved work adds up over a real pay cycle. After a coworker asked to use it with her grandkids, I went back through every chore app I had tried and built the parent workflow I had been looking for.
+          </p>
+        </div>
+        <div class="beta-grid">
+          <div class="beta-point"><h3>Photo proof</h3><p>Kids document completed work, and parents review the evidence before approving it.</p></div>
+          <div class="beta-point"><h3>Real feedback</h3><p>Parents can approve work or send it back with instructions so kids can correct and resubmit it.</p></div>
+          <div class="beta-point"><h3>Pay cycles and points</h3><p>Families choose the earning model and schedule that fits their household.</p></div>
+          <div class="beta-point"><h3>PTO and chore days</h3><p>Parents control days off and whether chores happen on weekdays, every day, or custom days.</p></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="beta-band alt">
+      <div class="beta-inner">
+        <div class="beta-intro">
+          <div class="section-label" style="margin-bottom:12px">Who This Test Is For</div>
+          <h2>A parent or guardian willing to try the real workflow.</h2>
+          <p>
+            This test works best for families with kids old enough to understand chores and use a phone or tablet camera. You may use fake names and a made-up household if you would rather explore without entering your family's information.
+          </p>
+        </div>
+        <div class="beta-note">
+          Please keep this invitation link within the invited testing group. Beta access is free, no payment card is required, and there is no payment or prize for participating.
+          If you use real family information, avoid showing faces, addresses, school details, documents, or other sensitive information in proof photos.
+        </div>
+      </div>
+    </section>
+
+    <section class="beta-band">
+      <div class="beta-inner">
+        <div class="beta-intro">
+          <div class="section-label" style="margin-bottom:12px">Your 3–7 Day Assignment</div>
+          <h2>Use it like a regular parent would.</h2>
+          <p>You do not need to test every button. Complete this path and tell me where the experience gets unclear.</p>
+        </div>
+        <ol class="test-list">
+          <li><span>Create a parent account and complete the household setup.</span></li>
+          <li><span>Add at least one child and one chore. Try a template bundle if it fits.</span></li>
+          <li><span>Open the kid dashboard link or QR code on another device and submit a chore with proof.</span></li>
+          <li><span>Review the submission as the parent. Approve one item and send another back as Needs Fix if possible.</span></li>
+          <li><span>Change one setting, such as chore days, pay cycle, approval mode, PTO, or compensation.</span></li>
+          <li><span>Return over the next 3–7 days and note anything confusing, broken, unexpectedly slow, or different across devices.</span></li>
+        </ol>
+      </div>
+    </section>
+
+    <section class="beta-band alt">
+      <div class="beta-inner">
+        <div class="beta-intro" style="margin-bottom:30px">
+          <div class="section-label" style="margin-bottom:12px">What To Report</div>
+          <h2>Confusing, broken, or weird all count.</h2>
+          <p>
+            Tell me what you expected, what happened instead, the device/browser you used, and the approximate time. Screenshots or quick screen recordings are especially helpful.
+          </p>
+        </div>
+        <div class="report-strip">
+          <div><strong>Something went wrong?</strong><p>Use the feedback form for bugs, setup questions, feature ideas, or anything that made you stop.</p></div>
+          <a href="/pages/contact.html" class="btn btn-primary">Report Feedback</a>
+        </div>
+        <div class="report-strip">
+          <div><strong>Need help first?</strong><p>Check the step-by-step SOPs and current known issues before giving up on the test.</p></div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <a href="/pages/help.html" class="btn btn-secondary btn-sm">Help & SOPs</a>
+            <a href="/pages/known-issues.html" class="btn btn-secondary btn-sm">Known Issues</a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="beta-band">
+      <div class="final-cta">
+        <div class="section-label" style="margin-bottom:12px">Ready When You Are</div>
+        <h2>Help me make the next family's experience better.</h2>
+        <p>Start with a real or made-up household, use it for 3–7 days, and send honest feedback.</p>
+        <a href="/login.html?signup=true" class="btn btn-primary" style="margin-top:24px">Create Beta Account</a>
+      </div>
+    </section>
+  </main>
+  <script src="../js/site.js"></script>
+</body>
+</html>
