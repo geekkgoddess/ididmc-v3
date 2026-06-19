@@ -253,8 +253,8 @@
 
     <div id="dayoff-card" class="card" style="display:none;text-align:center;margin-bottom:16px">
       <div style="font-size:48px;margin-bottom:8px">🏖️</div>
-      <h2>Day Off!</h2>
-      <p>Your parent gave you a day off today.</p>
+      <h2 id="dayoff-title">Day Off!</h2>
+      <p id="dayoff-message">Your parent gave you a day off today.</p>
     </div>
 
     <div id="birthday-card" style="display:none;text-align:center;margin-bottom:16px;
@@ -496,9 +496,14 @@ function renderDashboard() {
   document.getElementById('dash-name').textContent = currentKid.name;
   document.getElementById('dash-date').textContent = formatDate(household.today);
   renderKidGuide();
-  var isDayOff    = household.ptoToday || false;
+  var isScheduledOff = household.scheduledDayOff || false;
+  var isDayOff    = household.ptoToday || isScheduledOff;
   var isBirthday  = household.birthdayToday || false;
   document.getElementById('dayoff-card').style.display    = isDayOff    ? 'block' : 'none';
+  document.getElementById('dayoff-title').textContent = isScheduledOff ? 'No Chores Today' : 'Day Off!';
+  document.getElementById('dayoff-message').textContent = isScheduledOff
+    ? 'Today is not one of your household chore days.'
+    : 'Your parent gave you a day off today.';
   document.getElementById('birthday-card').style.display  = isBirthday  ? 'block' : 'none';
   document.getElementById('model-explain').innerHTML = getModelExplanation();
 
@@ -621,7 +626,7 @@ function renderChoreList(type) {
       : locked ? 'Claimed by ' + claimedBy
       : 'Tap to submit';
     var value = household.compModel === 'flat' ? '$' + Number(chore.flatPayValue || 0).toFixed(2) : (chore.pointValue || 0) + ' pts';
-    var isBlocked = locked || done || needsFix || minGreyed || household.ptoToday || household.birthdayToday;
+    var isBlocked = locked || done || needsFix || minGreyed || household.ptoToday || household.scheduledDayOff || household.birthdayToday;
     return '<button class="chore-row ' + (locked || done || minGreyed ? 'locked' : '') + '" ' +
       (isBlocked ? '' : 'onclick="openClaim(\'' + escapeJs(chore.id) + '\',\'' + type + '\')"') + '>' +
       '<span class="dot" style="background:' + (needsFix ? 'var(--red)' : done ? 'var(--green)' : minGreyed ? 'var(--muted)' : currentKid.color) + '"></span>' +

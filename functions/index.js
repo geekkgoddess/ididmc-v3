@@ -857,6 +857,9 @@ exports.getKidLiteDashboard = functions.https.onRequest(async (req, res) => {
     log.info("pin_success", {householdId, kidName, endpoint: "getKidLiteDashboard"});
 
     const today = getTodayEt();
+    const activeChoreDays = Array.isArray(household.activeChoreDays)
+      ? household.activeChoreDays : [1, 2, 3, 4, 5];
+    const todayDayIndex = new Date(`${today}T12:00:00Z`).getUTCDay();
     const payPeriod = getPayPeriodForHousehold(household, today);
     const visibleChores = (household.chores || [])
       .filter((chore) => chore && (chore.assignedTo === "any" || chore.assignedTo === kidName))
@@ -892,6 +895,9 @@ exports.getKidLiteDashboard = functions.https.onRequest(async (req, res) => {
       kid: {name: kid.name, color: kid.color || "#f5c842"},
       kids,
       today,
+      activeChoreDays,
+      choreScheduleMode: household.choreScheduleMode || "weekdays",
+      scheduledDayOff: !activeChoreDays.includes(todayDayIndex),
       weekStart: getWeekStartForDate(today),
       payPeriod,
       compModel: household.compModel || "points",

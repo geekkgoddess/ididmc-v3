@@ -496,6 +496,18 @@
       <div class="sacc-body" id="settings-pay-cycle"></div>
     </div>
 
+    <!-- Chore Days -->
+    <div class="sacc">
+      <div class="sacc-hdr" onclick="toggleSAcc('chore-days')">
+        <div style="display:flex;align-items:center;gap:8px">
+          <span class="sacc-title">Chore Days</span>
+          <span class="info-icon" data-tooltip="Choose which days kids have chores">ⓘ</span>
+        </div>
+        <span class="sacc-chevron" id="sacc-chev-chore-days">›</span>
+      </div>
+      <div class="sacc-body" id="settings-chore-days"></div>
+    </div>
+
     <!-- Approval Mode -->
     <div class="sacc">
       <div class="sacc-hdr" onclick="toggleSAcc('approval')">
@@ -1312,6 +1324,9 @@ function normalizeHousehold() {
   household.emailSettings = household.emailSettings || {};
   household.compModel = household.compModel || 'points';
   household.compSettings = household.compSettings || {};
+  household.choreScheduleMode = household.choreScheduleMode || 'weekdays';
+  household.activeChoreDays = Array.isArray(household.activeChoreDays)
+    ? household.activeChoreDays : [1, 2, 3, 4, 5];
   household.payFrequency = household.payFrequency ||
     (household.payPeriodDays === 14 ? 'biweekly' :
      household.payPeriodDays === 30 ? 'monthly' : 'weekly');
@@ -2412,7 +2427,7 @@ window.openSubmissionDetail = (id) => {
 
 // ── Settings accordion ────────────────────────────────────────
 // IDs of all accordion sections (matches sacc-chev-{id} and settings-{id})
-const SACC_IDS = ['comp-model','pay-cycle','approval','kids','pto','email','share-kids','account','legal','help'];
+const SACC_IDS = ['comp-model','pay-cycle','chore-days','approval','kids','pto','email','share-kids','account','legal','help'];
 
 // Persist which sections the parent left open
 const _saccOpen = new Set(JSON.parse(localStorage.getItem('saccOpen') || '[]'));
@@ -2450,6 +2465,9 @@ function renderSettings() {
 
   // Pay Cycle
   renderPayCycleSettings();
+
+  // Chore Days
+  renderChoreDaysSettings();
 
   // PTO / Days Off
   renderPtoSettings();
@@ -2677,6 +2695,62 @@ window.saveContactInfo = async () => {
   household.ownerEmail = ownerEmail;
   household.parentPhone = parentPhone;
   showToast('✅ Contact info saved');
+};
+
+// ── Chore Days Settings ────────────────────────────────────────
+function renderChoreDaysSettings() {
+  const mode = household.choreScheduleMode || 'weekdays';
+  const active = new Set(household.activeChoreDays || [1, 2, 3, 4, 5]);
+  const days = [
+    {value:0,label:'Sun'}, {value:1,label:'Mon'}, {value:2,label:'Tue'},
+    {value:3,label:'Wed'}, {value:4,label:'Thu'}, {value:5,label:'Fri'}, {value:6,label:'Sat'}
+  ];
+  const option = (value, label, sub) => `
+    <button onclick="setChoreScheduleMode('${value}')"
+      style="padding:11px 12px;border:2px solid ${mode===value?'var(--gold)':'var(--border)'};
+             border-radius:8px;background:${mode===value?'var(--gold-dim)':'transparent'};
+             color:var(--text);font:inherit;text-align:left;cursor:pointer">
+      <strong style="font-size:13px">${label}</strong>
+      <span style="display:block;font-size:11px;color:var(--muted);margin-top:2px">${sub}</span>
+    </button>`;
+  document.getElementById('settings-chore-days').innerHTML = `
+    <div style="padding:14px 0">
+      <div style="display:grid;grid-template-columns:1fr;gap:8px;margin-bottom:14px">
+        ${option('weekdays','Weekdays','Monday through Friday')}
+        ${option('everyday','Every Day','Monday through Sunday')}
+        ${option('custom','Custom Days','Choose the exact days for your household')}
+      </div>
+      <div id="custom-chore-days" style="display:${mode==='custom'?'grid':'none'};grid-template-columns:repeat(7,1fr);gap:5px;margin-bottom:14px">
+        ${days.map(day => `<label style="text-align:center;font-size:10px;color:var(--muted)">
+          <input type="checkbox" value="${day.value}" ${active.has(day.value)?'checked':''}
+                 style="display:block;margin:0 auto 4px;width:18px;height:18px;accent-color:var(--gold)">
+          ${day.label}
+        </label>`).join('')}
+      </div>
+      <button class="btn btn-primary" onclick="saveChoreDaysSettings()">Save Chore Days</button>
+    </div>`;
+}
+
+window.setChoreScheduleMode = (mode) => {
+  household.choreScheduleMode = mode;
+  household.activeChoreDays = mode === 'everyday' ? [0,1,2,3,4,5,6] :
+    mode === 'weekdays' ? [1,2,3,4,5] : (household.activeChoreDays || [1,2,3,4,5]);
+  renderChoreDaysSettings();
+};
+
+window.saveChoreDaysSettings = async () => {
+  const mode = household.choreScheduleMode || 'weekdays';
+  let days = mode === 'everyday' ? [0,1,2,3,4,5,6] : [1,2,3,4,5];
+  if (mode === 'custom') {
+    days = [...document.querySelectorAll('#custom-chore-days input:checked')].map(input => Number(input.value));
+    if (!days.length) { showToast('Choose at least one chore day'); return; }
+  }
+  await updateDoc(doc(db, 'households', currentUser.uid), {
+    choreScheduleMode: mode, activeChoreDays: days
+  });
+  household.choreScheduleMode = mode;
+  household.activeChoreDays = days;
+  showToast('Chore days saved');
 };
 
 // ── Pay Cycle Settings ─────────────────────────────────────────

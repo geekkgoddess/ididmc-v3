@@ -219,8 +219,8 @@
   <div id="screen-weekend" class="screen"
        style="align-items:center;justify-content:center;text-align:center">
     <span style="font-size:72px;display:block;margin-bottom:20px">🛋️</span>
-    <h1>Weekend</h1>
-    <p style="margin-top:10px;max-width:240px">No chores today. Rest up.</p>
+    <h1>No Chores Today</h1>
+    <p style="margin-top:10px;max-width:240px">Today is not one of your household chore days. Rest up.</p>
   </div>
 
   <!-- Day Off (PTO) -->
@@ -514,7 +514,7 @@ async function boot() {
     return;
   }
 
-  if (isWeekend()) { showScreen('screen-weekend'); return; }
+  if (!isActiveChoreDay()) { showScreen('screen-weekend'); return; }
 
   const savedKid = sessionStorage.getItem('kidName');
   if (savedKid) {
@@ -1247,7 +1247,10 @@ function getDailyChoreTarget(totalDailyChores, kidCount) {
   if (configured && configured > 0) return configured;
   return Math.ceil((totalDailyChores || 0) / (kidCount || 1));
 }
-function isWeekend() { const d = new Date().getDay(); return d === 0 || d === 6; }
+function isActiveChoreDay() {
+  const activeDays = Array.isArray(household?.activeChoreDays) ? household.activeChoreDays : [1,2,3,4,5];
+  return activeDays.includes(new Date().getDay());
+}
 function getWeekStart() {
   const d = new Date(); const day = d.getDay();
   const diff = d.getDate() - day + (day === 0 ? -6 : 1);
