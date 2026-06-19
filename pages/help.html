@@ -272,7 +272,7 @@
         <li><strong>Overview:</strong> shows today's submissions, pending count, approved count, kid balances, payout estimates, and today's activity.</li>
         <li><strong>Approvals:</strong> shows submitted chores that need parent review, plus any fraud-flagged items.</li>
         <li><strong>Chores:</strong> where parents add chores manually, add chore bundles from Templates, edit, expand, and delete chore cards.</li>
-        <li><strong>History:</strong> shows recent completion bars, PTO markers, manual corrections, and the payday formula.</li>
+        <li><strong>History:</strong> shows completion bars, PTO markers, manual corrections, submission/photo history, attempt details, and the payday formula.</li>
         <li><strong>Settings:</strong> where parents manage compensation, pay cycle, approval mode, kids, PTO, email notifications, sharing, account, legal, and help.</li>
       </ol>
       <div class="warn"><strong>Parent dashboard note.</strong> The live app has five parent tabs: Overview, Chores, Approvals, History, and Settings.</div>
@@ -316,6 +316,7 @@
         <li>Enter the active value for the current compensation model: points for points model, flat dollar amount for flat pay, or no per-chore value for daily minimum.</li>
         <li>Choose the frequency: daily, weekly, bi-weekly, monthly, quarterly, bi-annual, annual, or as-needed.</li>
         <li>Choose whether the chore is available to any kid or assigned to one kid only.</li>
+        <li>Choose photo proof: one final photo, photos for selected checklist steps, or no photo.</li>
         <li>Add optional sub-tasks if the chore needs a checklist.</li>
         <li>Select <strong>Save Chore</strong>.</li>
       </ol>
@@ -395,10 +396,11 @@
         <li>Use <strong>Standards</strong> for written instructions like "wipe counters, sweep floor, and empty trash."</li>
         <li>Use <strong>Sub-tasks</strong> when the kid must check off several steps before submitting.</li>
         <li>Select <strong>+ Add Sub-task</strong> in the chore modal for each checklist item.</li>
+        <li>If Photo Proof is set to <strong>Photos for selected checklist steps</strong>, mark only the steps that need their own close-up photo.</li>
         <li>Remove a sub-task with the <strong>X</strong> button next to that row.</li>
         <li>Save the chore after updating the list.</li>
       </ol>
-      <div class="note"><strong>Kid experience:</strong> standards appear behind the info button. Sub-tasks appear in the claim modal and must be checked before submitting.</div>
+      <div class="note"><strong>Kid experience:</strong> standards appear behind the info button. Sub-tasks appear in the claim modal and must be checked before submitting. Photo buttons appear only beside steps the parent marked for photo proof.</div>
     </div>
   </div>
 </div>
@@ -418,9 +420,31 @@
         <li>Open the proof photo if you need a larger view.</li>
         <li>Check the child name, chore name, submission date/time, and checklist details.</li>
         <li>Select <strong>Approve</strong> if the work counts.</li>
-        <li>Select <strong>Reject</strong> if the work should not count.</li>
+        <li>Select <strong>Needs Fix</strong> if the child should correct and resubmit the work.</li>
+        <li>Choose a reason and write clear instructions explaining what needs to change.</li>
       </ol>
       <div class="shot"><strong>Screenshot needed</strong><p>Approvals tab with a pending card, proof photo, checklist, Approve, Reject, and Exceeded Expectations buttons.</p></div>
+    </div>
+  </div>
+</div>
+
+<div class="acc">
+  <div class="acc-hdr" onclick="toggleAcc(this)">
+    <div class="acc-hdr-left"><span class="acc-icon">12A</span><span class="acc-title">Correct and Resubmit a Chore</span></div>
+    <span class="acc-chev">›</span>
+  </div>
+  <div class="acc-body">
+    <div class="step-block">
+      <ol class="steps">
+        <li>The parent selects <strong>Needs Fix</strong>, chooses a reason, and explains how to correct the work.</li>
+        <li>The child opens <strong>My Work</strong> and selects the item marked <strong>Needs Fix</strong>.</li>
+        <li>The child reviews the original photo, checklist, and parent instructions.</li>
+        <li>The child selects <strong>Fix & Resubmit</strong>.</li>
+        <li>The child completes the correction, checks all checklist steps, and adds the newly required proof photo or photos.</li>
+        <li>The corrected attempt returns to the parent's Approvals queue.</li>
+        <li>The parent can review each attempt from <strong>History → Submission & Photo History</strong>.</li>
+      </ol>
+      <div class="note"><strong>Attempt history:</strong> the original submission and photo are preserved. A resubmission creates Attempt 2 instead of overwriting Attempt 1.</div>
     </div>
   </div>
 </div>
@@ -602,6 +626,7 @@
         <li>Tap the photo area to take or choose a proof photo.</li>
         <li>When the checklist and photo are complete, select <strong>Submit & Claim</strong>.</li>
         <li>Review the success screen to see whether the chore is pending parent approval or auto-approved.</li>
+        <li>Use <strong>My Work</strong> to open previous submissions, photos, statuses, checklists, and correction notes.</li>
       </ol>
       <div class="warn"><strong>Photo required.</strong> The submit button stays disabled until a photo is selected. If there are sub-tasks, all sub-tasks must also be checked.</div>
     </div>

@@ -870,7 +870,6 @@ exports.getKidLiteDashboard = functions.https.onRequest(async (req, res) => {
         .where("householdId", "==", householdId)
         .where("kidName", "==", kidName)
         .where("payPeriod", "==", payPeriod)
-        .where("status", "in", ["approved", "pending"])
         .get(),
     ]);
 
@@ -929,6 +928,18 @@ exports.getKidLiteDashboard = functions.https.onRequest(async (req, res) => {
           bonusPoints: s.bonusPoints || 0,
           flatPayValue: s.flatPayValue || 0,
           timestamp: s.timestamp || "",
+          choreId: s.choreId || "",
+          freq: s.freq || "daily",
+          rejectionCode: s.rejectionCode || "",
+          rejectionReason: s.rejectionReason || "",
+          photoDownloadUrl: s.photoDownloadUrl || "",
+          subTaskPhotos: Array.isArray(s.subTaskPhotos) ? s.subTaskPhotos.map((p) => ({
+            taskId: p.taskId || "", label: p.label || "", photoDownloadUrl: p.photoDownloadUrl || "",
+          })) : [],
+          completedSubTasks: Array.isArray(s.completedSubTasks) ? s.completedSubTasks : [],
+          subTasksSnapshot: Array.isArray(s.subTasksSnapshot) ? s.subTasksSnapshot : [],
+          attemptNumber: s.attemptNumber || 1,
+          rootSubmissionId: s.rootSubmissionId || s.id,
         })),
     });
   } catch (err) {
@@ -955,9 +966,11 @@ exports.submitKidLiteChore = functions.https.onRequest(async (req, res) => {
       choreType,
       completedSubTasks,
       photoDataUrl,
+      subTaskPhotoDataUrls,
+      resubmissionOf,
     } = req.body || {};
 
-    if (!householdId || !kidName || !pin || !choreId || !photoDataUrl) {
+    if (!householdId || !kidName || !pin || !choreId) {
       return res.status(400).json({error: "missing-fields"});
     }
 
@@ -981,6 +994,34 @@ exports.submitKidLiteChore = functions.https.onRequest(async (req, res) => {
       return res.status(403).json({error: "not-assigned"});
     }
 
+    const proofMode = ["single", "selected-subtasks", "none"].includes(chore.proofMode) ? chore.proofMode : "single";
+    const requiredTaskIds = (chore.subTasks || []).filter((task) => task.requiresPhoto).map((task) => task.id);
+    if (requiredTaskIds.length > 6) {
+      return res.status(400).json({error: "too-many-step-photos", message: "No more than 6 step photos are allowed."});
+    }
+    const completedIds = Array.isArray(completedSubTasks) ? completedSubTasks : [];
+    const missingCompleted = (chore.subTasks || []).some((task) => !completedIds.includes(task.id));
+    if (missingCompleted) return res.status(400).json({error: "subtasks-incomplete", message: "Complete every checklist step."});
+    if (proofMode === "single" && !photoDataUrl) {
+      return res.status(400).json({error: "photo-required", message: "Add a final proof photo."});
+    }
+    if (proofMode === "selected-subtasks") {
+      const stepPhotos = subTaskPhotoDataUrls || {};
+      const missingPhoto = requiredTaskIds.some((taskId) => !stepPhotos[taskId]);
+      if (missingPhoto) return res.status(400).json({error: "step-photo-required", message: "Add each required step photo."});
+    }
+
+    let originalSubmission = null;
+    if (resubmissionOf) {
+      const originalSnap = await db.collection("submissions").doc(resubmissionOf).get();
+      if (!originalSnap.exists) return res.status(404).json({error: "original-not-found"});
+      originalSubmission = {id: originalSnap.id, ...originalSnap.data()};
+      if (originalSubmission.householdId !== householdId || originalSubmission.kidName !== kidName ||
+          originalSubmission.choreId !== choreId || originalSubmission.status !== "needs_fix") {
+        return res.status(403).json({error: "invalid-resubmission"});
+      }
+    }
+
     const today = getTodayEt();
     const payPeriod = getPayPeriodForHousehold(household, today);
     const type = chore.freq || (choreType === "daily" ? "daily" : "weekly");
@@ -993,7 +1034,10 @@ exports.submitKidLiteChore = functions.https.onRequest(async (req, res) => {
       const existing = claimSnap.exists ? claimSnap.data() : {};
       const status = existing[`${choreId}_status`];
       const claimedBy = existing[`${choreId}_claimedBy`];
-      if (status && status !== "available" && status !== "rejected" && claimedBy !== kidName) {
+      if (status === "needs_fix" && claimedBy !== kidName) {
+        throw new Error(`CLAIMED_BY:${claimedBy || "someone else"}`);
+      }
+      if (status && status !== "available" && status !== "rejected" && status !== "needs_fix" && claimedBy !== kidName) {
         throw new Error(`CLAIMED_BY:${claimedBy || "someone else"}`);
       }
       if (status === "submitted" || status === "approved") {
@@ -1006,34 +1050,24 @@ exports.submitKidLiteChore = functions.https.onRequest(async (req, res) => {
       }, {merge: true});
     });
 
-    const photo = parsePhotoDataUrl(photoDataUrl);
-    if (!photo.contentType.startsWith("image/")) {
-      return res.status(400).json({error: "photo-type"});
-    }
-    if (photo.buffer.length > 6 * 1024 * 1024) {
-      return res.status(400).json({error: "photo-too-large"});
-    }
-
-    const ext = photo.contentType.includes("png") ? "png" : "jpg";
     const timestamp = Date.now();
-    const storagePath = `photos/${householdId}/${kidName}/${choreId}/${today}_${timestamp}.${ext}`;
-    const token = crypto.randomUUID();
-    const bucket = admin.storage().bucket();
-    await bucket.file(storagePath).save(photo.buffer, {
-      metadata: {
-        contentType: photo.contentType,
-        metadata: {
-          firebaseStorageDownloadTokens: token,
-        },
-      },
-    });
-
-    const photoDownloadUrl =
-      `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/` +
-      `${encodeURIComponent(storagePath)}?alt=media&token=${token}`;
+    let finalPhoto = null;
+    if (photoDataUrl) {
+      finalPhoto = await saveKidProofPhoto({dataUrl: photoDataUrl, householdId, kidName, choreId, today, timestamp, suffix: "final"});
+    }
+    const subTaskPhotos = [];
+    if (proofMode === "selected-subtasks") {
+      for (const task of (chore.subTasks || []).filter((item) => item.requiresPhoto)) {
+        const uploaded = await saveKidProofPhoto({
+          dataUrl: subTaskPhotoDataUrls[task.id], householdId, kidName, choreId, today, timestamp,
+          suffix: `task_${String(task.id).replace(/[^a-zA-Z0-9_-]/g, "")}`,
+        });
+        subTaskPhotos.push({taskId: task.id, label: task.label || "Step proof", ...uploaded});
+      }
+    }
+    const primaryPhoto = finalPhoto || subTaskPhotos[0] || null;
     const status = (household.approvalMode === "automatic" || household.approvalMode === "auto") ? "approved" : "pending";
-
-    await db.collection("submissions").add({
+    const submissionRef = await db.collection("submissions").add({
       householdId,
       kidName,
       choreId,
@@ -1045,15 +1079,32 @@ exports.submitKidLiteChore = functions.https.onRequest(async (req, res) => {
       exceeded: false,
       bonusAmount: 0,
       flatPayValue: chore.flatPayValue || 0,
-      photoStoragePath: storagePath,
-      photoDownloadUrl,
-      completedSubTasks: Array.isArray(completedSubTasks) ? completedSubTasks : [],
+      proofMode,
+      photoStoragePath: primaryPhoto ? primaryPhoto.photoStoragePath : "",
+      photoDownloadUrl: primaryPhoto ? primaryPhoto.photoDownloadUrl : "",
+      subTaskPhotos,
+      subTaskPhotoPaths: subTaskPhotos.map((photoItem) => photoItem.photoStoragePath),
+      completedSubTasks: completedIds,
+      subTasksSnapshot: (chore.subTasks || []).map((task) => ({
+        id: task.id, label: task.label || "", order: task.order || 0, requiresPhoto: !!task.requiresPhoto,
+      })),
+      attemptNumber: originalSubmission ? (originalSubmission.attemptNumber || 1) + 1 : 1,
+      previousSubmissionId: originalSubmission ? originalSubmission.id : null,
+      rootSubmissionId: originalSubmission ? (originalSubmission.rootSubmissionId || originalSubmission.id) : null,
       date: today,
       weekStart,
       payPeriod,
       timestamp: new Date().toISOString(),
       source: "kid-lite",
     });
+
+    if (!originalSubmission) {
+      await submissionRef.update({rootSubmissionId: submissionRef.id});
+    } else {
+      await db.collection("submissions").doc(originalSubmission.id).update({
+        status: "superseded", supersededBy: submissionRef.id, supersededAt: new Date().toISOString(),
+      });
+    }
 
     await claimRef.set({
       [`${choreId}_status`]: "submitted",
@@ -1070,6 +1121,12 @@ exports.submitKidLiteChore = functions.https.onRequest(async (req, res) => {
       choreName: chore.name,
     });
   } catch (err) {
+    if (err.message === "PHOTO_TYPE") {
+      return res.status(400).json({error: "photo-type", message: "Use an image file."});
+    }
+    if (err.message === "PHOTO_TOO_LARGE") {
+      return res.status(400).json({error: "photo-too-large", message: "The photo is too large."});
+    }
     if (err.message && err.message.startsWith("CLAIMED_BY:")) {
       return res.status(409).json({
         error: "already-claimed",
@@ -1222,13 +1279,14 @@ function calculateKidStats(submissions, today) {
     dailyDoneCount: 0,
   };
   submissions.forEach((s) => {
+    if (s.status !== "approved" && s.status !== "pending") return;
     const pts  = (s.points || 0) + (s.bonusPoints || 0);
     const flat = s.flatPayValue || 0;
     stats.pointsPeriod += pts;
     stats.flatPeriod   += flat;
     if (s.status === "approved") {
       stats.pointsApproved += pts;
-    } else if (s.status !== "rejected" && s.status !== "rejected_fraud") {
+    } else if (s.status === "pending") {
       stats.pointsPending += pts;
     }
     if (s.date === today) {
@@ -1260,7 +1318,9 @@ function sanitizeChore(chore) {
       id: task.id,
       label: task.label || "",
       order: task.order || 0,
+      requiresPhoto: !!task.requiresPhoto,
     })) : [],
+    proofMode: ["single", "selected-subtasks", "none"].includes(chore.proofMode) ? chore.proofMode : "single",
   };
 }
 
@@ -1270,6 +1330,24 @@ function parsePhotoDataUrl(dataUrl) {
   return {
     contentType: match[1],
     buffer: Buffer.from(match[2], "base64"),
+  };
+}
+
+async function saveKidProofPhoto({dataUrl, householdId, kidName, choreId, today, timestamp, suffix}) {
+  const photo = parsePhotoDataUrl(dataUrl);
+  if (!photo.contentType.startsWith("image/")) throw new Error("PHOTO_TYPE");
+  if (photo.buffer.length > 6 * 1024 * 1024) throw new Error("PHOTO_TOO_LARGE");
+  const ext = photo.contentType.includes("png") ? "png" : "jpg";
+  const storagePath = `photos/${householdId}/${kidName}/${choreId}/${today}_${timestamp}_${suffix}.${ext}`;
+  const token = crypto.randomUUID();
+  const bucket = admin.storage().bucket();
+  await bucket.file(storagePath).save(photo.buffer, {
+    metadata: {contentType: photo.contentType, metadata: {firebaseStorageDownloadTokens: token}},
+  });
+  return {
+    photoStoragePath: storagePath,
+    photoDownloadUrl: `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/` +
+      `${encodeURIComponent(storagePath)}?alt=media&token=${token}`,
   };
 }
 
@@ -1396,10 +1474,17 @@ exports.detectPhotoFraud = onObjectFinalized({ bucket: "i-did-my-chores.firebase
     await new Promise(r => setTimeout(r, 3000));
 
     // Find the matching submission by storage path
-    const submQuery = await db.collection("submissions")
+    let submQuery = await db.collection("submissions")
       .where("photoStoragePath", "==", filePath)
       .limit(1)
       .get();
+
+    if (submQuery.empty) {
+      submQuery = await db.collection("submissions")
+        .where("subTaskPhotoPaths", "array-contains", filePath)
+        .limit(1)
+        .get();
+    }
 
     if (!submQuery.empty) {
       const submDoc = submQuery.docs[0];

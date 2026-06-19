@@ -166,6 +166,8 @@
       gap: 12px;
       padding: 12px 0;
       border-bottom: 1px solid var(--border);
+      width: 100%; background: none; color: var(--text); border-left: 0; border-right: 0; border-top: 0;
+      text-align: left; font: inherit; cursor: pointer;
     }
     .work-row:last-child { border-bottom: 0; }
     .status-pill {
@@ -178,6 +180,18 @@
       text-transform: uppercase;
       white-space: nowrap;
     }
+    .needs-fix-box {
+      padding: 12px 14px; margin-bottom: 14px; border-radius: 10px;
+      background: var(--red-dim); border-left: 3px solid var(--red);
+      color: var(--text); font-size: 13px; line-height: 1.55;
+    }
+    .step-photo-btn {
+      margin-left: auto; flex-shrink: 0; border: 1px solid var(--border);
+      border-radius: 7px; background: var(--card2); color: var(--text);
+      padding: 7px 9px; font: inherit; font-size: 11px; cursor: pointer;
+    }
+    .detail-photo-grid { display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:8px; }
+    .detail-photo { width:100%;aspect-ratio:1;object-fit:cover;border-radius:8px;border:1px solid var(--border); }
   </style>
 </head>
 <body>
@@ -325,6 +339,7 @@
       <div class="page-label">Complete Chore</div>
       <h2 id="claim-name" style="margin:6px 0 4px"></h2>
       <p id="claim-desc" style="margin-bottom:14px"></p>
+      <div id="claim-feedback" class="needs-fix-box" style="display:none"></div>
 
       <div id="subtasks-section" style="display:none;margin-bottom:14px">
         <div class="page-label">Checklist</div>
@@ -333,6 +348,7 @@
         </div>
       </div>
 
+      <div id="final-photo-section">
       <div class="page-label">Proof Photo</div>
       <div class="photo-zone" id="photo-zone" onclick="document.getElementById('photo-input').click()">
         <input type="file" id="photo-input" accept="image/*" capture="environment" style="display:none" onchange="onPhotoSelected(this)">
@@ -342,9 +358,18 @@
           <div style="font-size:12px;color:var(--muted);margin-top:4px">A smaller copy will be uploaded</div>
         </div>
       </div>
+      </div>
 
       <button class="btn btn-primary" id="submit-btn" onclick="submitChore()" disabled style="opacity:0.35">Submit</button>
       <button class="btn btn-ghost mt-8" onclick="closeClaim()">Cancel</button>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="modal-work-detail">
+    <div class="modal-sheet" style="max-height:88vh;overflow-y:auto">
+      <div class="modal-handle"></div>
+      <div id="work-detail-content"></div>
+      <button class="btn btn-ghost mt-8" onclick="document.getElementById('modal-work-detail').classList.remove('active')">Close</button>
     </div>
   </div>
 </div>
@@ -371,6 +396,8 @@ var currentKid = null;
 var currentPin = '';
 var currentChore = null;
 var currentPhotoDataUrl = '';
+var subTaskPhotoDataUrls = {};
+var currentResubmission = null;
 var checkedSubTasks = {};
 
 function api(name, payload) {
@@ -583,19 +610,21 @@ function renderChoreList(type) {
     var status = claimed[chore.id + '_status'];
     var claimedBy = claimed[chore.id + '_claimedBy'];
     var mine = claimedBy === currentKid.name;
+    var needsFix = mine && status === 'needs_fix';
     var locked = status && status !== 'available' && status !== 'rejected' && !mine;
     var done = mine && (status === 'submitted' || status === 'approved');
     // Grey out unclaimed chores when daily min is met — kids know they're done
     var minGreyed = dailyMinMet && !done && !mine;
-    var sub = done ? 'Submitted'
+    var sub = needsFix ? 'Needs fix - open My Work'
+      : done ? 'Submitted'
       : minGreyed ? 'Daily min met ✓'
       : locked ? 'Claimed by ' + claimedBy
       : 'Tap to submit';
     var value = household.compModel === 'flat' ? '$' + Number(chore.flatPayValue || 0).toFixed(2) : (chore.pointValue || 0) + ' pts';
-    var isBlocked = locked || done || minGreyed || household.ptoToday || household.birthdayToday;
+    var isBlocked = locked || done || needsFix || minGreyed || household.ptoToday || household.birthdayToday;
     return '<button class="chore-row ' + (locked || done || minGreyed ? 'locked' : '') + '" ' +
       (isBlocked ? '' : 'onclick="openClaim(\'' + escapeJs(chore.id) + '\',\'' + type + '\')"') + '>' +
-      '<span class="dot" style="background:' + (done ? 'var(--green)' : minGreyed ? 'var(--muted)' : currentKid.color) + '"></span>' +
+      '<span class="dot" style="background:' + (needsFix ? 'var(--red)' : done ? 'var(--green)' : minGreyed ? 'var(--muted)' : currentKid.color) + '"></span>' +
       '<span class="chore-main"><span class="chore-name">' + escapeHtml(chore.name) + '</span>' +
       '<span class="chore-sub">' + escapeHtml(sub) + '</span></span>' +
       '<span class="value-pill">' + value + '</span></button>';
@@ -616,23 +645,65 @@ function renderWorkList() {
       ? '$' + Number(item.flatPayValue || 0).toFixed(2)
       : '+' + ((item.points || 0) + (item.bonusPoints || 0)) + ' pts';
     var color = item.status === 'approved' ? 'var(--green)' :
-      item.status === 'rejected' || item.status === 'rejected_fraud' ? 'var(--red)' : 'var(--gold)';
-    return '<div class="work-row"><div style="min-width:0">' +
+      item.status === 'rejected' || item.status === 'rejected_fraud' || item.status === 'needs_fix' ? 'var(--red)' : 'var(--gold)';
+    return '<button class="work-row" onclick="openWorkDetail(\'' + escapeJs(item.id) + '\')"><div style="min-width:0">' +
       '<div style="font-size:13px;font-weight:800">' + escapeHtml(item.choreName) + '</div>' +
-      '<div style="font-size:11px;color:var(--muted);margin-top:2px">' + formatDate(item.date) + ' · ' + value + '</div>' +
+      '<div style="font-size:11px;color:var(--muted);margin-top:2px">' + formatDate(item.date) + ' · ' + value +
+      ((item.attemptNumber || 1) > 1 ? ' · Attempt ' + item.attemptNumber : '') + '</div>' +
       '</div><span class="status-pill" style="color:' + color + ';border-color:' + color + '55">' +
-      escapeHtml(item.status.replace(/_/g, ' ')) + '</span></div>';
+      escapeHtml(item.status.replace(/_/g, ' ')) + '</span></button>';
   }).join('');
 }
 
-function openClaim(choreId, type) {
+function openWorkDetail(id) {
+  var item = (household.recentSubmissions || []).filter(function(s) { return s.id === id; })[0];
+  if (!item) return;
+  var photos = [];
+  if (item.photoDownloadUrl && !(item.subTaskPhotos || []).length) photos.push({label: 'Final proof', url: item.photoDownloadUrl});
+  (item.subTaskPhotos || []).forEach(function(photo) { photos.push({label: photo.label || 'Step proof', url: photo.photoDownloadUrl}); });
+  var doneIds = item.completedSubTasks || [];
+  var tasks = item.subTasksSnapshot || [];
+  var needsFix = item.status === 'needs_fix';
+  document.getElementById('work-detail-content').innerHTML =
+    '<div class="page-label">My Submission</div>' +
+    '<h2 style="margin:6px 0 4px">' + escapeHtml(item.choreName) + '</h2>' +
+    '<p style="margin-bottom:10px">' + formatDate(item.date) + ' · Attempt ' + (item.attemptNumber || 1) + '</p>' +
+    '<span class="status-pill">' + escapeHtml(item.status.replace(/_/g, ' ')) + '</span>' +
+    (item.rejectionReason ? '<div class="needs-fix-box" style="margin-top:12px"><strong>What to fix:</strong><br>' + escapeHtml(item.rejectionReason) + '</div>' : '') +
+    (tasks.length ? '<div class="page-label" style="margin-top:14px">Checklist</div><div style="font-size:13px;line-height:1.8">' +
+      tasks.map(function(task) { return (doneIds.indexOf(task.id) >= 0 ? '✓ ' : '○ ') + escapeHtml(task.label); }).join('<br>') + '</div>' : '') +
+    '<div class="page-label" style="margin-top:14px">Submitted Photos</div>' +
+    (photos.length ? '<div class="detail-photo-grid">' + photos.map(function(photo) {
+      return '<div><img class="detail-photo" src="' + escapeHtml(photo.url) + '" alt="' + escapeHtml(photo.label) + '"><div style="font-size:10px;color:var(--muted)">' + escapeHtml(photo.label) + '</div></div>';
+    }).join('') + '</div>' : '<p style="font-size:13px;color:var(--muted)">No photo stored.</p>') +
+    (needsFix ? '<button class="btn btn-primary" style="margin-top:16px" onclick="startResubmission(\'' + escapeJs(item.id) + '\')">Fix & Resubmit</button>' : '');
+  document.getElementById('modal-work-detail').classList.add('active');
+}
+
+function startResubmission(id) {
+  var item = (household.recentSubmissions || []).filter(function(s) { return s.id === id; })[0];
+  if (!item) { showToast('This submission is no longer available.'); return; }
+  var chore = (household.chores || []).filter(function(c) { return c.id === item.choreId; })[0];
+  if (!chore) { showToast('This chore is no longer available.'); return; }
+  document.getElementById('modal-work-detail').classList.remove('active');
+  openClaim(chore.id, chore.freq === 'daily' ? 'daily' : 'weekly', item);
+}
+
+function openClaim(choreId, type, resubmission) {
   currentChore = (household.chores || []).filter(function(chore) { return chore.id === choreId; })[0];
   currentChore.type = type;
   currentPhotoDataUrl = '';
+  subTaskPhotoDataUrls = {};
+  currentResubmission = resubmission || null;
   checkedSubTasks = {};
   document.getElementById('claim-name').textContent = currentChore.name;
   document.getElementById('claim-desc').textContent = currentChore.desc || '';
   document.getElementById('photo-input').value = '';
+  document.getElementById('claim-feedback').style.display = currentResubmission ? 'block' : 'none';
+  document.getElementById('claim-feedback').innerHTML = currentResubmission
+    ? '<strong>What to fix:</strong><br>' + escapeHtml(currentResubmission.rejectionReason || 'Please correct the work and submit new proof.')
+    : '';
+  document.getElementById('final-photo-section').style.display = (currentChore.proofMode || 'single') === 'single' ? 'block' : 'none';
   document.getElementById('photo-content').innerHTML =
     '<div style="font-size:34px;margin-bottom:8px">📷</div><div style="font-size:14px;font-weight:800">Tap to take photo</div><div style="font-size:12px;color:var(--muted);margin-top:4px">A smaller copy will be uploaded</div>';
   renderSubTasks();
@@ -644,8 +715,12 @@ function renderSubTasks() {
   var tasks = (currentChore.subTasks || []).slice().sort(function(a, b) { return (a.order || 0) - (b.order || 0); });
   document.getElementById('subtasks-section').style.display = tasks.length ? 'block' : 'none';
   document.getElementById('subtask-list').innerHTML = tasks.map(function(task) {
-    return '<label class="subtask"><input type="checkbox" onchange="toggleSubTask(\'' + escapeJs(task.id) + '\', this.checked)">' +
-      '<span style="font-size:14px;font-weight:600">' + escapeHtml(task.label) + '</span></label>';
+    var needsPhoto = (currentChore.proofMode || 'single') === 'selected-subtasks' && task.requiresPhoto;
+    return '<div class="subtask"><input type="checkbox" onchange="toggleSubTask(\'' + escapeJs(task.id) + '\', this.checked)">' +
+      '<span style="font-size:14px;font-weight:600">' + escapeHtml(task.label) + '</span>' +
+      (needsPhoto ? '<button type="button" class="step-photo-btn" id="step-photo-btn-' + escapeHtml(task.id) + '" onclick="document.getElementById(\'step-photo-' + escapeJs(task.id) + '\').click()">Add photo</button>' +
+        '<input type="file" id="step-photo-' + escapeHtml(task.id) + '" accept="image/*" capture="environment" style="display:none" onchange="onSubTaskPhotoSelected(\'' + escapeJs(task.id) + '\', this)">' : '') +
+      '</div>';
   }).join('');
 }
 
@@ -666,6 +741,22 @@ function onPhotoSelected(input) {
   }, function() {
     showToast('Could not read photo. Try another one.');
     currentPhotoDataUrl = '';
+    updateSubmit();
+  });
+}
+
+function onSubTaskPhotoSelected(taskId, input) {
+  if (!input.files || !input.files[0]) return;
+  var btn = document.getElementById('step-photo-btn-' + taskId);
+  if (btn) btn.textContent = 'Preparing...';
+  compressImage(input.files[0], function(dataUrl) {
+    subTaskPhotoDataUrls[taskId] = dataUrl;
+    if (btn) { btn.textContent = 'Photo ready'; btn.style.color = 'var(--green)'; }
+    updateSubmit();
+  }, function() {
+    showToast('Could not read photo. Try another one.');
+    delete subTaskPhotoDataUrls[taskId];
+    if (btn) btn.textContent = 'Add photo';
     updateSubmit();
   });
 }
@@ -696,14 +787,19 @@ function compressImage(file, done, fail) {
 function updateSubmit() {
   var tasks = currentChore ? (currentChore.subTasks || []) : [];
   var tasksDone = tasks.every(function(task) { return checkedSubTasks[task.id]; });
-  var ready = !!currentPhotoDataUrl && tasksDone;
+  var proofMode = currentChore ? (currentChore.proofMode || 'single') : 'single';
+  var photosDone = proofMode === 'none' ||
+    (proofMode === 'single' && !!currentPhotoDataUrl) ||
+    (proofMode === 'selected-subtasks' && tasks.filter(function(task) { return task.requiresPhoto; })
+      .every(function(task) { return !!subTaskPhotoDataUrls[task.id]; }));
+  var ready = photosDone && tasksDone;
   var btn = document.getElementById('submit-btn');
   btn.disabled = !ready;
   btn.style.opacity = ready ? '1' : '0.35';
 }
 
 function submitChore() {
-  if (!currentChore || !currentPhotoDataUrl) return;
+  if (!currentChore) return;
   var btn = document.getElementById('submit-btn');
   btn.disabled = true;
   btn.textContent = 'Submitting...';
@@ -714,7 +810,9 @@ function submitChore() {
     choreId: currentChore.id,
     choreType: currentChore.type,
     completedSubTasks: Object.keys(checkedSubTasks).filter(function(id) { return checkedSubTasks[id]; }),
-    photoDataUrl: currentPhotoDataUrl
+    photoDataUrl: currentPhotoDataUrl,
+    subTaskPhotoDataUrls: subTaskPhotoDataUrls,
+    resubmissionOf: currentResubmission ? currentResubmission.id : null
   }).then(function(data) {
     closeClaim();
     document.getElementById('success-value').textContent =
@@ -739,6 +837,10 @@ function returnToDashboard() {
 
 function closeClaim() {
   document.getElementById('modal-claim').classList.remove('active');
+  currentChore = null;
+  currentPhotoDataUrl = '';
+  subTaskPhotoDataUrls = {};
+  currentResubmission = null;
 }
 
 function switchKid() {

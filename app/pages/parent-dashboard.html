@@ -162,6 +162,24 @@
       font-size: 16px; cursor: pointer; padding: 4px; line-height: 1;
     }
     .remove-btn:hover { color: var(--red); }
+    .proof-thumb-grid {
+      display: grid; grid-template-columns: repeat(auto-fit,minmax(92px,1fr));
+      gap: 8px; margin-top: 10px;
+    }
+    .proof-thumb {
+      width: 100%; aspect-ratio: 1; object-fit: cover;
+      border-radius: 8px; border: 1px solid var(--border); cursor: pointer;
+    }
+    .feedback-box {
+      padding: 12px 14px; border-radius: 8px; margin: 10px 0;
+      background: var(--red-dim); border-left: 3px solid var(--red);
+      color: var(--text2); font-size: 13px; line-height: 1.55;
+    }
+    .status-pill {
+      display: inline-block; border: 1px solid var(--border); border-radius: 99px;
+      padding: 3px 8px; font-size: 10px; font-weight: 800; text-transform: uppercase;
+      color: var(--muted); white-space: nowrap;
+    }
 
     /* ── Approval cards ── */
     .approval-card {
@@ -1009,6 +1027,43 @@
     </div>
   </div>
 
+  <!-- ── Reject / Needs Fix Modal ── -->
+  <div class="modal-overlay" id="modal-reject">
+    <div class="modal-sheet">
+      <div class="modal-handle"></div>
+      <div class="page-label">Send Back for Correction</div>
+      <h2 id="reject-chore-name" style="margin:6px 0 4px">Needs Fix</h2>
+      <p id="reject-kid-name" style="margin-bottom:16px"></p>
+      <div class="field">
+        <label>Reason</label>
+        <select id="reject-code">
+          <option value="">Choose a reason</option>
+          <option value="incomplete">Chore is incomplete</option>
+          <option value="missed-step">A step was missed</option>
+          <option value="unclear-photo">Photo does not clearly show the work</option>
+          <option value="wrong-result">The result needs correction</option>
+          <option value="other">Other</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>How to fix it</label>
+        <textarea id="reject-reason" maxlength="300" placeholder="Tell the child what needs to change before resubmitting"
+                  style="height:92px;resize:none"></textarea>
+      </div>
+      <button class="btn btn-danger" onclick="confirmRejectSubmission()">Send Back to Child</button>
+      <button class="btn btn-ghost mt-8" onclick="closeModal('modal-reject')">Cancel</button>
+    </div>
+  </div>
+
+  <!-- ── Submission Detail Modal ── -->
+  <div class="modal-overlay" id="modal-submission-detail">
+    <div class="modal-sheet" style="max-height:88vh;overflow-y:auto">
+      <div class="modal-handle"></div>
+      <div id="submission-detail-content"></div>
+      <button class="btn btn-ghost mt-8" onclick="closeModal('modal-submission-detail')">Close</button>
+    </div>
+  </div>
+
   <!-- ── Add/Edit Chore Modal ── -->
   <div class="modal-overlay" id="modal-chore">
     <div class="modal-sheet" style="max-height:88vh;overflow-y:auto">
@@ -1078,6 +1133,15 @@
                        font-family:inherit;font-size:14px;outline:none;
                        width:100%;appearance:none">
           <option value="any">Any kid (first to claim)</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label>Photo Proof</label>
+        <select id="cm-proof-mode" onchange="renderSubTaskEditor()">
+          <option value="single">One final photo</option>
+          <option value="selected-subtasks">Photos for selected checklist steps</option>
+          <option value="none">No photo required</option>
         </select>
       </div>
 
@@ -1156,6 +1220,7 @@ let currentUser      = null;
 let household        = null;
 let submissionsCache = [];
 let pendingExceeded  = null;
+let pendingRejectId  = null;
 let editingChoreId   = null; // null = adding new, string = editing existing
 let editingPastWorkId = null;
 let subTaskRows      = [];   // local state for the sub-task editor
@@ -1432,8 +1497,8 @@ function renderOverview() {
               <span style="font-family:'DM Mono',monospace;color:var(--gold);font-size:13px">
                 +${s.points || 0}pts
               </span>
-              <span class="tag tag-${s.status==='approved'?'green':(s.status==='rejected'||s.status==='rejected_fraud')?'red':'gold'}">
-                ${s.status==='rejected_fraud'?'⚠ fraud':s.status}
+              <span class="tag tag-${s.status==='approved'?'green':(['rejected','rejected_fraud','needs_fix'].includes(s.status))?'red':'gold'}">
+                ${s.status==='rejected_fraud'?'fraud':s.status==='needs_fix'?'needs fix':s.status}
               </span>
               ${s.source === 'parent-manual' ? `
                 <button onclick="openPastWorkModal('${s.id}')"
@@ -1552,6 +1617,21 @@ function updatePendingAlert() {
   document.getElementById('nav-approvals-icon').textContent = count > 0 ? '🔴' : '⏳';
 }
 
+function renderSubmissionProof(s) {
+  const stepPhotos = Array.isArray(s.subTaskPhotos) ? s.subTaskPhotos : [];
+  if (stepPhotos.length) {
+    return `<div class="proof-thumb-grid" style="padding:12px 12px 0">${stepPhotos.map(photo =>
+      `<div><img src="${escapeAttr(photo.photoDownloadUrl)}" class="proof-thumb"
+        onclick="openLightbox('${escapeAttr(photo.photoDownloadUrl)}')" alt="${escapeAttr(photo.label || 'Step proof')}">
+        <div style="font-size:10px;color:var(--muted);margin-top:3px">${esc(photo.label || 'Step proof')}</div></div>`
+    ).join('')}</div>`;
+  }
+  return s.photoDownloadUrl
+    ? `<img src="${escapeAttr(s.photoDownloadUrl)}" class="approval-photo"
+        onclick="openLightbox('${escapeAttr(s.photoDownloadUrl)}')" alt="Proof photo">`
+    : `<div class="approval-placeholder">No photo required</div>`;
+}
+
 // ── Approvals ─────────────────────────────────────────────────
 function renderApprovals() {
   const pending = submissionsCache.filter(s => s.status === 'pending');
@@ -1575,10 +1655,7 @@ function renderApprovals() {
       </div>
       ${fraud.map(s => `
         <div class="approval-card" id="sub-${s.id}" style="border-left:3px solid var(--red,#ef4444)">
-          ${s.photoDownloadUrl
-            ? `<img src="${s.photoDownloadUrl}" class="approval-photo"
-                    onclick="openLightbox('${s.photoDownloadUrl}')" alt="Proof photo">`
-            : `<div class="approval-placeholder">📷</div>`}
+          ${renderSubmissionProof(s)}
           <div style="padding:14px">
             <div style="display:flex;justify-content:space-between;align-items:center">
               <h3>${esc(s.choreName)}</h3>
@@ -1611,16 +1688,13 @@ function renderApprovals() {
       ? `<div class="approval-subtasks">
            <strong>Checklist:</strong><br>
            ${subTasks.map(t =>
-             `${doneIds.has(t.id) ? '✓' : '○'} ${t.label}`
+             `${doneIds.has(t.id) ? '✓' : '○'} ${esc(t.label)}`
            ).join('  ·  ')}
          </div>` : '';
 
     return `
       <div class="approval-card" id="sub-${s.id}">
-        ${s.photoDownloadUrl
-          ? `<img src="${s.photoDownloadUrl}" class="approval-photo"
-                  onclick="openLightbox('${s.photoDownloadUrl}')" alt="Proof photo">`
-          : `<div class="approval-placeholder">📷</div>`}
+        ${renderSubmissionProof(s)}
         <div style="padding:14px">
           <div style="display:flex;justify-content:space-between;align-items:center">
             <h3>${esc(s.choreName)}</h3>
@@ -1634,7 +1708,7 @@ function renderApprovals() {
           ${subTaskHtml}
           <div class="approval-actions">
             <button class="btn-approve" onclick="approveSubmission('${s.id}')">✓ Approve</button>
-            <button class="btn-reject"  onclick="rejectSubmission('${s.id}')">✗ Reject</button>
+            <button class="btn-reject"  onclick="openRejectSubmission('${s.id}')">Needs Fix</button>
           </div>
           <button class="btn-exceed" onclick="openExceeded('${s.id}','${s.kidName}','${s.choreName}',${s.points||0})">
             ⭐ Exceeded Expectations
@@ -1645,12 +1719,47 @@ function renderApprovals() {
 }
 
 window.approveSubmission = async (id) => {
-  await updateDoc(doc(db, 'submissions', id), { status: 'approved' });
+  await updateDoc(doc(db, 'submissions', id), {
+    status: 'approved', approvedAt: new Date().toISOString(), approvedBy: currentUser.uid
+  });
   showToast('✅ Approved!');
 };
-window.rejectSubmission  = async (id) => {
-  await updateDoc(doc(db, 'submissions', id), { status: 'rejected' });
-  showToast('❌ Rejected');
+window.openRejectSubmission = (id) => {
+  const submission = submissionsCache.find(s => s.id === id);
+  if (!submission) return;
+  pendingRejectId = id;
+  document.getElementById('reject-chore-name').textContent = submission.choreName || 'Needs Fix';
+  document.getElementById('reject-kid-name').textContent = `For ${submission.kidName}`;
+  document.getElementById('reject-code').value = '';
+  document.getElementById('reject-reason').value = '';
+  document.getElementById('modal-reject').classList.add('active');
+};
+
+window.confirmRejectSubmission = async () => {
+  const submission = submissionsCache.find(s => s.id === pendingRejectId);
+  const code = document.getElementById('reject-code').value;
+  const reason = document.getElementById('reject-reason').value.trim();
+  if (!submission || !code || !reason) {
+    showToast('Choose a reason and explain how to fix it');
+    return;
+  }
+  const chore = (household.chores || []).find(c => c.id === submission.choreId) || {
+    id: submission.choreId, freq: submission.freq || 'daily'
+  };
+  await Promise.all([
+    updateDoc(doc(db, 'submissions', submission.id), {
+      status: 'needs_fix', rejectionCode: code, rejectionReason: reason,
+      rejectedAt: new Date().toISOString(), rejectedBy: currentUser.uid
+    }),
+    setDoc(doc(db, 'chore_claims', getClaimDocIdForChore(chore, submission.date)), {
+      [`${submission.choreId}_status`]: 'needs_fix',
+      [`${submission.choreId}_claimedBy`]: submission.kidName,
+      [`${submission.choreId}_needsFixAt`]: new Date().toISOString()
+    }, { merge: true })
+  ]);
+  pendingRejectId = null;
+  closeModal('modal-reject');
+  showToast('Sent back with correction notes');
 };
 // Dismiss a fraud-flagged submission — keeps it as rejected in history
 window.acknowledgeFraud = async (id) => {
@@ -1889,6 +1998,7 @@ window.addTemplateGroup = async (groupId) => {
       desc: chore.desc || '',
       freq: 'daily',
       assignedTo: 'any',
+      proofMode: 'single',
       subTasks: [],
       pointValue: defaults.pointValue,
       flatPayValue: defaults.flatPayValue,
@@ -1918,6 +2028,7 @@ window.openAddChore = () => {
   document.getElementById('cm-points').value = '';
   document.getElementById('cm-flat').value   = '';
   document.getElementById('cm-freq').value   = 'daily';
+  document.getElementById('cm-proof-mode').value = 'single';
   updateAssignOptions('any');
   renderSubTaskEditor();
   updateChoreModalFieldStates(); // grey out inactive pay field for current model
@@ -1935,6 +2046,7 @@ window.openEditChore = (choreId) => {
   document.getElementById('cm-points').value = chore.pointValue  || '';
   document.getElementById('cm-flat').value   = chore.flatPayValue || '';
   document.getElementById('cm-freq').value   = chore.freq || 'daily';
+  document.getElementById('cm-proof-mode').value = chore.proofMode || 'single';
   updateAssignOptions(chore.assignedTo || 'any');
   renderSubTaskEditor();
   updateChoreModalFieldStates(); // grey out inactive pay field for current model
@@ -1984,6 +2096,7 @@ function updateAssignOptions(selectedValue) {
 
 function renderSubTaskEditor() {
   const container = document.getElementById('subtask-editor-list');
+  const perStepPhotos = document.getElementById('cm-proof-mode')?.value === 'selected-subtasks';
   if (!subTaskRows.length) {
     container.innerHTML = `<div style="padding:14px;text-align:center;
       color:var(--muted);font-size:13px">No sub-tasks yet</div>`;
@@ -1995,6 +2108,10 @@ function renderSubTaskEditor() {
       <input type="text" value="${task.label || ''}"
              placeholder="e.g. Empty dishwasher"
              oninput="updateSubTask(${i}, this.value)">
+      ${perStepPhotos ? `<label style="display:flex;align-items:center;gap:4px;font-size:10px;color:var(--muted);white-space:nowrap">
+        <input type="checkbox" ${task.requiresPhoto ? 'checked' : ''}
+               onchange="updateSubTaskPhoto(${i}, this.checked)" style="width:auto"> Photo
+      </label>` : ''}
       <button class="remove-btn" onclick="removeSubTask(${i})">✕</button>
     </div>`).join('');
 }
@@ -2013,6 +2130,10 @@ window.updateSubTask = (i, val) => {
   subTaskRows[i].label = val;
 };
 
+window.updateSubTaskPhoto = (i, required) => {
+  subTaskRows[i].requiresPhoto = required;
+};
+
 window.removeSubTask = (i) => {
   subTaskRows.splice(i, 1);
   subTaskRows.forEach((t, idx) => t.order = idx);
@@ -2026,6 +2147,7 @@ window.saveChore = async () => {
   const flatPay  = parseFloat(document.getElementById('cm-flat').value)   || 0;
   const freq     = document.getElementById('cm-freq').value;
   const assign   = document.getElementById('cm-assign').value;
+  const proofMode = document.getElementById('cm-proof-mode').value;
   const model    = household?.compModel || 'points';
 
   if (!name) { showToast('Please enter a chore name'); return; }
@@ -2033,15 +2155,21 @@ window.saveChore = async () => {
   // Validate the active pay field for the current model
   if (model === 'points'   && !points)  { showToast('Please enter a points value'); return; }
   if (model === 'flat'     && !flatPay) { showToast('Please enter a flat pay amount'); return; }
+  if (proofMode === 'selected-subtasks' && !subTaskRows.some(t => t.label.trim() && t.requiresPhoto)) {
+    showToast('Mark at least one checklist step as requiring a photo'); return;
+  }
+  if (proofMode === 'selected-subtasks' && subTaskRows.filter(t => t.label.trim() && t.requiresPhoto).length > 6) {
+    showToast('Choose no more than 6 checklist photos'); return;
+  }
   // Model C (daily-min) needs no per-chore value — all chores count equally
 
   // Filter out empty sub-task rows
   const subTasks = subTaskRows
     .filter(t => t.label.trim())
-    .map((t, i) => ({ id: t.id, label: t.label.trim(), order: i }));
+    .map((t, i) => ({ id: t.id, label: t.label.trim(), order: i, requiresPhoto: !!t.requiresPhoto }));
 
   const choreData = {
-    name, desc, freq, assignedTo: assign, subTasks,
+    name, desc, freq, assignedTo: assign, subTasks, proofMode,
     pointValue:   points,    // Model A — points per chore
     flatPayValue: flatPay,   // Model B — dollars per chore
     // Model C uses neither; all chores count as 1 unit toward daily minimum
@@ -2202,6 +2330,25 @@ function renderHistory() {
       </div>`;
   }).join('');
 
+  const submissionRows = submissionsCache
+    .filter(s => s.source !== 'parent-manual')
+    .sort((a, b) => String(b.timestamp || '').localeCompare(String(a.timestamp || '')))
+    .slice(0, 40)
+    .map(s => {
+      const statusColor = s.status === 'approved' ? 'var(--green)' :
+        (s.status === 'needs_fix' || s.status === 'rejected' || s.status === 'rejected_fraud') ? 'var(--red)' : 'var(--gold)';
+      return `<button onclick="openSubmissionDetail('${s.id}')"
+        style="width:100%;display:flex;align-items:center;justify-content:space-between;gap:10px;
+               background:none;border:0;border-bottom:1px solid var(--border);padding:11px 0;
+               color:var(--text);text-align:left;cursor:pointer">
+        <span style="min-width:0">
+          <strong style="font-size:13px;display:block">${esc(s.kidName)} · ${esc(s.choreName)}</strong>
+          <span style="font-size:11px;color:var(--muted)">${formatDate(s.date)}${(s.attemptNumber || 1) > 1 ? ` · Attempt ${s.attemptNumber}` : ''}</span>
+        </span>
+        <span class="status-pill" style="color:${statusColor};border-color:${statusColor}55">${esc(String(s.status || 'pending').replace(/_/g, ' '))}</span>
+      </button>`;
+    }).join('');
+
   histEl.innerHTML = `
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
       <div class="page-label" style="margin-bottom:0">Completion — Recent + Current Period Corrections</div>
@@ -2209,6 +2356,10 @@ function renderHistory() {
     ${legend}
     <div class="card" style="padding:16px 16px 2px">
       ${rows}
+    </div>
+    <div class="page-label" style="margin:20px 0 8px">Submission & Photo History</div>
+    <div class="card" style="padding:4px 16px">
+      ${submissionRows || '<p style="padding:16px 0;color:var(--muted);font-size:13px">No submitted work yet.</p>'}
     </div>
     <div class="card" style="margin-top:12px">
       <div class="page-label" style="margin-bottom:6px">Payday Formula</div>
@@ -2229,6 +2380,35 @@ function renderHistory() {
       </p>
     </div>`;
 }
+
+window.openSubmissionDetail = (id) => {
+  const s = submissionsCache.find(item => item.id === id);
+  if (!s) return;
+  const chore = (household.chores || []).find(c => c.id === s.choreId);
+  const tasks = s.subTasksSnapshot || chore?.subTasks || [];
+  const doneIds = new Set(s.completedSubTasks || []);
+  const photos = [];
+  if (s.photoDownloadUrl && !(s.subTaskPhotos || []).length) photos.push({ label: 'Final proof', url: s.photoDownloadUrl });
+  (s.subTaskPhotos || []).forEach(p => photos.push({ label: p.label || 'Step proof', url: p.photoDownloadUrl }));
+  const statusLabel = String(s.status || 'pending').replace(/_/g, ' ');
+  document.getElementById('submission-detail-content').innerHTML = `
+    <div class="page-label">Submission Details</div>
+    <h2 style="margin:6px 0 4px">${esc(s.choreName)}</h2>
+    <p style="margin-bottom:12px">${esc(s.kidName)} · ${formatDate(s.date)} · ${formatTime(s.timestamp)}</p>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+      <span class="status-pill">${esc(statusLabel)}</span>
+      <span class="status-pill">Attempt ${s.attemptNumber || 1}</span>
+    </div>
+    ${s.approvedAt ? `<p style="font-size:11px;color:var(--muted);margin-bottom:8px">Approved ${new Date(s.approvedAt).toLocaleString()}</p>` : ''}
+    ${s.rejectedAt ? `<p style="font-size:11px;color:var(--muted);margin-bottom:8px">Sent back ${new Date(s.rejectedAt).toLocaleString()}</p>` : ''}
+    ${s.rejectionReason ? `<div class="feedback-box"><strong>Correction requested:</strong><br>${esc(s.rejectionReason)}</div>` : ''}
+    ${tasks.length ? `<div class="page-label" style="margin-top:14px">Checklist</div>
+      <div style="font-size:13px;color:var(--text2);line-height:1.8">${tasks.map(t => `${doneIds.has(t.id) ? '✓' : '○'} ${esc(t.label)}`).join('<br>')}</div>` : ''}
+    <div class="page-label" style="margin-top:14px">Proof Photos</div>
+    ${photos.length ? `<div class="proof-thumb-grid">${photos.map(p => `<div><img class="proof-thumb" src="${escapeAttr(p.url)}" onclick="openLightbox('${escapeAttr(p.url)}')" alt="${escapeAttr(p.label)}"><div style="font-size:10px;color:var(--muted);margin-top:3px">${esc(p.label)}</div></div>`).join('')}</div>` : '<p style="font-size:13px;color:var(--muted)">No photo stored for this submission.</p>'}
+  `;
+  document.getElementById('modal-submission-detail').classList.add('active');
+};
 
 // ── Settings accordion ────────────────────────────────────────
 // IDs of all accordion sections (matches sacc-chev-{id} and settings-{id})
