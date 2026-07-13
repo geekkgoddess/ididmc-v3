@@ -762,7 +762,7 @@ function renderDashboard() {
   // ── Points widget math ──────────────────────────────────────
   // T = total daily chores visible to this kid
   const T = household.chores?.filter(c =>
-    c.freq === 'daily' && (c.assignedTo === 'any' || c.assignedTo === currentKid.name)
+    c.freq === 'daily' && (c.assignedTo === 'any' || c.assignedTo === currentKid.name) && isChoreScheduledToday(c)
   ).length || 0;
 
   // K = number of kids
@@ -826,8 +826,9 @@ function renderChoreList(type) {
   // 'bonus' is a legacy value — treat as weekly too.
   const chores  = (household.chores || []).filter(c => {
     const matchesKid = c.assignedTo === 'any' || c.assignedTo === currentKid.name;
-    if (isDaily) return c.freq === 'daily' && matchesKid;
-    return c.freq !== 'daily' && matchesKid; // weekly tab = everything except daily
+    const scheduledToday = isChoreScheduledToday(c);
+    if (isDaily) return c.freq === 'daily' && matchesKid && scheduledToday;
+    return c.freq !== 'daily' && matchesKid && scheduledToday; // weekly tab = everything except daily
   });
   const claimed  = isDaily ? dailyClaimed : weeklyClaimed;
   const listEl   = document.getElementById(`${type}-list`);
@@ -1251,8 +1252,38 @@ function isActiveChoreDay() {
   const activeDays = Array.isArray(household?.activeChoreDays) ? household.activeChoreDays : [1,2,3,4,5];
   return activeDays.includes(new Date().getDay());
 }
+function isChoreScheduledToday(chore) {
+  const today = getToday();
+  const schedule = chore?.schedule || {};
+  const freq = (schedule.type || chore?.freq || 'daily').replace('_', '-');
+  const day = new Date(today + 'T00:00:00').getDay();
+  const days = Array.isArray(schedule.days) ? schedule.days.map(Number) : null;
+  if (freq === 'as-needed') return true;
+  if (freq === 'daily') {
+    const activeDays = days || (Array.isArray(household?.activeChoreDays) ? household.activeChoreDays : [1,2,3,4,5]);
+    return activeDays.map(Number).includes(day);
+  }
+  if (freq === 'weekly') return (days || [1]).includes(day);
+  if (freq === 'biweekly') {
+    if (!(days || [1]).includes(day)) return false;
+    return getBiweeklyWeekIndex(today, schedule.biweeklyAnchor) % 2 === 0;
+  }
+  if (freq === 'monthly') return Number(today.slice(8, 10)) === Number(schedule.monthlyDay || 1);
+  return true;
+}
+function getBiweeklyWeekIndex(todayStr, anchorStr) {
+  const anchorWeek = new Date(getWeekStartForDate(anchorStr || '2026-01-05') + 'T00:00:00');
+  const todayWeek = new Date(getWeekStartForDate(todayStr) + 'T00:00:00');
+  return Math.floor(Math.max(0, todayWeek - anchorWeek) / (7 * 86400000));
+}
 function getWeekStart() {
   const d = new Date(); const day = d.getDay();
+  const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+  return formatDateKey(new Date(new Date(d).setDate(diff)));
+}
+function getWeekStartForDate(dateStr) {
+  const d = new Date(dateStr + 'T00:00:00');
+  const day = d.getDay();
   const diff = d.getDate() - day + (day === 0 ? -6 : 1);
   return formatDateKey(new Date(new Date(d).setDate(diff)));
 }
@@ -1261,8 +1292,8 @@ function addDays(dateStr, days) {
   d.setDate(d.getDate() + days);
   return formatDateKey(d);
 }
-function getRollingPeriodStart(todayStr, days) {
-  const anchorStr = '2026-01-05';
+function getRollingPeriodStart(todayStr, days, customAnchor) {
+  const anchorStr = customAnchor || '2026-01-05';
   const anchor = new Date(anchorStr + 'T00:00:00');
   const today = new Date(todayStr + 'T00:00:00');
   const diff = Math.floor((today - anchor) / 86400000);
@@ -1274,7 +1305,7 @@ function getClaimDocIdForChore(chore) {
   const freq = (chore.freq || chore.type || 'daily').replace('_', '-');
   if (freq === 'daily') return `daily_${householdId}_${today}`;
   if (freq === 'weekly') return `weekly_${householdId}_${getWeekStart()}`;
-  if (freq === 'biweekly') return `biweekly_${householdId}_${getRollingPeriodStart(today, 14)}`;
+  if (freq === 'biweekly') return `biweekly_${householdId}_${getRollingPeriodStart(today, 14, chore?.schedule?.biweeklyAnchor)}`;
   if (freq === 'monthly') return `monthly_${householdId}_${today.slice(0, 8)}01`;
   if (freq === 'quarterly') {
     const month = Number(today.slice(5, 7));

@@ -80,6 +80,27 @@
     .template-chore-list li::before {
       content: '＋'; color: var(--gold); font-weight: 800; line-height: 1.3;
     }
+    .day-picker {
+      display: grid; grid-template-columns: repeat(7, minmax(0,1fr));
+      gap: 6px;
+    }
+    .day-picker label {
+      display: flex; align-items: center; justify-content: center;
+      min-height: 38px; border: 1px solid var(--border);
+      border-radius: 8px; background: var(--card2);
+      color: var(--muted); font-size: 11px; font-weight: 800;
+      cursor: pointer; margin: 0; letter-spacing: 0; text-transform: none;
+    }
+    .day-picker input { position: absolute; opacity: 0; pointer-events: none; }
+    .day-picker label:has(input:checked) {
+      border-color: var(--gold); background: var(--gold-dim); color: var(--text);
+    }
+    .schedule-subfields {
+      display: grid; gap: 12px; padding: 12px;
+      border: 1px solid var(--border); border-radius: 8px;
+      background: var(--card);
+      margin-bottom: 16px;
+    }
 
     /* ── Info icons & tooltips ── */
     .info-icon {
@@ -496,12 +517,12 @@
       <div class="sacc-body" id="settings-pay-cycle"></div>
     </div>
 
-    <!-- Chore Days -->
+    <!-- Chore Scheduling -->
     <div class="sacc">
       <div class="sacc-hdr" onclick="toggleSAcc('chore-days')">
         <div style="display:flex;align-items:center;gap:8px">
-          <span class="sacc-title">Chore Days</span>
-          <span class="info-icon" data-tooltip="Choose which days kids have chores">ⓘ</span>
+          <span class="sacc-title">Chore Scheduling</span>
+          <span class="info-icon" data-tooltip="Set each chore's days from the chore card">ⓘ</span>
         </div>
         <span class="sacc-chevron" id="sacc-chev-chore-days">›</span>
       </div>
@@ -1118,10 +1139,11 @@
         </div>
       </div>
 
-      <!-- Frequency — expanded options including bi-weekly, monthly, as-needed -->
+      <!-- Schedule — cadence, days, duration, and due time live on each chore -->
       <div class="field">
-        <label>Frequency</label>
+        <label>Cadence</label>
         <select id="cm-freq"
+                onchange="updateChoreScheduleFields()"
                 style="background:var(--card2);border:1px solid var(--border);
                        border-radius:8px;padding:12px 14px;color:var(--text);
                        font-family:inherit;font-size:14px;outline:none;
@@ -1130,11 +1152,40 @@
           <option value="weekly">Weekly</option>
           <option value="biweekly">Bi-weekly</option>
           <option value="monthly">Monthly</option>
-          <option value="quarterly">Quarterly</option>
-          <option value="biannual">Bi-annual</option>
-          <option value="annual">Annual</option>
           <option value="as-needed">As-needed</option>
         </select>
+      </div>
+      <div class="schedule-subfields">
+        <div id="cm-daily-preset-field" class="field" style="margin-bottom:0">
+          <label>Daily Pattern</label>
+          <select id="cm-daily-preset" onchange="updateChoreScheduleFields()">
+            <option value="weekdays">Weekdays (Mon-Fri)</option>
+            <option value="everyday">Every day (Sun-Sat)</option>
+            <option value="custom">Custom days</option>
+          </select>
+        </div>
+        <div id="cm-days-field" class="field" style="margin-bottom:0">
+          <label id="cm-days-label">Days</label>
+          <div class="day-picker" id="cm-days"></div>
+        </div>
+        <div id="cm-biweekly-anchor-field" class="field" style="margin-bottom:0">
+          <label>Starting Week</label>
+          <input type="date" id="cm-biweekly-anchor">
+        </div>
+        <div id="cm-monthly-day-field" class="field" style="margin-bottom:0">
+          <label>Day of Month</label>
+          <input type="number" id="cm-monthly-day" min="1" max="31" placeholder="e.g. 1">
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div class="field" style="margin-bottom:0">
+            <label>Duration</label>
+            <input type="number" id="cm-duration" min="1" max="480" step="5" placeholder="Minutes">
+          </div>
+          <div class="field" style="margin-bottom:0">
+            <label>Due By</label>
+            <input type="time" id="cm-due-time">
+          </div>
+        </div>
       </div>
 
       <div class="field">
@@ -1236,6 +1287,18 @@ let pendingRejectId  = null;
 let editingChoreId   = null; // null = adding new, string = editing existing
 let editingPastWorkId = null;
 let subTaskRows      = [];   // local state for the sub-task editor
+
+const CHORE_DAYS = [
+  { value: 0, label: 'Sun' },
+  { value: 1, label: 'Mon' },
+  { value: 2, label: 'Tue' },
+  { value: 3, label: 'Wed' },
+  { value: 4, label: 'Thu' },
+  { value: 5, label: 'Fri' },
+  { value: 6, label: 'Sat' },
+];
+const WEEKDAY_VALUES = [1, 2, 3, 4, 5];
+const EVERYDAY_VALUES = [0, 1, 2, 3, 4, 5, 6];
 
 // ── Auth ──────────────────────────────────────────────────────
 onAuthStateChanged(auth, async (user) => {
@@ -1405,7 +1468,7 @@ function renderOverview() {
 
   // ── POINTS MATH ──────────────────────────────────────────────
   // T = total daily chores
-  const T = (household.chores || []).filter(c => c.freq === 'daily').length;
+  const T = (household.chores || []).filter(c => c.freq === 'daily' && isChoreScheduledForDate(c, today)).length;
   // K = number of kids
   const K = household.kids?.length || 1;
   // Q = individual daily quota
@@ -1886,6 +1949,69 @@ function getTemplateDefaults() {
   };
 }
 
+function normalizeChoreSchedule(chore = {}) {
+  const freq = (chore.freq || chore.schedule?.type || 'daily').replace('_', '-');
+  const schedule = chore.schedule || {};
+  let days = Array.isArray(schedule.days) ? schedule.days.map(Number) : null;
+
+  if (!days && freq === 'daily') {
+    days = Array.isArray(household?.activeChoreDays) ? household.activeChoreDays.map(Number) : WEEKDAY_VALUES;
+  } else if (!days && (freq === 'weekly' || freq === 'biweekly')) {
+    days = [1];
+  } else if (!days) {
+    days = [];
+  }
+
+  return {
+    type: freq,
+    days,
+    dailyPreset: schedule.dailyPreset || getDailyPreset(days),
+    biweeklyAnchor: schedule.biweeklyAnchor || household?.payPeriodStart || getToday(),
+    monthlyDay: Number(schedule.monthlyDay || 1),
+    durationMinutes: Number(schedule.durationMinutes || chore.durationMinutes || 0) || null,
+    dueTime: schedule.dueTime || chore.dueTime || '',
+  };
+}
+
+function getDailyPreset(days) {
+  const sorted = [...(days || [])].map(Number).sort((a, b) => a - b).join(',');
+  if (sorted === WEEKDAY_VALUES.join(',')) return 'weekdays';
+  if (sorted === EVERYDAY_VALUES.join(',')) return 'everyday';
+  return 'custom';
+}
+
+function getScheduleSummary(chore) {
+  const s = normalizeChoreSchedule(chore);
+  const dayNames = (s.days || []).map(day => CHORE_DAYS.find(d => d.value === Number(day))?.label).filter(Boolean);
+  let label;
+  if (s.type === 'daily') {
+    label = s.dailyPreset === 'everyday' ? 'Daily · Sun-Sat'
+      : s.dailyPreset === 'weekdays' ? 'Daily · Mon-Fri'
+      : `Daily · ${dayNames.join(', ') || 'Custom days'}`;
+  } else if (s.type === 'weekly') {
+    label = `Weekly · ${dayNames.join(', ') || 'Choose days'}`;
+  } else if (s.type === 'biweekly') {
+    label = `Every other week · ${dayNames.join(', ') || 'Choose days'}`;
+  } else if (s.type === 'monthly') {
+    label = `Monthly · day ${s.monthlyDay || 1}`;
+  } else {
+    label = 'As-needed';
+  }
+  const extras = [];
+  if (s.durationMinutes) extras.push(`${s.durationMinutes} min`);
+  if (s.dueTime) extras.push(`due ${formatTimeLabel(s.dueTime)}`);
+  return extras.length ? `${label} · ${extras.join(' · ')}` : label;
+}
+
+function formatTimeLabel(value) {
+  if (!value) return '';
+  const [hourStr, minute = '00'] = String(value).split(':');
+  let hour = Number(hourStr);
+  const suffix = hour >= 12 ? 'PM' : 'AM';
+  hour = hour % 12 || 12;
+  return `${hour}:${minute} ${suffix}`;
+}
+
 function renderChoresAdmin() {
   if (!household) return;
   const list = document.getElementById('chores-admin-list');
@@ -1899,19 +2025,12 @@ function renderChoresAdmin() {
 
   list.innerHTML = chores.map((chore, i) => {
     const subCount = chore.subTasks?.length || 0;
-    // Map frequency values to display labels and dot colors
-    const freqMap = {
-      daily:     { label: 'Daily',     color: 'var(--green)' },
-      weekly:    { label: 'Weekly',    color: 'var(--gold)'  },
-      biweekly:  { label: 'Bi-weekly', color: 'var(--gold)'  },
-      monthly:   { label: 'Monthly',   color: 'var(--blue)'  },
-      quarterly: { label: 'Quarterly', color: 'var(--blue)'  },
-      biannual:  { label: 'Bi-annual', color: 'var(--blue)'  },
-      annual:    { label: 'Annual',    color: 'var(--blue)'  },
-      'as-needed':{ label: 'As-needed',color: 'var(--muted)' },
-      bonus:     { label: 'Bonus',     color: 'var(--blue)'  }, // legacy value
-    };
-    const { label: freqLabel, color: freqColor } = freqMap[chore.freq] || freqMap.daily;
+    const schedule = normalizeChoreSchedule(chore);
+    const freqColor = schedule.type === 'daily' ? 'var(--green)'
+      : schedule.type === 'as-needed' ? 'var(--muted)'
+      : schedule.type === 'monthly' ? 'var(--blue)'
+      : 'var(--gold)';
+    const scheduleLabel = getScheduleSummary(chore);
 
     return `
       <div class="chore-admin-card" id="chore-card-${chore.id}">
@@ -1926,7 +2045,7 @@ function renderChoresAdmin() {
                   : household.compModel === 'daily-min'
                     ? '1 unit'
                     : `${chore.pointValue || 0} pts`
-               } · ${freqLabel}
+               } · ${esc(scheduleLabel)}
               ${subCount ? ` · ${subCount} sub-tasks` : ''}
               ${chore.assignedTo !== 'any' ? ` · ${esc(chore.assignedTo)} only` : ''}
             </div>
@@ -1945,6 +2064,9 @@ function renderChoresAdmin() {
         </div>
         <div class="chore-admin-body">
           ${chore.desc ? `<p style="font-size:13px;color:var(--muted);margin:10px 0">"${esc(chore.desc)}"</p>` : ''}
+          <div style="font-size:12px;color:var(--muted);margin:10px 0">
+            <strong style="color:var(--text)">Schedule:</strong> ${esc(scheduleLabel)}
+          </div>
           ${subCount ? `
             <div class="page-label" style="margin:10px 0 6px">Sub-tasks</div>
             <div>${(chore.subTasks || []).sort((a,b) => (a.order||0)-(b.order||0)).map(t =>
@@ -2012,6 +2134,7 @@ window.addTemplateGroup = async (groupId) => {
       name: chore.name,
       desc: chore.desc || '',
       freq: 'daily',
+      schedule: normalizeChoreSchedule({ freq: 'daily' }),
       assignedTo: 'any',
       proofMode: 'single',
       subTasks: [],
@@ -2043,6 +2166,7 @@ window.openAddChore = () => {
   document.getElementById('cm-points').value = '';
   document.getElementById('cm-flat').value   = '';
   document.getElementById('cm-freq').value   = 'daily';
+  setChoreScheduleInputs(normalizeChoreSchedule({ freq: 'daily' }));
   document.getElementById('cm-proof-mode').value = 'single';
   updateAssignOptions('any');
   renderSubTaskEditor();
@@ -2061,6 +2185,7 @@ window.openEditChore = (choreId) => {
   document.getElementById('cm-points').value = chore.pointValue  || '';
   document.getElementById('cm-flat').value   = chore.flatPayValue || '';
   document.getElementById('cm-freq').value   = chore.freq || 'daily';
+  setChoreScheduleInputs(normalizeChoreSchedule(chore));
   document.getElementById('cm-proof-mode').value = chore.proofMode || 'single';
   updateAssignOptions(chore.assignedTo || 'any');
   renderSubTaskEditor();
@@ -2107,6 +2232,71 @@ function updateAssignOptions(selectedValue) {
       `<option value="${k.name}" ${selectedValue === k.name ? 'selected' : ''}>${k.name} only</option>`
     ).join('');
   sel.value = selectedValue;
+}
+
+function setChoreScheduleInputs(schedule) {
+  document.getElementById('cm-freq').value = schedule.type || 'daily';
+  document.getElementById('cm-daily-preset').value = schedule.dailyPreset || getDailyPreset(schedule.days);
+  document.getElementById('cm-biweekly-anchor').value = schedule.biweeklyAnchor || getToday();
+  document.getElementById('cm-monthly-day').value = schedule.monthlyDay || 1;
+  document.getElementById('cm-duration').value = schedule.durationMinutes || '';
+  document.getElementById('cm-due-time').value = schedule.dueTime || '';
+  renderChoreDayPicker(schedule.days || []);
+  updateChoreScheduleFields();
+}
+
+function renderChoreDayPicker(selectedDays) {
+  const selected = new Set((selectedDays || []).map(Number));
+  document.getElementById('cm-days').innerHTML = CHORE_DAYS.map(day => `
+    <label>
+      <input type="checkbox" value="${day.value}" ${selected.has(day.value) ? 'checked' : ''}>
+      ${day.label}
+    </label>
+  `).join('');
+}
+
+window.updateChoreScheduleFields = () => {
+  const freq = document.getElementById('cm-freq')?.value || 'daily';
+  const dailyPreset = document.getElementById('cm-daily-preset')?.value || 'weekdays';
+  const dailyField = document.getElementById('cm-daily-preset-field');
+  const daysField = document.getElementById('cm-days-field');
+  const daysLabel = document.getElementById('cm-days-label');
+  const biweeklyField = document.getElementById('cm-biweekly-anchor-field');
+  const monthlyField = document.getElementById('cm-monthly-day-field');
+
+  if (dailyField) dailyField.style.display = freq === 'daily' ? 'block' : 'none';
+  if (daysField) daysField.style.display =
+    (freq === 'weekly' || freq === 'biweekly' || (freq === 'daily' && dailyPreset === 'custom')) ? 'block' : 'none';
+  if (daysLabel) daysLabel.textContent = freq === 'daily' ? 'Custom Days' : 'Days';
+  if (biweeklyField) biweeklyField.style.display = freq === 'biweekly' ? 'block' : 'none';
+  if (monthlyField) monthlyField.style.display = freq === 'monthly' ? 'block' : 'none';
+
+  if (freq === 'daily' && dailyPreset !== 'custom') {
+    renderChoreDayPicker(dailyPreset === 'everyday' ? EVERYDAY_VALUES : WEEKDAY_VALUES);
+  }
+};
+
+function readChoreScheduleFromModal() {
+  const type = document.getElementById('cm-freq').value;
+  const dailyPreset = document.getElementById('cm-daily-preset').value;
+  let days = [...document.querySelectorAll('#cm-days input:checked')].map(input => Number(input.value));
+  if (type === 'daily' && dailyPreset === 'weekdays') days = WEEKDAY_VALUES;
+  if (type === 'daily' && dailyPreset === 'everyday') days = EVERYDAY_VALUES;
+
+  const schedule = {
+    type,
+    days,
+    dailyPreset: type === 'daily' ? dailyPreset : '',
+    biweeklyAnchor: document.getElementById('cm-biweekly-anchor').value || getToday(),
+    monthlyDay: Math.min(31, Math.max(1, parseInt(document.getElementById('cm-monthly-day').value) || 1)),
+    durationMinutes: parseInt(document.getElementById('cm-duration').value) || null,
+    dueTime: document.getElementById('cm-due-time').value || '',
+  };
+
+  if ((type === 'daily' || type === 'weekly' || type === 'biweekly') && !schedule.days.length) {
+    return { error: 'Choose at least one day for this chore' };
+  }
+  return { schedule };
 }
 
 function renderSubTaskEditor() {
@@ -2164,8 +2354,10 @@ window.saveChore = async () => {
   const assign   = document.getElementById('cm-assign').value;
   const proofMode = document.getElementById('cm-proof-mode').value;
   const model    = household?.compModel || 'points';
+  const scheduleResult = readChoreScheduleFromModal();
 
   if (!name) { showToast('Please enter a chore name'); return; }
+  if (scheduleResult.error) { showToast(scheduleResult.error); return; }
 
   // Validate the active pay field for the current model
   if (model === 'points'   && !points)  { showToast('Please enter a points value'); return; }
@@ -2184,7 +2376,7 @@ window.saveChore = async () => {
     .map((t, i) => ({ id: t.id, label: t.label.trim(), order: i, requiresPhoto: !!t.requiresPhoto }));
 
   const choreData = {
-    name, desc, freq, assignedTo: assign, subTasks, proofMode,
+    name, desc, freq, schedule: scheduleResult.schedule, assignedTo: assign, subTasks, proofMode,
     pointValue:   points,    // Model A — points per chore
     flatPayValue: flatPay,   // Model B — dollars per chore
     // Model C uses neither; all chores count as 1 unit toward daily minimum
@@ -2243,11 +2435,6 @@ function renderHistory() {
   });
   const days = [...daySet].sort();
 
-  // Individual daily quota per kid
-  const T = (household?.chores || []).filter(c => c.freq === 'daily').length;
-  const K = kids.length || 1;
-  const Q = getDailyChoreTarget(T, K);  // per-kid daily target
-
   // ── Legend ──
   const legend = kids.length ? `
     <div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:14px">
@@ -2268,6 +2455,9 @@ function renderHistory() {
     const dayLabel = d.toLocaleDateString('en-US', { weekday:'short' });
     const dateLabel = `${d.getMonth()+1}/${d.getDate()}`;
     const isToday  = date === getToday();
+    const T = (household?.chores || []).filter(c => c.freq === 'daily' && isChoreScheduledForDate(c, date)).length;
+    const K = kids.length || 1;
+    const Q = getDailyChoreTarget(T, K);
 
     // Per-kid bars
     const kidBars = kids.map(kid => {
@@ -2697,61 +2887,22 @@ window.saveContactInfo = async () => {
   showToast('✅ Contact info saved');
 };
 
-// ── Chore Days Settings ────────────────────────────────────────
+// ── Chore Scheduling Settings ──────────────────────────────────
 function renderChoreDaysSettings() {
-  const mode = household.choreScheduleMode || 'weekdays';
-  const active = new Set(household.activeChoreDays || [1, 2, 3, 4, 5]);
-  const days = [
-    {value:0,label:'Sun'}, {value:1,label:'Mon'}, {value:2,label:'Tue'},
-    {value:3,label:'Wed'}, {value:4,label:'Thu'}, {value:5,label:'Fri'}, {value:6,label:'Sat'}
-  ];
-  const option = (value, label, sub) => `
-    <button onclick="setChoreScheduleMode('${value}')"
-      style="padding:11px 12px;border:2px solid ${mode===value?'var(--gold)':'var(--border)'};
-             border-radius:8px;background:${mode===value?'var(--gold-dim)':'transparent'};
-             color:var(--text);font:inherit;text-align:left;cursor:pointer">
-      <strong style="font-size:13px">${label}</strong>
-      <span style="display:block;font-size:11px;color:var(--muted);margin-top:2px">${sub}</span>
-    </button>`;
   document.getElementById('settings-chore-days').innerHTML = `
     <div style="padding:14px 0">
-      <div style="display:grid;grid-template-columns:1fr;gap:8px;margin-bottom:14px">
-        ${option('weekdays','Weekdays','Monday through Friday')}
-        ${option('everyday','Every Day','Monday through Sunday')}
-        ${option('custom','Custom Days','Choose the exact days for your household')}
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:14px">
+        <div style="font-size:14px;font-weight:800;color:var(--text);margin-bottom:5px">
+          Schedules now live on each chore
+        </div>
+        <p style="font-size:12px;margin:0;color:var(--muted)">
+          Open a chore card to choose daily, weekly, every other week, monthly, or as-needed schedules.
+          You can also pick the exact days, estimated duration, and optional due time.
+        </p>
       </div>
-      <div id="custom-chore-days" style="display:${mode==='custom'?'grid':'none'};grid-template-columns:repeat(7,1fr);gap:5px;margin-bottom:14px">
-        ${days.map(day => `<label style="text-align:center;font-size:10px;color:var(--muted)">
-          <input type="checkbox" value="${day.value}" ${active.has(day.value)?'checked':''}
-                 style="display:block;margin:0 auto 4px;width:18px;height:18px;accent-color:var(--gold)">
-          ${day.label}
-        </label>`).join('')}
-      </div>
-      <button class="btn btn-primary" onclick="saveChoreDaysSettings()">Save Chore Days</button>
+      <button class="btn btn-secondary" style="margin-top:12px" onclick="openAddChore()">Add a Scheduled Chore</button>
     </div>`;
 }
-
-window.setChoreScheduleMode = (mode) => {
-  household.choreScheduleMode = mode;
-  household.activeChoreDays = mode === 'everyday' ? [0,1,2,3,4,5,6] :
-    mode === 'weekdays' ? [1,2,3,4,5] : (household.activeChoreDays || [1,2,3,4,5]);
-  renderChoreDaysSettings();
-};
-
-window.saveChoreDaysSettings = async () => {
-  const mode = household.choreScheduleMode || 'weekdays';
-  let days = mode === 'everyday' ? [0,1,2,3,4,5,6] : [1,2,3,4,5];
-  if (mode === 'custom') {
-    days = [...document.querySelectorAll('#custom-chore-days input:checked')].map(input => Number(input.value));
-    if (!days.length) { showToast('Choose at least one chore day'); return; }
-  }
-  await updateDoc(doc(db, 'households', currentUser.uid), {
-    choreScheduleMode: mode, activeChoreDays: days
-  });
-  household.choreScheduleMode = mode;
-  household.activeChoreDays = days;
-  showToast('Chore days saved');
-};
 
 // ── Pay Cycle Settings ─────────────────────────────────────────
 function renderPayCycleSettings() {
@@ -3751,8 +3902,8 @@ function addDays(dateStr, days) {
   d.setDate(d.getDate() + days);
   return formatDateKey(d);
 }
-function getRollingPeriodStart(dateStr, days) {
-  const anchorStr = '2026-01-05';
+function getRollingPeriodStart(dateStr, days, customAnchor) {
+  const anchorStr = customAnchor || '2026-01-05';
   const anchor = new Date(anchorStr + 'T00:00:00');
   const date = new Date(dateStr + 'T00:00:00');
   const diff = Math.floor((date - anchor) / 86400000);
@@ -3763,7 +3914,7 @@ function getClaimDocIdForChore(chore, dateStr = getToday()) {
   const freq = (chore?.freq || 'daily').replace('_', '-');
   if (freq === 'daily') return `daily_${currentUser.uid}_${dateStr}`;
   if (freq === 'weekly') return `weekly_${currentUser.uid}_${getWeekStartForDate(dateStr)}`;
-  if (freq === 'biweekly') return `biweekly_${currentUser.uid}_${getRollingPeriodStart(dateStr, 14)}`;
+  if (freq === 'biweekly') return `biweekly_${currentUser.uid}_${getRollingPeriodStart(dateStr, 14, chore?.schedule?.biweeklyAnchor)}`;
   if (freq === 'monthly') return `monthly_${currentUser.uid}_${dateStr.slice(0, 8)}01`;
   if (freq === 'quarterly') {
     const month = Number(dateStr.slice(5, 7));
@@ -3776,6 +3927,29 @@ function getClaimDocIdForChore(chore, dateStr = getToday()) {
   }
   if (freq === 'annual') return `annual_${currentUser.uid}_${dateStr.slice(0, 4)}-01-01`;
   return `weekly_${currentUser.uid}_${getWeekStartForDate(dateStr)}`;
+}
+function isChoreScheduledForDate(chore, dateStr) {
+  const schedule = chore?.schedule || {};
+  const freq = (schedule.type || chore?.freq || 'daily').replace('_', '-');
+  const day = new Date(dateStr + 'T00:00:00').getDay();
+  const days = Array.isArray(schedule.days) ? schedule.days.map(Number) : null;
+  if (freq === 'as-needed') return true;
+  if (freq === 'daily') {
+    const activeDays = days || (Array.isArray(household?.activeChoreDays) ? household.activeChoreDays : WEEKDAY_VALUES);
+    return activeDays.map(Number).includes(day);
+  }
+  if (freq === 'weekly') return (days || [1]).includes(day);
+  if (freq === 'biweekly') {
+    if (!(days || [1]).includes(day)) return false;
+    return getBiweeklyWeekIndex(dateStr, schedule.biweeklyAnchor) % 2 === 0;
+  }
+  if (freq === 'monthly') return Number(dateStr.slice(8, 10)) === Number(schedule.monthlyDay || 1);
+  return true;
+}
+function getBiweeklyWeekIndex(dateStr, anchorStr) {
+  const anchorWeek = new Date(getWeekStartForDate(anchorStr || '2026-01-05') + 'T00:00:00');
+  const dateWeek = new Date(getWeekStartForDate(dateStr) + 'T00:00:00');
+  return Math.floor(Math.max(0, dateWeek - anchorWeek) / (7 * 86400000));
 }
 function getPayPeriodForDate(dateStr) {
   if (!household) return '';

@@ -590,7 +590,7 @@ function getModelExplanation() {
 
 function renderChoreList(type) {
   var chores = (household.chores || []).filter(function(chore) {
-    return type === 'daily' ? chore.freq === 'daily' : chore.freq !== 'daily';
+    return (type === 'daily' ? chore.freq === 'daily' : chore.freq !== 'daily') && isChoreScheduledToday(chore);
   });
   var claimed = type === 'daily' ? (household.dailyClaimed || {}) : (household.weeklyClaimed || {});
 
@@ -636,6 +636,36 @@ function renderChoreList(type) {
   }).join('');
   if (!chores.length) html = '<div style="padding:18px;text-align:center;color:var(--muted);font-size:13px">No ' + type + ' chores assigned</div>';
   document.getElementById(type + '-list').innerHTML = banner + html;
+}
+
+function isChoreScheduledToday(chore) {
+  var today = household.today || new Date().toISOString().slice(0, 10);
+  var schedule = chore && chore.schedule || {};
+  var freq = String(schedule.type || chore.freq || 'daily').replace('_', '-');
+  var day = new Date(today + 'T00:00:00').getDay();
+  var days = Array.isArray(schedule.days) ? schedule.days.map(Number) : null;
+  if (freq === 'as-needed') return true;
+  if (freq === 'daily') return (days || [1,2,3,4,5]).indexOf(day) !== -1;
+  if (freq === 'weekly') return (days || [1]).indexOf(day) !== -1;
+  if (freq === 'biweekly') {
+    if ((days || [1]).indexOf(day) === -1) return false;
+    return getBiweeklyWeekIndex(today, schedule.biweeklyAnchor) % 2 === 0;
+  }
+  if (freq === 'monthly') return Number(today.slice(8, 10)) === Number(schedule.monthlyDay || 1);
+  return true;
+}
+
+function getBiweeklyWeekIndex(today, anchor) {
+  var anchorWeek = new Date(getWeekStartForDate(anchor || '2026-01-05') + 'T00:00:00');
+  var todayWeek = new Date(getWeekStartForDate(today) + 'T00:00:00');
+  return Math.floor(Math.max(0, todayWeek - anchorWeek) / (7 * 86400000));
+}
+
+function getWeekStartForDate(dateStr) {
+  var d = new Date(dateStr + 'T00:00:00');
+  var day = d.getDay();
+  var diff = d.getDate() - day + (day === 0 ? -6 : 1);
+  return new Date(new Date(d).setDate(diff)).toISOString().split('T')[0];
 }
 
 function renderWorkList() {

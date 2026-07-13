@@ -327,6 +327,9 @@ exports.claimChore = functions.https.onRequest(async (req, res) => {
   await clearPinAttempts(householdId, kidName);
 
   const claimDocId = getClaimDocIdForChore(householdId, chore, today);
+  if (!isChoreScheduledForDate(chore, today, household)) {
+    return res.status(400).json({error: "not-scheduled-today"});
+  }
 
   const claimRef = db.collection("chore_claims").doc(claimDocId);
 
@@ -468,7 +471,9 @@ exports.sendDailySummary = onSchedule({schedule:"0 22 * * *",timeZone:"America/N
 
         // ── Calculate stats per kid ──────────────────────────────
         // T = total daily chores available
-        const T = household.chores?.filter((c) => c.freq === "daily").length || 0;
+        const T = household.chores?.filter((c) =>
+          c.freq === "daily" && isChoreScheduledForDate(c, today, household)
+        ).length || 0;
         // K = number of kids
         const K = household.kids?.length || 1;
         // Q = individual daily quota
@@ -863,6 +868,7 @@ exports.getKidLiteDashboard = functions.https.onRequest(async (req, res) => {
     const payPeriod = getPayPeriodForHousehold(household, today);
     const visibleChores = (household.chores || [])
       .filter((chore) => chore && (chore.assignedTo === "any" || chore.assignedTo === kidName))
+      .filter((chore) => isChoreScheduledForDate(chore, today, household))
       .map((chore) => sanitizeChore(chore));
     const claimDocIds = [...new Set(visibleChores.map((chore) =>
       getClaimDocIdForChore(householdId, chore, today)
@@ -1231,7 +1237,7 @@ function getClaimDocIdForChore(householdId, chore, todayStr) {
   const freq = (chore.freq || "daily").replace("_", "-");
   if (freq === "daily") return `daily_${householdId}_${todayStr}`;
   if (freq === "weekly") return `weekly_${householdId}_${getWeekStartForDate(todayStr)}`;
-  if (freq === "biweekly") return `biweekly_${householdId}_${getRollingPeriodStart(todayStr, 14)}`;
+  if (freq === "biweekly") return `biweekly_${householdId}_${getRollingPeriodStart(todayStr, 14, chore.schedule && chore.schedule.biweeklyAnchor)}`;
   if (freq === "monthly") return `monthly_${householdId}_${todayStr.slice(0, 8)}01`;
   if (freq === "quarterly") {
     const month = Number(todayStr.slice(5, 7));
@@ -1247,8 +1253,33 @@ function getClaimDocIdForChore(householdId, chore, todayStr) {
   return `weekly_${householdId}_${getWeekStartForDate(todayStr)}`;
 }
 
-function getRollingPeriodStart(todayStr, days) {
-  const anchorStr = "2026-01-05"; // Monday anchor for stable biweekly buckets.
+function isChoreScheduledForDate(chore, todayStr, household = {}) {
+  const schedule = chore.schedule || {};
+  const freq = (schedule.type || chore.freq || "daily").replace("_", "-");
+  const day = new Date(`${todayStr}T00:00:00`).getDay();
+  const days = Array.isArray(schedule.days) ? schedule.days.map(Number) : null;
+  if (freq === "as-needed") return true;
+  if (freq === "daily") {
+    const activeDays = days || (Array.isArray(household.activeChoreDays) ? household.activeChoreDays : [1, 2, 3, 4, 5]);
+    return activeDays.map(Number).includes(day);
+  }
+  if (freq === "weekly") return (days || [1]).includes(day);
+  if (freq === "biweekly") {
+    if (!(days || [1]).includes(day)) return false;
+    return getBiweeklyWeekIndex(todayStr, schedule.biweeklyAnchor) % 2 === 0;
+  }
+  if (freq === "monthly") return Number(todayStr.slice(8, 10)) === Number(schedule.monthlyDay || 1);
+  return true;
+}
+
+function getBiweeklyWeekIndex(todayStr, anchorStr) {
+  const anchorWeek = new Date(`${getWeekStartForDate(anchorStr || "2026-01-05")}T00:00:00`);
+  const todayWeek = new Date(`${getWeekStartForDate(todayStr)}T00:00:00`);
+  return Math.floor(Math.max(0, todayWeek - anchorWeek) / (7 * 86400000));
+}
+
+function getRollingPeriodStart(todayStr, days, customAnchor) {
+  const anchorStr = customAnchor || "2026-01-05"; // Monday anchor for stable biweekly buckets.
   const anchor = new Date(`${anchorStr}T00:00:00`);
   const today = new Date(`${todayStr}T00:00:00`);
   const diff = Math.floor((today - anchor) / 86400000);
@@ -1312,11 +1343,21 @@ function getDailyChoreTarget(household, totalDailyChores, kidCount) {
 }
 
 function sanitizeChore(chore) {
+  const schedule = chore.schedule || {};
   return {
     id: chore.id,
     name: chore.name || "Chore",
     desc: chore.desc || "",
     freq: chore.freq || "daily",
+    schedule: {
+      type: schedule.type || chore.freq || "daily",
+      days: Array.isArray(schedule.days) ? schedule.days.map(Number) : [],
+      dailyPreset: schedule.dailyPreset || "",
+      biweeklyAnchor: schedule.biweeklyAnchor || "",
+      monthlyDay: schedule.monthlyDay || 1,
+      durationMinutes: schedule.durationMinutes || null,
+      dueTime: schedule.dueTime || "",
+    },
     assignedTo: chore.assignedTo || "any",
     pointValue: chore.pointValue || 0,
     flatPayValue: chore.flatPayValue || 0,
